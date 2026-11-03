@@ -14,11 +14,16 @@ Code đã có máy chủ và kết nối online trong cả hai JAR. Chưa có se
 
 Máy chủ cũng hỗ trợ tên biến cũ `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` nếu bạn đang dùng các khóa JWT legacy. Không trộn publishable key với secret key. Code dùng khóa mới trên header `apikey`, đúng theo [tài liệu Supabase](https://supabase.com/docs/guides/getting-started/api-keys).
 
-### Email đăng ký
+### Cho người chơi tự đăng ký ngay trong game
 
-Giữ **Authentication → Sign In / Providers → Email** được bật. Nếu bật Confirm email, người đăng ký phải mở email xác nhận trước khi đăng nhập. Trang đích sau khi xác nhận có thể là URL Render; không cần đăng nhập trên website, quay lại game đăng nhập là được.
+1. Trong **Authentication**, bật **Allow new users to sign up**.
+2. Mở **Authentication → Sign In / Providers → Email**, bật phương thức Email.
+3. Muốn đăng ký xong vào game ngay, **tắt Confirm email** rồi **Save**. Khi đó không cần cấu hình SMTP, người chơi không cần xác minh chủ email.
+4. Người chơi mở **Online (O) → Đăng ký tài khoản**, nhập tên nhân vật, email, mật khẩu và nhập lại mật khẩu, rồi bấm **Tạo tài khoản**. Game sẽ tự đăng nhập khi tạo xong.
 
-SMTP tích hợp của Supabase chỉ gửi tới địa chỉ thuộc nhóm quản trị project và có hạn mức thấp. Để cho bạn bè tự đăng ký và xác nhận email, cấu hình **Custom SMTP** theo [hướng dẫn chính thức](https://supabase.com/docs/guides/auth/auth-smtp). Khi chỉ thử riêng, bạn có thể tự tạo tài khoản đã xác nhận trong **Authentication → Users → Add user**, rồi đăng nhập bằng tài khoản đó trong game. Không cần tắt xác nhận email để chạy thử hai người.
+Không cần thêm từng người trong Supabase Users. Nếu muốn giữ xác minh email, để Confirm email bật và cấu hình [Custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp). Khi đó game hướng dẫn xác nhận email rồi đăng nhập, thay vì vào ngay. SMTP tích hợp của Supabase chỉ gửi tới địa chỉ thuộc nhóm quản trị project và có hạn mức thấp.
+
+Thiết lập này tuân theo [cấu hình Supabase Auth](https://supabase.com/docs/guides/auth/general-configuration); game không dùng quyền admin để bỏ qua xác minh.
 
 ## 2. Đưa bộ server lên GitHub
 
@@ -52,9 +57,9 @@ Nếu dùng **New → Blueprint** thay vì Web Service, file `render.yaml` đã 
 ## 4. Đăng nhập và chơi trên điện thoại/giả lập
 
 1. Cài bản JAR online C3/E72 hoặc E6 được cung cấp riêng. Cho phép game kết nối Internet khi điện thoại hỏi quyền.
-2. Ở sảnh hoặc màn tạo nhân vật, nhấn **Online (O)**. Dùng phím O trên QWERTY hoặc chạm nút Online.
+2. Ở sảnh hoặc màn tạo nhân vật, nhấn **Online (O)**. Có nút Đăng nhập và Đăng ký riêng, không phải tìm trong Menu.
 3. Nhập URL gốc của Render, ví dụ `https://gunny-java-online.onrender.com`, không thêm `/api` hay `/health`.
-4. Đăng ký bằng Email + mật khẩu từ 8 ký tự, xác nhận email nếu project bật xác nhận, rồi đăng nhập. Nếu dùng tài khoản tạo trong Supabase Users, đăng nhập luôn bằng email/mật khẩu đã đặt.
+4. Chọn **Đăng ký tài khoản**, nhập tên, email và hai lần mật khẩu từ 8 ký tự. Nếu Confirm email đã tắt, tạo xong sẽ tự đăng nhập. Nếu project vẫn bật xác minh email, xác nhận email rồi dùng nút Đăng nhập.
 5. Game nhớ URL và email trên máy, không lưu mật khẩu. Không nhập bất kỳ API key Supabase nào vào game.
 6. Người thứ nhất chọn **Tạo phòng**. Chọn bản đồ, Bot/Người và bot đồng minh bằng giao diện phòng hiện có, rồi bấm **Bắt đầu** để tạo phòng online.
 7. Game hiển thị mã phòng, ví dụ `1001`. Người thứ hai chọn phòng trong danh sách hoặc **Nhập mã phòng**, chọn bên phải để đấu với chủ phòng, hoặc bên trái để cùng phe nếu còn chỗ.

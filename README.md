@@ -40,6 +40,8 @@ gunny-online-main/
 
 5. Deploy và mở `https://TEN-SERVER.onrender.com/health` để kiểm tra. Game Java → **Online (O)** → nhập URL gốc Render → đăng nhập.
 
+**Tự đăng ký trong game:** bật **Allow new users to sign up** trong Supabase Auth. Nếu muốn đăng ký xong vào ngay, tắt **Confirm email** trong Email provider rồi Save; chế độ này không xác minh chủ email. Người chơi chọn Đăng ký ngay trong game, không cần thêm từng tài khoản trên dashboard.
+
 **Không điền khóa thật vào `.env.example` rồi upload GitHub.** File đó là mẫu; nhập khóa trong Environment của Render. Không cần nhập API key vào điện thoại.
 
 Đọc [hướng dẫn đầy đủ](docs/CAI-DAT.md) để cấu hình tài khoản/email, tạo phòng và kiểm tra hai người chơi.
