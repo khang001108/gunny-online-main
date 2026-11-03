@@ -60,11 +60,44 @@ public final class GunnyServer implements AutoCloseable {
     public GunnyServer(InetSocketAddress address,Path assets,CloudStore store)throws Exception {
         this.store=store;maxRooms=Math.max(1,Math.min(32,Integer.parseInt(CloudStore.env("MAX_ROOMS").isEmpty()?"8":CloudStore.env("MAX_ROOMS"))));
         for(int i=0;i<3;i++){BufferedImage image=ImageIO.read(assets.resolve("land"+i+".png").toFile());if(image==null||image.getWidth()!=480||image.getHeight()!=220)throw new IllegalStateException("Use assets1 terrain files");terrain[i]=new boolean[480*220];for(int y=0;y<220;y++)for(int x=0;x<480;x++)terrain[i][y*480+x]=(image.getRGB(x,y)>>>24)>96;}
-        http=HttpServer.create(address,64);http.setExecutor(workers);http.createContext("/health",this::health);http.createContext("/api",this::api);
+        http=HttpServer.create(address,64);http.setExecutor(workers);http.createContext("/health",this::health);http.createContext("/api",this::api);http.createContext("/auth/confirmed",this::emailConfirmation);http.createContext("/",this::emailConfirmation);
         http.start();clock.scheduleAtFixedRate(this::tick,33,33,TimeUnit.MILLISECONDS);
     }
     int port(){return http.getAddress().getPort();}
     void health(HttpExchange x)throws IOException{byte[] b="{\"ok\":true,\"protocol\":1}".getBytes(java.nio.charset.StandardCharsets.UTF_8);x.getResponseHeaders().set("Content-Type","application/json");x.sendResponseHeaders(200,b.length);try(OutputStream out=x.getResponseBody()){out.write(b);}}
+    static final String EMAIL_SCRIPT="""
+        (function () {
+          var state = window.location.search + '&' + window.location.hash;
+          if (/(?:[?#&])error(?:_code)?=/.test(state)) {
+            document.getElementById('title').textContent = 'Liên kết xác nhận chưa hoàn tất';
+            document.getElementById('message').textContent = 'Liên kết có thể đã hết hạn hoặc đã được dùng. Hãy thử đăng nhập trong game; nếu chưa được, yêu cầu email xác nhận mới.';
+          }
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }());
+        """;
+    static String emailPage(){return """
+        <!doctype html>
+        <html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <meta name="referrer" content="no-referrer"><title>Gunny Java — xác nhận email</title>
+        <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4e6c6;color:#3c2b1d;font:17px/1.6 system-ui,sans-serif}main{box-sizing:border-box;max-width:560px;margin:24px;padding:32px;background:#fffaf0;border:2px solid #bd8a38;border-radius:18px;box-shadow:0 10px 36px #3c2b1d22}h1{font-size:26px;line-height:1.3}small{color:#705943}.brand{font-weight:bold;color:#996119;letter-spacing:2px}</style></head>
+        <body><main><div class="brand">GUNNY JAVA</div><h1 id="title">Tiếp tục trong Gunny</h1>
+        <p id="message">Bạn đã mở liên kết xác nhận email. Hãy quay lại game, chọn Đăng nhập và dùng email cùng mật khẩu đã đăng ký.</p>
+        <small>Nếu tài khoản vẫn báo chưa xác nhận email, kiểm tra liên kết còn hiệu lực hoặc yêu cầu email xác nhận mới.</small>
+        </main><script>"""+EMAIL_SCRIPT+"</script></body></html>";}
+    void emailConfirmation(HttpExchange x)throws IOException{
+        String path=x.getRequestURI().getPath();
+        if(!path.equals("/")&&!path.equals("/auth/confirmed")){x.sendResponseHeaders(404,-1);x.close();return;}
+        if(!x.getRequestMethod().equals("GET")&&!x.getRequestMethod().equals("HEAD")){x.getResponseHeaders().set("Allow","GET, HEAD");x.sendResponseHeaders(405,-1);x.close();return;}
+        Headers headers=x.getResponseHeaders();headers.set("Content-Type","text/html; charset=utf-8");headers.set("Cache-Control","no-store");headers.set("Referrer-Policy","no-referrer");headers.set("X-Content-Type-Options","nosniff");
+        try{String hash=Base64.getEncoder().encodeToString(java.security.MessageDigest.getInstance("SHA-256").digest(EMAIL_SCRIPT.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            headers.set("Content-Security-Policy","default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-"+hash+"'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
+        }catch(java.security.NoSuchAlgorithmException e){throw new IOException(e);}
+        byte[] body=emailPage().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        if(x.getRequestMethod().equals("HEAD")){x.sendResponseHeaders(200,-1);x.close();return;}
+        x.sendResponseHeaders(200,body.length);try(OutputStream out=x.getResponseBody()){out.write(body);}
+    }
     boolean limit(String key,int maximum){Window w=limits.computeIfAbsent(key,k->new Window());synchronized(w){long now=System.currentTimeMillis();if(now-w.start>60000){w.start=now;w.count=0;}return ++w.count<=maximum;}}
     void api(HttpExchange x)throws IOException {
         byte[] response;int status=200;try{

@@ -25,6 +25,22 @@ Không cần thêm từng người trong Supabase Users. Nếu muốn giữ xác
 
 Thiết lập này tuân theo [cấu hình Supabase Auth](https://supabase.com/docs/guides/auth/general-configuration); game không dùng quyền admin để bỏ qua xác minh.
 
+### Sửa email xác nhận chuyển nhầm về localhost:3000
+
+Sau khi cập nhật máy chủ có trang xác nhận, vào **Supabase → Authentication → URL Configuration**:
+
+- **Site URL**: `https://gunny-online-main.onrender.com`
+- **Redirect URLs**: thêm `https://gunny-online-main.onrender.com/auth/confirmed` nếu dùng đường dẫn này làm địa chỉ chuyển trang.
+- Bấm **Save**. Nếu dùng hostname Render khác, thay đúng hostname của bạn.
+
+Trong **Email Templates → Confirm signup**, giữ liên kết `{{ .ConfirmationURL }}` theo mẫu mặc định. Không thay bằng liên kết chỉ trỏ tới Site URL vì như vậy sẽ bỏ qua bước xác nhận của Supabase. Giữ Confirm email bật nếu muốn xác minh email người chơi.
+
+Máy chủ phục vụ trang tiếng Việt tại `/` và `/auth/confirmed`, hướng dẫn quay lại Gunny đăng nhập. Trang không lưu token trong trình duyệt, không tự đăng nhập và không xác nhận thay Supabase; lỗi xác nhận được hiển thị nếu URL có thông báo lỗi, rồi tham số/fragment bị xóa khỏi thanh địa chỉ.
+
+Email đã gửi trước khi đổi Site URL có thể vẫn chứa địa chỉ localhost. Nếu đã bấm liên kết và sau đó mới thấy lỗi localhost, tài khoản có thể đã được xác nhận: thử đăng nhập ngay trong game. Kiểm tra trạng thái xác nhận trong **Authentication → Users** khi cần. Đổi Site URL không sửa được các liên kết đã gửi.
+
+Không cần sửa schema hay cài JAR mới cho thay đổi này. Cập nhật `backend/src/GunnyServer.java` trong repository độc lập, push lên GitHub và đợi Render deploy, sau đó mở URL gốc để kiểm tra có trang Gunny.
+
 ## 2. Đưa bộ server lên GitHub
 
 1. Giải nén `gunny-online-main.zip`, rồi mở thư mục `gunny-online-main`.

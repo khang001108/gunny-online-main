@@ -18,6 +18,16 @@ public final class ServerCheck {
     public static void main(String[] args)throws Exception {
         CloudStore.Memory store=new CloudStore.Memory();try(GunnyServer server=new GunnyServer(new InetSocketAddress("127.0.0.1",0),Path.of("backend/assets"),store)){
             base="http://127.0.0.1:"+server.port();ok(HTTP.send(HttpRequest.newBuilder(URI.create(base+"/health")).GET().build(),HttpResponse.BodyHandlers.ofString()).body().contains("\"ok\":true"),"Health endpoint reports the live server");
+            for(String path:List.of("/","/auth/confirmed")){
+                HttpResponse<String> page=HTTP.send(HttpRequest.newBuilder(URI.create(base+path)).GET().build(),HttpResponse.BodyHandlers.ofString());
+                ok(page.statusCode()==200&&page.body().contains("Tiếp tục trong Gunny")&&!page.body().contains("localhost"),"Email redirect landing page is available at "+path);
+                ok(page.headers().firstValue("Cache-Control").orElse("").equals("no-store")&&page.headers().firstValue("Referrer-Policy").orElse("").equals("no-referrer"),"Email landing does not cache the page or leak referrers");
+                String hash=Base64.getEncoder().encodeToString(java.security.MessageDigest.getInstance("SHA-256").digest(GunnyServer.EMAIL_SCRIPT.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                ok(page.headers().firstValue("Content-Security-Policy").orElse("").contains("'sha256-"+hash+"'"),"Email landing permits only its own URL-cleanup script");
+            }
+            ok(HTTP.send(HttpRequest.newBuilder(URI.create(base+"/auth/confirmed")).method("HEAD",HttpRequest.BodyPublishers.noBody()).build(),HttpResponse.BodyHandlers.ofString()).body().isEmpty(),"Email landing supports HEAD without a response body");
+            ok(HTTP.send(HttpRequest.newBuilder(URI.create(base+"/auth/confirmed")).POST(HttpRequest.BodyPublishers.noBody()).build(),HttpResponse.BodyHandlers.ofString()).statusCode()==405,"Email landing never accepts posted account tokens");
+            ok(HTTP.send(HttpRequest.newBuilder(URI.create(base+"/unknown")).GET().build(),HttpResponse.BodyHandlers.ofString()).statusCode()==404,"Unknown routes remain 404");
             failure(null,"rooms",null,"Unauthenticated room access is rejected");String a=account("one@example.test","Người Một"),b=account("two@example.test","Người Hai");GunnyServer.Session sa=server.sessions.get(a),sb=server.sessions.get(b);
             failure(null,"login",out->{out.writeUTF("one@example.test");out.writeUTF("incorrect-password");},"Wrong password is rejected");
             ok(sa.profile.id!=null&&sa.profile.coins==1000,"Login loads the server-owned account profile");
