@@ -41,6 +41,12 @@ Email đã gửi trước khi đổi Site URL có thể vẫn chứa địa ch�
 
 Không cần sửa schema hay cài JAR mới cho thay đổi này. Cập nhật `backend/src/GunnyServer.java` trong repository độc lập, push lên GitHub và đợi Render deploy, sau đó mở URL gốc để kiểm tra có trang Gunny.
 
+### Cập nhật bản 6.1.2 để thao tác online mượt hơn
+
+Cài JAR/JAD Smooth 6.1.2 đúng E72 hoặc E6. Client phản hồi di chuyển, góc và thanh lực ngay trên máy, rồi làm mượt vị trí từ máy chủ. Server vẫn quyết định sát thương, địa hình, lượt và phần thưởng.
+
+Để lực và góc lúc thả nút khớp với màn hình khi mạng chậm, cập nhật `backend/src/GunnyServer.java` từ gói server mới, push lên GitHub và đợi Render deploy. `/health` sẽ có `"controls":2` bên cạnh `"protocol":1`. Không cần sửa Supabase hay tạo lại tài khoản. JAR cũ vẫn kết nối được; JAR mới gặp server cũ sẽ dùng cách gửi lực cũ.
+
 ## 2. Đưa bộ server lên GitHub
 
 1. Giải nén `gunny-online-main.zip`, rồi mở thư mục `gunny-online-main`.

@@ -42,7 +42,7 @@ public final class GunnyServer implements AutoCloseable {
             battle.hotseat=count==2&&avatars[1].owner!=null;battle.deferBotPow=true;phase=3;lastActive=System.currentTimeMillis();
         }
         void command(Session s,int seq,int kind,int arg){if(seq<=s.sequence)return;if(seq!=s.sequence+1)throw new IllegalArgumentException("Lệch thứ tự lệnh. Hãy kết nối lại.");s.sequence=seq;if(phase!=1||powTicks>0||!controls(s,battle.active)||!battle.input())return;
-            switch(kind){case 1:battle.charge();break;case 2:if(!battle.charging)return;if(battle.pow){battle.charging=false;powActor=battle.active;powTicks=150;}else battle.fire();break;case 3:battle.prop(arg);break;case 4:battle.pass();break;case 5:if(validWeapon(arg)&&(s.profile.owned&(1<<arg))!=0)battle.units[battle.active].weapon=arg;break;default:throw new IllegalArgumentException("Lệnh không hợp lệ.");}
+            switch(kind){case 1:battle.charge();break;case 2:if(!battle.charging)return;if(arg<0){int intent=-arg-1,angle=intent/128,power=intent%128;Battle.Unit u=battle.units[battle.active];if(power>100||angle<Battle.weaponMinAngle(u.weapon)||angle>Battle.weaponMaxAngle(u.weapon))return;u.angle=angle;u.power=power;}if(battle.pow){battle.charging=false;powActor=battle.active;powTicks=150;}else battle.fire();break;case 3:battle.prop(arg);break;case 4:battle.pass();break;case 5:if(validWeapon(arg)&&(s.profile.owned&(1<<arg))!=0)battle.units[battle.active].weapon=arg;break;default:throw new IllegalArgumentException("Lệnh không hợp lệ.");}
         }
         void tick(){long now=System.currentTimeMillis();if(phase==3){boolean ready=true;for(Session s:members)if(s!=null&&!s.ready)ready=false;if(ready||now-lastActive>20000)phase=1;return;}if(phase!=1)return;
             if(powTicks>0){if(--powTicks==0){if(battle.botPowQueued)battle.releaseBotPow();else{battle.botActing=true;try{battle.fire();}finally{battle.botActing=false;}}}return;}
@@ -64,7 +64,7 @@ public final class GunnyServer implements AutoCloseable {
         http.start();clock.scheduleAtFixedRate(this::tick,33,33,TimeUnit.MILLISECONDS);
     }
     int port(){return http.getAddress().getPort();}
-    void health(HttpExchange x)throws IOException{byte[] b="{\"ok\":true,\"protocol\":1}".getBytes(java.nio.charset.StandardCharsets.UTF_8);x.getResponseHeaders().set("Content-Type","application/json");x.sendResponseHeaders(200,b.length);try(OutputStream out=x.getResponseBody()){out.write(b);}}
+    void health(HttpExchange x)throws IOException{byte[] b="{\"ok\":true,\"protocol\":1,\"controls\":2}".getBytes(java.nio.charset.StandardCharsets.UTF_8);x.getResponseHeaders().set("Content-Type","application/json");x.sendResponseHeaders(200,b.length);try(OutputStream out=x.getResponseBody()){out.write(b);}}
     static final String EMAIL_SCRIPT="""
         (function () {
           var state = window.location.search + '&' + window.location.hash;
