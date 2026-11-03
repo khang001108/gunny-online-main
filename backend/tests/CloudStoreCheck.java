@@ -1,0 +1,14 @@
+import com.sun.net.httpserver.HttpServer;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/** Checks Supabase REST paths and modern/legacy key headers without real secrets. */
+public final class CloudStoreCheck {
+    public static void main(String[] args)throws Exception {
+        AtomicInteger requests=new AtomicInteger();HttpServer fake=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);String id="12345678-1234-1234-1234-123456789abc";
+        fake.createContext("/",x->{String path=x.getRequestURI().getPath();boolean auth=path.startsWith("/auth/");String key=x.getRequestHeaders().getFirst("apikey"),bearer=x.getRequestHeaders().getFirst("Authorization");if(auth){if(!"sb_publishable_test".equals(key)||bearer!=null)throw new AssertionError("Public Auth headers");}else if("sb_secret_test".equals(key)){if(bearer!=null)throw new AssertionError("New secret keys must not be sent as JWTs");}else if(!"legacy.jwt.test".equals(key)||!"Bearer legacy.jwt.test".equals(bearer))throw new AssertionError("Legacy service-role headers");requests.incrementAndGet();String result="null";if(path.equals("/auth/v1/token"))result="{\"user\":{\"id\":\""+id+"\"},\"expires_in\":3600}";else if(path.equals("/auth/v1/signup"))result="{\"user\":{\"id\":\""+id+"\"}}";else if(path.equals("/rest/v1/profiles"))result=x.getRequestMethod().equals("GET")?"[{\"id\":\""+id+"\",\"display_name\":\"Tên Việt\",\"gender\":1,\"skin\":3,\"coins\":1000,\"look\":[0,1,2,3,4]}]":"";x.getRequestBody().readAllBytes();byte[] bytes=result.getBytes(StandardCharsets.UTF_8);x.sendResponseHeaders(200,bytes.length);x.getResponseBody().write(bytes);x.close();});fake.start();
+        try{String url="http://127.0.0.1:"+fake.getAddress().getPort();CloudStore modern=new CloudStore(url,"sb_publishable_test","sb_secret_test",true);modern.register("test@example.test","test-password-123","Tên Việt");CloudStore.Login login=modern.login("test@example.test","test-password-123");if(!login.userId.equals(id))throw new AssertionError("Auth user ID");if(!modern.profile(id).name.equals("Tên Việt"))throw new AssertionError("Profile UTF-8");modern.appearance(id,"Tên Việt",1,3,true,new int[]{0,1,2,3,4});modern.buy(id,3);modern.settle(UUID.randomUUID().toString(),0,List.of(Map.of("id",id,"team",0)));CloudStore legacy=new CloudStore(url,"sb_publishable_test","legacy.jwt.test",true);legacy.profile(id);if(requests.get()!=9)throw new AssertionError("Missing REST request: "+requests.get());System.out.println("PASS: Supabase Auth, profile, purchase and settlement REST contracts");System.out.println("PASS: New secret keys use apikey only; legacy JWT compatibility retained");System.out.println("PASS: This transport fixture is loopback only and contains no real account keys");}finally{fake.stop(0);}
+    }
+}

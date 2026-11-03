@@ -1,0 +1,9 @@
+*
+!Dockerfile
+!backend/
+!backend/src/
+!backend/src/*.java
+!backend/assets/
+!backend/assets/land0.png
+!backend/assets/land1.png
+!backend/assets/land2.png
