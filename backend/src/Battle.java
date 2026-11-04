@@ -11,6 +11,8 @@ final class Battle {
     static int projectileSize(int weapon){return weapon==5?32:16;}
     interface Ground { boolean solid(int x,int y); int surface(int x,int from); void crater(int x,int y,int r); }
     final Ground ground;
+    interface ShotObserver {void beforeShot();}
+    ShotObserver shotObserver;
     final Unit[] units={new Unit(),new Unit(),new Unit(),new Unit(),new Unit(),new Unit()};int unitCount=2;boolean teams;
     boolean explicitHumans;boolean humanTurn(){return explicitHumans?units[active].human:teams?units[active].human:hotseat||active==0;}
     int enemyOf(int actor){int best=actor==0?1:0,distance=99999;for(int i=0;i<unitCount;i++)if(i!=actor&&units[i].hp>0&&(!teams||units[i].team!=units[actor].team)){int d=Math.abs(units[i].x-units[actor].x);if(d<distance){distance=d;best=i;}}return best;}
@@ -121,7 +123,7 @@ final class Battle {
         return true;
     }
     void charge(){if(input()){refreshAim(units[active]);charging=true;chargeDir=1;units[active].power=0;}}
-    void fire(){if(!input())return;refreshAim(units[active]);charging=false;units[active].pendingPower=units[active].power;sequentialAttack=extra>0;bursts=1+extra;burstDelay=isThrown(units[active].weapon)?THROW_WINDUP:0;if(pow)units[active].rage=0;else units[active].rage=Math.min(100,units[active].rage+10);}
+    void fire(){if(!input())return;refreshAim(units[active]);if(shotObserver!=null)shotObserver.beforeShot();charging=false;units[active].pendingPower=units[active].power;sequentialAttack=extra>0;bursts=1+extra;burstDelay=isThrown(units[active].weapon)?THROW_WINDUP:0;if(pow)units[active].rage=0;else units[active].rage=Math.min(100,units[active].rage+10);}
     void pass(){if(input()){next();}}
     void tick(){
         ageTrails();

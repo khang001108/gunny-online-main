@@ -1,4 +1,4 @@
-# Gunny Java Online 6.4.0
+# Gunny Java Online 6.5.0
 
 Bộ server độc lập cho Render + Supabase, kèm web tải game dùng được trên trình duyệt màn 320px.
 
@@ -6,7 +6,7 @@ Bộ server độc lập cho Render + Supabase, kèm web tải game dùng đư�
 
 1. Nếu chưa chạy bản 6.3.0, Supabase → SQL Editor: chạy [migration nhận thưởng](supabase/migrations/202611040001_gunny_rewards.sql). Giữ hồ sơ, xu và tài khoản hiện có.
 2. Upload **toàn bộ nội dung** gói này vào gốc repo GitHub hiện tại. Phải có `Dockerfile`, `render.yaml`, `.dockerignore`, `backend/`, `public/`, `supabase/` ngay ở gốc. Đợi Render deploy.
-3. `/health` phải có `async:1`, `seats:6`, `departures:1`, `pow:2`. Cài JAR/JAD 6.4.0 đúng E72 hoặc E6. Cấu hình [email tiếng Việt](supabase/templates/confirm-signup-vi.html) và Site URL theo [hướng dẫn](docs/UPDATE-6.3.1.md).
+3. `/health` phải có `async:1`, `seats:6`, `departures:1`, `pow:2`, `replay:1`. Cài JAR/JAD 6.5.0 đúng E72 hoặc E6. Cấu hình [email tiếng Việt](supabase/templates/confirm-signup-vi.html) và Site URL theo [hướng dẫn](docs/UPDATE-6.3.1.md).
 
 ## Project mới
 
@@ -20,7 +20,7 @@ Tạo Supabase project, chạy lần lượt hai file trong `supabase/migrations
 
 Đấu đơn chờ và ghép người chơi thật ở màn VS. Tổ đội có 6 ô mở cho trận 3v3, đủ 6 người sẵn sàng sẽ tự bắt đầu. Tạo phòng mở thiết lập riêng, giữ giao diện phòng cổ điển.
 
-Thao tác và bắn chạy ngay trên client; server kiểm tra các đoạn thao tác, quyết định HP/địa hình/kết quả. Rào cuối lượt chờ máy còn lại nhận xong dữ liệu trước khi chạy đồng hồ lượt kế tiếp. Kết quả dùng ảnh gốc, sau đó lật 1 trong 9 thẻ để nhận xu; SQL bảo đảm không cộng thưởng hai lần.
+Thao tác và bắn chạy ngay trên client bằng vật lý offline; server kiểm tra và xử lý ngầm. Máy còn lại chờ server hoàn tất rồi phát lại cả phát bắn, va chạm và phá đất tại máy. Rào cuối lượt chờ các máy phát lại xong trước khi chạy đồng hồ lượt kế tiếp. [Cách cập nhật 6.5.0](docs/UPDATE-6.5.0.md). Kết quả dùng ảnh gốc, sau đó lật 1 trong 9 thẻ để nhận xu; SQL bảo đảm không cộng thưởng hai lần.
 
 ## Chạy thử
 
