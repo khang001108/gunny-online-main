@@ -37,26 +37,29 @@ final class Battle {
     boolean sequentialAttack;
     boolean botActing,deferBotPow,botPowQueued;int botBlocked,botPhase,botTargetAngle,botTargetPower;
     void releaseBotPow(){if(!botPowQueued)return;botPowQueued=false;if(humanTurn()||!pow||over||busy())return;botActing=true;try{fire();}finally{botActing=false;}}
-    boolean triple,pow,fly,charging,over,hotseat,cheatAim;
+    boolean freezeShot,triple,pow,fly,charging,over,hotseat,cheatAim;
     int chargeDir=1;
     int winner=-1;
     int seed=37183;
     static final int[] SIN=new int[91];
     static {for(int i=0;i<=90;i++)SIN[i]=(int)(Math.sin(i*Math.PI/180)*1024);}
-    static final class Unit {int team,botStyle=-1;boolean human;int x,y,vy,hp=MAXHP,energy=240,rage,angle=45,power=60,face=1,walk,weapon,attackTicks,slope,heals=10,deathX,deathY,lastPower=-1,pendingPower=-1,flashTicks,landingTicks,lastBuff;boolean dead;}
-    static final class Ball {int x,y,vx,vy,owner,age,damage,radius,weapon;boolean fly,homing,powered;}
+    static final int[] ITEM_COST={150,150,180,150,120,90};
+    static final String[] ITEM_NAMES={"Máy bay","Hồi máu","Hồi máu nhóm","Đóng băng","Tàng hình","Trợ ngắm"};
+    static boolean validKit(int[] kit){return kit!=null&&kit.length==3&&kit[0]>=0&&kit[0]<6&&kit[1]>=0&&kit[1]<6&&kit[2]>=0&&kit[2]<6&&kit[0]!=kit[1]&&kit[0]!=kit[2]&&kit[1]!=kit[2];}
+    static final class Unit {final int[] kit={0,1,5};int itemUsed,frozen,invisible;boolean assist;int team,botStyle=-1;boolean human;int x,y,vy,hp=MAXHP,energy=240,rage,angle=45,power=60,face=1,walk,weapon,attackTicks,slope,heals=10,deathX,deathY,lastPower=-1,pendingPower=-1,flashTicks,landingTicks,lastBuff;boolean dead;}
+    static final class Ball {int x,y,vx,vy,owner,age,damage,radius,weapon;boolean freeze,fly,homing,powered;}
     static final class Blast {int x,y,radius,time,damage,owner,weapon;}
     Battle(Ground ground){this.ground=ground;}
     int rand(int n){seed=seed*1103515245+12345;return (seed>>>1)%n;}
     void start(boolean two){
         explicitHumans=false;deferNext=pendingNext=false;teams=false;unitCount=2;active=0;turn=1;over=false;hotseat=two;winner=-1;ballCount=blastCount=bursts=settle=trailCount=0;
-        for(int i=0;i<6;i++){damage[i]=kills[i]=0;}damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rand(61)-30;lastWind=0;countdown=turnLimit;botWait=0;selectedWeapon=0;
+        for(int i=0;i<6;i++){damage[i]=kills[i]=0;Unit u=units[i];u.itemUsed=u.frozen=u.invisible=0;u.assist=false;u.kit[0]=0;u.kit[1]=1;u.kit[2]=5;}damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rand(61)-30;lastWind=0;countdown=turnLimit;botWait=0;selectedWeapon=0;
         for(int i=0;i<unitCount;i++){Unit u=units[i];u.botStyle=-1;u.x=i==0?100:350;u.y=ground.surface(u.x,35);u.vy=0;u.hp=MAXHP;u.energy=240;u.rage=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.face=i==0?1:-1;u.walk=0;u.attackTicks=0;u.slope=0;u.heals=10;u.flashTicks=u.landingTicks=0;u.dead=false;u.deathX=u.deathY=0;refreshAim(u);}
         clear();
     }
-    void clear(){botPhase=0;botPowQueued=false;sequentialAttack=false;usedProps=usedPropCount=0;extra=boost=0;triple=pow=fly=charging=false;}
+    void clear(){freezeShot=false;botPhase=0;botPowQueued=false;sequentialAttack=false;usedProps=usedPropCount=0;extra=boost=0;triple=pow=fly=charging=false;}
     boolean busy(){return ballCount>0||bursts>0||settle>0;}
-    boolean input(){return !over&&!pendingNext&&!busy()&&(humanTurn()||botActing);}
+    boolean input(){return units[active].frozen!=2&&!over&&!pendingNext&&!busy()&&(humanTurn()||botActing);}
     static int clamp(int value,int low,int high){return Math.max(low,Math.min(high,value));}
     static int sin(int angle){angle%=360;if(angle<0)angle+=360;return angle<=90?SIN[angle]:angle<=180?SIN[180-angle]:angle<=270?-SIN[angle-180]:-SIN[360-angle];}
     static int cos(int angle){return sin(90+angle);}
@@ -108,7 +111,7 @@ final class Battle {
         else if(id==1){if(triple)return false;triple=true;fly=false;}
         else if(id==2){if(boost>=100)return false;boost+=50;fly=false;}
         else if(id==3){if(u.hp==MAXHP||u.heals<=0)return false;u.hp=Math.min(MAXHP,u.hp+500);u.heals--;}
-        else if(id==4){extra=boost=0;triple=pow=false;fly=true;}
+        else if(id==4){freezeShot=false;extra=boost=0;triple=pow=false;fly=true;}
         else if(id==5){if(pow||u.rage<100)return false;u.rage=0;pow=true;fly=false;}
         else if(id==6){if(extra>2)return false;extra++;fly=false;}
         else if(id>=7&&id<=10){int amount=(11-id)*10;if(boost+amount>100)return false;boost+=amount;fly=false;}
@@ -122,6 +125,17 @@ final class Battle {
         }
         return true;
     }
+    boolean item(int slot){
+        if(!input()||charging||slot<0||slot>=3)return false;Unit u=units[active];int id=u.kit[slot];
+        if(id<0||id>=6||(u.itemUsed&(1<<slot))!=0||u.energy<ITEM_COST[id])return false;
+        if(id==0){if(fly||freezeShot)return false;extra=boost=0;triple=pow=false;fly=true;}
+        else if(id==1){if(u.hp>=MAXHP)return false;u.hp=Math.min(MAXHP,u.hp+500);}
+        else if(id==2){boolean hurt=false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&(i==active||teams&&units[i].team==u.team)&&units[i].hp<MAXHP)hurt=true;if(!hurt)return false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&(i==active||teams&&units[i].team==u.team))units[i].hp=Math.min(MAXHP,units[i].hp+300);}
+        else if(id==3){if(fly||freezeShot)return false;freezeShot=true;}
+        else if(id==4){if(u.invisible>0)return false;u.invisible=1;}
+        else if(id==5){if(u.assist)return false;u.assist=true;}
+        u.energy-=ITEM_COST[id];u.itemUsed|=1<<slot;return true;
+    }
     void charge(){if(input()){refreshAim(units[active]);charging=true;chargeDir=1;units[active].power=0;}}
     void fire(){if(!input())return;refreshAim(units[active]);if(shotObserver!=null)shotObserver.beforeShot();charging=false;units[active].pendingPower=units[active].power;sequentialAttack=extra>0;bursts=1+extra;burstDelay=isThrown(units[active].weapon)?THROW_WINDUP:0;if(pow)units[active].rage=0;else units[active].rage=Math.min(100,units[active].rage+10);}
     void pass(){if(input()){next();}}
@@ -131,6 +145,7 @@ final class Battle {
         for(int i=damagePopupCount-1;i>=0;i--)if(++damagePopups[i].age>=42){for(int j=i+1;j<damagePopupCount;j++)damagePopups[j-1]=damagePopups[j];damagePopups[--damagePopupCount]=null;}
         for(int i=blastCount-1;i>=0;i--){blasts[i].time++;if(blasts[i].time>24){blasts[i]=blasts[--blastCount];blasts[blastCount]=null;}}
         if(over||pendingNext)return;
+        if(units[active].frozen==2){if(--countdown<=0)next();return;}
         for(int n=0;n<unitCount;n++){
             Unit u=units[n];if(u.hp<=0)continue;
             if(!ground.solid(u.x-2,u.y+1)&&!ground.solid(u.x+2,u.y+1)){
@@ -179,7 +194,7 @@ final class Battle {
         Ball b=new Ball();b.x=u.x*256+cs*4;b.y=launchBaseY(u)*256-sn*4;
         if(isThrown(u.weapon)){b.x=u.x*256;b.y=launchBaseY(u)*256;}
         int speed=(25+power*2)*256/24;b.vx=cs*speed/1024;b.vy=-sn*speed/1024;b.owner=active;b.fly=fly;b.homing=cheatAim&&active==0&&!fly;
-        b.powered=pow;b.weapon=u.weapon;b.radius=pow?20:u.weapon==0?15:u.weapon==1?10:12;
+        b.freeze=freezeShot;b.powered=pow;b.weapon=u.weapon;b.radius=pow?20:u.weapon==0?15:u.weapon==1?10:12;
         int base=u.weapon==0?290:u.weapon==1?390:330;
         b.damage=base*(100+boost)/100;if(triple)b.damage=b.damage*60/100;if(extra>0)b.damage=b.damage*82/100;if(pow)b.damage=b.damage*170/100;
         return b;
@@ -195,13 +210,13 @@ final class Battle {
         if(blastCount<blasts.length)blasts[blastCount++]=fx;
         for(int i=0;i<unitCount;i++){
             Unit u=units[i];int dx=x-u.x,dy=y-u.y+12,dist=dx*dx+dy*dy,r=b.radius+23;
-            if(u.hp>0&&dist<r*r){int damage=b.damage*(100-(int)Math.sqrt(dist)*65/r)/100;int received=Math.min(u.hp,damage);u.hp=Math.max(0,u.hp-damage);if(i!=b.owner&&(!teams||u.team!=units[b.owner].team)){this.damage[b.owner]+=received;if(u.hp==0)kills[b.owner]++;}u.rage=Math.min(100,u.rage+(received*100+MAXHP-1)/MAXHP);fx.damage=damage;showDamage(u,damage,b.powered);}
+            if(u.hp>0&&dist<r*r){int damage=b.damage*(100-(int)Math.sqrt(dist)*65/r)/100;int received=Math.min(u.hp,damage);u.hp=Math.max(0,u.hp-damage);if(i!=b.owner&&(!teams||u.team!=units[b.owner].team)){this.damage[b.owner]+=received;if(u.hp==0)kills[b.owner]++;}u.rage=Math.min(100,u.rage+(received*100+MAXHP-1)/MAXHP);fx.damage=damage;if(b.freeze&&i!=b.owner&&(!teams||u.team!=units[b.owner].team)&&u.hp>0)u.frozen=1;showDamage(u,damage,b.powered);}
         }
         ground.crater(x,y,b.radius);hitSerial++;
     }
     void check(){boolean left=false,right=false;for(int i=0;i<unitCount;i++){Unit u=units[i];if(u.hp<=0&&!u.dead){u.dead=true;u.deathX=clamp(u.x,12,W-12);u.deathY=clamp(u.y,40,H-4);}if(u.hp>0){if((teams?u.team:i)==0)left=true;else right=true;}}if(!left||!right){finishPower();over=true;winner=!left?(!right?2:1):0;charging=false;winSerial++;}}
     void finishPower(){Unit u=units[active];if(u.pendingPower>=0){u.lastPower=u.pendingPower;u.pendingPower=-1;}}
-    void next(){finishPower();check();if(over)return;if(deferNext){pendingNext=true;charging=false;return;}do{active=(active+1)%unitCount;}while(units[active].hp<=0);turn++;units[active].energy=240;countdown=turnLimit;botWait=settle=0;lastWind=wind;wind=rand(61)-30;clear();}
+    void next(){finishPower();check();if(over)return;if(deferNext){pendingNext=true;charging=false;return;}if(units[active].frozen==2)units[active].frozen=0;do{active=(active+1)%unitCount;}while(units[active].hp<=0);turn++;units[active].energy=240;units[active].itemUsed=0;units[active].invisible=0;units[active].assist=false;if(units[active].frozen==1)units[active].frozen=2;countdown=units[active].frozen==2?30:turnLimit;botWait=settle=0;lastWind=wind;wind=rand(61)-30;clear();}
     int error(int angle,int power){
         Ball b=make(angle,power);Unit t=units[enemyOf(active)];int best=999999;
         // One coarse sample per frame is enough for AI; gameplay uses four swept substeps.
