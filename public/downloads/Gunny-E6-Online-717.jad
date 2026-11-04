@@ -1,5 +1,5 @@
 MIDlet-Name: Gunny Java
-MIDlet-Version: 7.0.0
+MIDlet-Version: 7.1.7
 MIDlet-Vendor: GunnyJava
 MIDlet-1: Gunny Java, /icon.png, GunnyMIDlet
 MIDlet-Icon: /icon.png
@@ -12,5 +12,5 @@ Nokia-MIDlet-Original-Display-Size: 640,480
 Nokia-MIDlet-Target-Display-Size: 640,480
 MIDlet-Touch-Support: true
 MIDlet-Permissions-Opt: javax.microedition.io.Connector.https
-MIDlet-Jar-URL: Gunny-E6-Online-700.jar
-MIDlet-Jar-Size: 24711016
+MIDlet-Jar-URL: Gunny-E6-Online-717.jar
+MIDlet-Jar-Size: 27978196
