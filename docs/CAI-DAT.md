@@ -1,5 +1,9 @@
 # Gunny Online — Render Free + Supabase Free
 
+## Bản 6.2.0: cập nhật cả server và sáu địa hình
+
+Xem [hướng dẫn cập nhật 6.2.0](UPDATE-6.2.0.md). Cần push toàn bộ backend mới và sáu ảnh địa hình lên GitHub, đợi Render deploy rồi mở lại game mới. Không cần thay đổi Supabase.
+
 Code đã có máy chủ và kết nối online trong cả hai JAR. Chưa có server công khai cho đến khi bạn làm các bước dưới đây. Không cần treo máy tính sau khi Render triển khai xong.
 
 ## 1. Tạo Supabase riêng cho game

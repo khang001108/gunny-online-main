@@ -7,7 +7,7 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 RUN useradd --system --uid 10001 gunny
 COPY --from=build /app/classes /app/classes
-COPY backend/assets/land0.png backend/assets/land1.png backend/assets/land2.png /app/assets1/
+COPY backend/assets/ /app/assets1/
 USER gunny
 ENV PORT=8080
 EXPOSE 8080

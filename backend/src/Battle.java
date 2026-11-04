@@ -25,6 +25,7 @@ final class Battle {
     final int[] trailX=new int[TRAIL_CAPACITY],trailY=new int[TRAIL_CAPACITY],trailWeapon=new int[TRAIL_CAPACITY],trailFrame=new int[TRAIL_CAPACITY],trailAge=new int[TRAIL_CAPACITY],trailLife=new int[TRAIL_CAPACITY];
     int trailCount;
     int ballCount,blastCount,active,turn,wind,lastWind,countdown,bursts,burstDelay,settle,botWait;
+    int turnLimit=600;
     int extra,boost,weapon,shotSerial,hitSerial,winSerial;
     int selectedWeapon,usedProps,usedPropCount;
     final int[] usedPropHistory=new int[16];
@@ -45,7 +46,7 @@ final class Battle {
     int rand(int n){seed=seed*1103515245+12345;return (seed>>>1)%n;}
     void start(boolean two){
         teams=false;unitCount=2;active=0;turn=1;over=false;hotseat=two;winner=-1;ballCount=blastCount=bursts=settle=trailCount=0;
-        damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rand(61)-30;lastWind=0;countdown=600;botWait=0;selectedWeapon=0;
+        damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rand(61)-30;lastWind=0;countdown=turnLimit;botWait=0;selectedWeapon=0;
         for(int i=0;i<unitCount;i++){Unit u=units[i];u.botStyle=-1;u.x=i==0?100:350;u.y=ground.surface(u.x,35);u.vy=0;u.hp=MAXHP;u.energy=240;u.rage=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.face=i==0?1:-1;u.walk=0;u.attackTicks=0;u.slope=0;u.heals=10;u.flashTicks=u.landingTicks=0;u.dead=false;u.deathX=u.deathY=0;refreshAim(u);}
         clear();
     }
@@ -196,7 +197,7 @@ final class Battle {
     }
     void check(){boolean left=false,right=false;for(int i=0;i<unitCount;i++){Unit u=units[i];if(u.hp<=0&&!u.dead){u.dead=true;u.deathX=clamp(u.x,12,W-12);u.deathY=clamp(u.y,40,H-4);}if(u.hp>0){if((teams?u.team:i)==0)left=true;else right=true;}}if(!left||!right){finishPower();over=true;winner=!left?(!right?2:1):0;charging=false;winSerial++;}}
     void finishPower(){Unit u=units[active];if(u.pendingPower>=0){u.lastPower=u.pendingPower;u.pendingPower=-1;}}
-    void next(){finishPower();check();if(over)return;do{active=(active+1)%unitCount;}while(units[active].hp<=0);turn++;units[active].energy=240;countdown=600;botWait=settle=0;lastWind=wind;wind=rand(61)-30;clear();}
+    void next(){finishPower();check();if(over)return;do{active=(active+1)%unitCount;}while(units[active].hp<=0);turn++;units[active].energy=240;countdown=turnLimit;botWait=settle=0;lastWind=wind;wind=rand(61)-30;clear();}
     int error(int angle,int power){
         Ball b=make(angle,power);Unit t=units[enemyOf(active)];int best=999999;
         // One coarse sample per frame is enough for AI; gameplay uses four swept substeps.
