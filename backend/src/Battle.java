@@ -107,7 +107,7 @@ final class Battle {
         else if(id==2){if(boost>=100)return false;boost+=50;fly=false;}
         else if(id==3){if(u.hp==MAXHP||u.heals<=0)return false;u.hp=Math.min(MAXHP,u.hp+500);u.heals--;}
         else if(id==4){extra=boost=0;triple=pow=false;fly=true;}
-        else if(id==5){if(u.rage<100)return false;pow=!pow;fly=false;}
+        else if(id==5){if(pow||u.rage<100)return false;u.rage=0;pow=true;fly=false;}
         else if(id==6){if(extra>2)return false;extra++;fly=false;}
         else if(id>=7&&id<=10){int amount=(11-id)*10;if(boost+amount>100)return false;boost+=amount;fly=false;}
         else return false;

@@ -1,4 +1,4 @@
-# Gunny Java Online 6.3.2
+# Gunny Java Online 6.4.0
 
 Bộ server độc lập cho Render + Supabase, kèm web tải game dùng được trên trình duyệt màn 320px.
 
@@ -6,7 +6,7 @@ Bộ server độc lập cho Render + Supabase, kèm web tải game dùng đư�
 
 1. Nếu chưa chạy bản 6.3.0, Supabase → SQL Editor: chạy [migration nhận thưởng](supabase/migrations/202611040001_gunny_rewards.sql). Giữ hồ sơ, xu và tài khoản hiện có.
 2. Upload **toàn bộ nội dung** gói này vào gốc repo GitHub hiện tại. Phải có `Dockerfile`, `render.yaml`, `.dockerignore`, `backend/`, `public/`, `supabase/` ngay ở gốc. Đợi Render deploy.
-3. `/health` phải có `async:1`, `seats:6`, `departures:1`. Cài JAR/JAD 6.3.2 đúng E72 hoặc E6. Cấu hình [email tiếng Việt](supabase/templates/confirm-signup-vi.html) và Site URL theo [hướng dẫn](docs/UPDATE-6.3.1.md).
+3. `/health` phải có `async:1`, `seats:6`, `departures:1`, `pow:2`. Cài JAR/JAD 6.4.0 đúng E72 hoặc E6. Cấu hình [email tiếng Việt](supabase/templates/confirm-signup-vi.html) và Site URL theo [hướng dẫn](docs/UPDATE-6.3.1.md).
 
 ## Project mới
 
