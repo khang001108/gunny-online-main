@@ -10,3 +10,5 @@
 !backend/assets/land3.png
 !backend/assets/land4.png
 !backend/assets/land5.png
+!public/
+!public/**

@@ -1,69 +1,31 @@
-# Gunny Online — Render + Supabase
+# Gunny Java Online 6.3.0
 
-Bộ server độc lập để đưa lên GitHub một lần, rồi triển khai Render Free và kết nối Supabase Free. Không cần thư mục `GunnyNokia`, `Resource` hay `gunny-main` ở bên ngoài repo để build server.
+Bộ server độc lập cho Render + Supabase, kèm web tải game dùng được trên trình duyệt màn 320px.
 
-## Cấu trúc
+## Cập nhật server đang dùng
 
-```text
-gunny-online-main/
-├── README.md
-├── Dockerfile
-├── render.yaml
-├── .dockerignore
-├── .gitignore
-├── .env.example
-├── verify.ps1
-├── backend/
-│   ├── src/           # Máy chủ Java và luật trận dùng chung với game
-│   ├── assets/        # Địa hình cần cho server tính va chạm
-│   ├── tests/         # Kiểm thử HTTP và tích hợp Supabase REST
-│   └── run-local.ps1
-├── supabase/
-│   └── migrations/
-│       └── 202611030001_gunny.sql
-└── docs/
-    └── CAI-DAT.md
-```
+1. Supabase → SQL Editor: chạy [migration 6.3.0](supabase/migrations/202611040001_gunny_rewards.sql). Giữ hồ sơ, xu và tài khoản hiện có.
+2. Upload **toàn bộ nội dung** gói này vào gốc repo GitHub hiện tại. Phải có `Dockerfile`, `render.yaml`, `.dockerignore`, `backend/`, `public/`, `supabase/` ngay ở gốc. Đợi Render deploy.
+3. `/health` phải có `async:1`, `seats:6`. Cài JAR/JAD 6.3.0 đúng E72 hoặc E6. Cấu hình [email tiếng Việt](supabase/templates/confirm-signup-vi.html) và Site URL theo [hướng dẫn](docs/UPDATE-6.3.0.md).
 
-## Đưa lên GitHub và triển khai
+## Project mới
 
-1. Tạo repo GitHub riêng, nên để **Private**. Upload **toàn bộ nội dung bên trong** thư mục này vào gốc repo. Sau khi upload phải thấy `Dockerfile` và `render.yaml` ngay ở trang đầu, không nằm trong một thư mục lồng thêm.
-2. Tạo project Supabase riêng cho game. Chạy [file SQL khởi tạo](supabase/migrations/202611030001_gunny.sql) trong **SQL Editor**.
-3. Render → **New → Web Service** → chọn repo → **Docker**, **Free**, Singapore. **Root Directory để trống**, Dockerfile `./Dockerfile`, Health Check `/health`. Hoặc dùng Blueprint với `render.yaml` có sẵn.
-4. Thêm ba biến trong Environment của Render:
+Tạo Supabase project, chạy lần lượt hai file trong `supabase/migrations`. Tạo Render Web Service dùng Dockerfile ở gốc repo, Singapore, Health Check `/health`. Giữ Root Directory trống. Thêm `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` trong **Environment của Render**. Không ghi khóa thật vào file và upload lên GitHub. Bộ ví dụ `.env.example` không chứa khóa hoạt động.
 
-| Biến | Giá trị lấy từ Supabase |
-| --- | --- |
-| `SUPABASE_URL` | Project URL, dạng `https://PROJECT.supabase.co` |
-| `SUPABASE_PUBLISHABLE_KEY` | Publishable key |
-| `SUPABASE_SECRET_KEY` | Secret key, chỉ ở server |
+## Web tải game
 
-5. Deploy và mở `https://TEN-SERVER.onrender.com/health` để kiểm tra. Game Java → **Online (O)** → nhập URL gốc Render → đăng nhập.
+`https://TEN-SERVER.onrender.com/download/` có JAD/JAR cả E72 và E6, bản vá và hướng dẫn HTML/PDF. **Giữ thư mục public trong repo** vì Docker cần đóng gói các file này. Trang không dùng JavaScript hay tài nguyên bên ngoài. Nokia chưa truy cập HTTPS được có thể nhận file từ máy tính hoặc dùng gói `Gunny-download.zip` qua HTTP trong cùng Wi-Fi.
 
-**Tự đăng ký trong game:** bật **Allow new users to sign up** trong Supabase Auth. Nếu muốn đăng ký xong vào ngay, tắt **Confirm email** trong Email provider rồi Save; chế độ này không xác minh chủ email. Người chơi chọn Đăng ký ngay trong game, không cần thêm từng tài khoản trên dashboard.
+## Phòng và lượt
 
-**Không điền khóa thật vào `.env.example` rồi upload GitHub.** File đó là mẫu; nhập khóa trong Environment của Render. Không cần nhập API key vào điện thoại.
+Đấu đơn chờ và ghép người chơi thật ở màn VS. Tổ đội có 6 ô mở cho trận 3v3, đủ 6 người sẵn sàng sẽ tự bắt đầu. Tạo phòng mở thiết lập riêng, giữ giao diện phòng cổ điển.
 
-Đọc [hướng dẫn đầy đủ](docs/CAI-DAT.md) để cấu hình tài khoản/email, tạo phòng và kiểm tra hai người chơi.
+Thao tác và bắn chạy ngay trên client; server kiểm tra các đoạn thao tác, quyết định HP/địa hình/kết quả. Rào cuối lượt chờ máy còn lại nhận xong dữ liệu trước khi chạy đồng hồ lượt kế tiếp. Kết quả dùng ảnh gốc, sau đó lật 1 trong 9 thẻ để nhận xu; SQL bảo đảm không cộng thưởng hai lần.
 
-## Chạy thử trên máy tính
+## Chạy thử
 
-Cần JDK 17 trở lên. Tại thư mục này:
+JDK 17 trở lên. Chạy `./verify.ps1` để kiểm tra HTTP, giao thức cũ/mới, tài khoản mock, bản đồ, thưởng lặp và tải file an toàn. Chạy `./backend/run-local.ps1 -TestAccounts` để tạo server localhost 8080 với tài khoản thử trong RAM. Chế độ thử không dùng được trên Render. Game giả lập nhập `http://127.0.0.1:8080`.
 
-```powershell
-.\backend\run-local.ps1 -TestAccounts
-```
+Đã thử với 6 MIDlet trong MicroEmulator ở 320×240 và 640×480. Chưa thử bản này trên Nokia vật lý hay Supabase/Render thật. Phòng đang chơi vẫn ở RAM; Render khởi động lại sẽ mất trận chưa lưu. Hồ sơ và phần thưởng đã ghi được lưu tại Supabase.
 
-Nhập `http://127.0.0.1:8080` trên giả lập cùng máy. Chế độ này chỉ bind localhost và dùng tài khoản thử trong RAM; không phải server cloud.
-
-Chạy bộ kiểm tra:
-
-```powershell
-.\verify.ps1
-```
-
-## Trạng thái
-
-Code đã được thử với hai phiên game Java qua HTTP thật và trên cả 320×240, 640×480. Repo này là bộ triển khai, chưa có URL Render/Supabase đang chạy sẵn. Các bản JAR điện thoại được cung cấp riêng, không cần đưa vào repo server.
-
-Render Free có thể ngủ và khởi động lại; phòng/trận nằm trong RAM sẽ mất khi server khởi động lại. Hồ sơ và phần thưởng đã ghi thành công được lưu ở Supabase. Kết nối HTTPS trên Nokia vật lý vẫn cần thử sau khi triển khai.
+[Hướng dẫn cập nhật, email, xu và web](docs/UPDATE-6.3.0.md)

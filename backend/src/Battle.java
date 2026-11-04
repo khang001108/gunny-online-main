@@ -11,10 +11,12 @@ final class Battle {
     static int projectileSize(int weapon){return weapon==5?32:16;}
     interface Ground { boolean solid(int x,int y); int surface(int x,int from); void crater(int x,int y,int r); }
     final Ground ground;
-    final Unit[] units={new Unit(),new Unit(),new Unit(),new Unit()};int unitCount=2;boolean teams;
+    final Unit[] units={new Unit(),new Unit(),new Unit(),new Unit(),new Unit(),new Unit()};int unitCount=2;boolean teams;
     boolean humanTurn(){return teams?units[active].human:hotseat||active==0;}
     int enemyOf(int actor){int best=actor==0?1:0,distance=99999;for(int i=0;i<unitCount;i++)if(i!=actor&&units[i].hp>0&&(!teams||units[i].team!=units[actor].team)){int d=Math.abs(units[i].x-units[actor].x);if(d<distance){distance=d;best=i;}}return best;}
     void configureTeam(int ally){teams=true;unitCount=4;hotseat=false;int roster=rand(4);for(int i=0;i<4;i++){Unit u=units[i];u.team=i%2;u.human=i==0||i==2&&ally==2;u.hp=MAXHP;u.energy=240;u.rage=0;u.heals=10;u.dead=false;u.vy=u.walk=u.attackTicks=u.slope=u.flashTicks=u.landingTicks=u.deathX=u.deathY=u.lastBuff=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.x=i==0?70:i==2?140:i==1?400:330;u.y=ground.surface(u.x,35);u.face=u.team==0?1:-1;u.botStyle=(roster+i)%4;u.weapon=new int[]{0,3,5,9}[(roster+i)%4];refreshAim(u);}}
+    void configureOnlineTeam(){configureTeam(1);unitCount=6;for(int i=0;i<6;i++){Unit u=units[i];u.team=i%2;u.human=true;u.hp=MAXHP;u.energy=240;u.rage=0;u.heals=10;u.dead=false;u.vy=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.x=i%2==0?60+i/2*55:420-i/2*55;u.y=ground.surface(u.x,35);u.face=i%2==0?1:-1;refreshAim(u);}}
+    void completeTurn(){pendingNext=false;boolean deferred=deferNext;deferNext=false;next();deferNext=deferred;}
     final Ball[] balls=new Ball[20];
     final Blast[] blasts=new Blast[16];
     static final class DamagePopup {int x,y,value,age;boolean powered;}
@@ -25,8 +27,8 @@ final class Battle {
     final int[] trailX=new int[TRAIL_CAPACITY],trailY=new int[TRAIL_CAPACITY],trailWeapon=new int[TRAIL_CAPACITY],trailFrame=new int[TRAIL_CAPACITY],trailAge=new int[TRAIL_CAPACITY],trailLife=new int[TRAIL_CAPACITY];
     int trailCount;
     int ballCount,blastCount,active,turn,wind,lastWind,countdown,bursts,burstDelay,settle,botWait;
-    int turnLimit=600;
-    int extra,boost,weapon,shotSerial,hitSerial,winSerial;
+    int turnLimit=600;boolean deferNext,pendingNext;
+    final int[] damage=new int[6],kills=new int[6];int extra,boost,weapon,shotSerial,hitSerial,winSerial;
     int selectedWeapon,usedProps,usedPropCount;
     final int[] usedPropHistory=new int[16];
     int viewX=-25,viewY=-10000,viewWidth=W+50,viewHeight=H+10035;
@@ -45,14 +47,14 @@ final class Battle {
     Battle(Ground ground){this.ground=ground;}
     int rand(int n){seed=seed*1103515245+12345;return (seed>>>1)%n;}
     void start(boolean two){
-        teams=false;unitCount=2;active=0;turn=1;over=false;hotseat=two;winner=-1;ballCount=blastCount=bursts=settle=trailCount=0;
-        damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rand(61)-30;lastWind=0;countdown=turnLimit;botWait=0;selectedWeapon=0;
+        deferNext=pendingNext=false;teams=false;unitCount=2;active=0;turn=1;over=false;hotseat=two;winner=-1;ballCount=blastCount=bursts=settle=trailCount=0;
+        for(int i=0;i<6;i++){damage[i]=kills[i]=0;}damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rand(61)-30;lastWind=0;countdown=turnLimit;botWait=0;selectedWeapon=0;
         for(int i=0;i<unitCount;i++){Unit u=units[i];u.botStyle=-1;u.x=i==0?100:350;u.y=ground.surface(u.x,35);u.vy=0;u.hp=MAXHP;u.energy=240;u.rage=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.face=i==0?1:-1;u.walk=0;u.attackTicks=0;u.slope=0;u.heals=10;u.flashTicks=u.landingTicks=0;u.dead=false;u.deathX=u.deathY=0;refreshAim(u);}
         clear();
     }
     void clear(){botPhase=0;botPowQueued=false;sequentialAttack=false;usedProps=usedPropCount=0;extra=boost=0;triple=pow=fly=charging=false;}
     boolean busy(){return ballCount>0||bursts>0||settle>0;}
-    boolean input(){return !over&&!busy()&&(humanTurn()||botActing);}
+    boolean input(){return !over&&!pendingNext&&!busy()&&(humanTurn()||botActing);}
     static int clamp(int value,int low,int high){return Math.max(low,Math.min(high,value));}
     static int sin(int angle){angle%=360;if(angle<0)angle+=360;return angle<=90?SIN[angle]:angle<=180?SIN[180-angle]:angle<=270?-SIN[angle-180]:-SIN[360-angle];}
     static int cos(int angle){return sin(90+angle);}
@@ -126,7 +128,7 @@ final class Battle {
         for(int i=0;i<unitCount;i++){if(units[i].attackTicks>0)units[i].attackTicks--;if(units[i].flashTicks>0)units[i].flashTicks--;if(units[i].landingTicks>0)units[i].landingTicks--;}
         for(int i=damagePopupCount-1;i>=0;i--)if(++damagePopups[i].age>=42){for(int j=i+1;j<damagePopupCount;j++)damagePopups[j-1]=damagePopups[j];damagePopups[--damagePopupCount]=null;}
         for(int i=blastCount-1;i>=0;i--){blasts[i].time++;if(blasts[i].time>24){blasts[i]=blasts[--blastCount];blasts[blastCount]=null;}}
-        if(over)return;
+        if(over||pendingNext)return;
         for(int n=0;n<unitCount;n++){
             Unit u=units[n];if(u.hp<=0)continue;
             if(!ground.solid(u.x-2,u.y+1)&&!ground.solid(u.x+2,u.y+1)){
@@ -191,13 +193,13 @@ final class Battle {
         if(blastCount<blasts.length)blasts[blastCount++]=fx;
         for(int i=0;i<unitCount;i++){
             Unit u=units[i];int dx=x-u.x,dy=y-u.y+12,dist=dx*dx+dy*dy,r=b.radius+23;
-            if(u.hp>0&&dist<r*r){int damage=b.damage*(100-(int)Math.sqrt(dist)*65/r)/100;int received=Math.min(u.hp,damage);u.hp=Math.max(0,u.hp-damage);u.rage=Math.min(100,u.rage+(received*100+MAXHP-1)/MAXHP);fx.damage=damage;showDamage(u,damage,b.powered);}
+            if(u.hp>0&&dist<r*r){int damage=b.damage*(100-(int)Math.sqrt(dist)*65/r)/100;int received=Math.min(u.hp,damage);u.hp=Math.max(0,u.hp-damage);if(i!=b.owner&&(!teams||u.team!=units[b.owner].team)){this.damage[b.owner]+=received;if(u.hp==0)kills[b.owner]++;}u.rage=Math.min(100,u.rage+(received*100+MAXHP-1)/MAXHP);fx.damage=damage;showDamage(u,damage,b.powered);}
         }
         ground.crater(x,y,b.radius);hitSerial++;
     }
     void check(){boolean left=false,right=false;for(int i=0;i<unitCount;i++){Unit u=units[i];if(u.hp<=0&&!u.dead){u.dead=true;u.deathX=clamp(u.x,12,W-12);u.deathY=clamp(u.y,40,H-4);}if(u.hp>0){if((teams?u.team:i)==0)left=true;else right=true;}}if(!left||!right){finishPower();over=true;winner=!left?(!right?2:1):0;charging=false;winSerial++;}}
     void finishPower(){Unit u=units[active];if(u.pendingPower>=0){u.lastPower=u.pendingPower;u.pendingPower=-1;}}
-    void next(){finishPower();check();if(over)return;do{active=(active+1)%unitCount;}while(units[active].hp<=0);turn++;units[active].energy=240;countdown=turnLimit;botWait=settle=0;lastWind=wind;wind=rand(61)-30;clear();}
+    void next(){finishPower();check();if(over)return;if(deferNext){pendingNext=true;charging=false;return;}do{active=(active+1)%unitCount;}while(units[active].hp<=0);turn++;units[active].energy=240;countdown=turnLimit;botWait=settle=0;lastWind=wind;wind=rand(61)-30;clear();}
     int error(int angle,int power){
         Ball b=make(angle,power);Unit t=units[enemyOf(active)];int best=999999;
         // One coarse sample per frame is enough for AI; gameplay uses four swept substeps.

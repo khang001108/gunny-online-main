@@ -40,7 +40,7 @@ end; $$;
 create or replace function public.gunny_finish_match(p_match uuid,p_winner integer,p_players jsonb) returns void language plpgsql security definer set search_path='' as $$
 declare n integer; player jsonb;
 begin
- if p_winner not between 0 and 2 or jsonb_typeof(p_players)<>'array' or jsonb_array_length(p_players) not between 1 and 4 then raise exception 'Invalid match';end if;
+ if p_winner not between 0 and 2 or jsonb_typeof(p_players)<>'array' or jsonb_array_length(p_players) not between 1 and 6 then raise exception 'Invalid match';end if;
  insert into public.match_results(id,winner,players) values(p_match,p_winner,p_players) on conflict do nothing;
  get diagnostics n=row_count;if n=0 then return;end if;
  if (select count(distinct x->>'id') from jsonb_array_elements(p_players) x)<>jsonb_array_length(p_players) then raise exception 'Duplicate participant';end if;
