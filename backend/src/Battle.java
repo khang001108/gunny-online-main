@@ -12,7 +12,7 @@ final class Battle {
     interface Ground { boolean solid(int x,int y); int surface(int x,int from); void crater(int x,int y,int r); }
     final Ground ground;
     final Unit[] units={new Unit(),new Unit(),new Unit(),new Unit(),new Unit(),new Unit()};int unitCount=2;boolean teams;
-    boolean humanTurn(){return teams?units[active].human:hotseat||active==0;}
+    boolean explicitHumans;boolean humanTurn(){return explicitHumans?units[active].human:teams?units[active].human:hotseat||active==0;}
     int enemyOf(int actor){int best=actor==0?1:0,distance=99999;for(int i=0;i<unitCount;i++)if(i!=actor&&units[i].hp>0&&(!teams||units[i].team!=units[actor].team)){int d=Math.abs(units[i].x-units[actor].x);if(d<distance){distance=d;best=i;}}return best;}
     void configureTeam(int ally){teams=true;unitCount=4;hotseat=false;int roster=rand(4);for(int i=0;i<4;i++){Unit u=units[i];u.team=i%2;u.human=i==0||i==2&&ally==2;u.hp=MAXHP;u.energy=240;u.rage=0;u.heals=10;u.dead=false;u.vy=u.walk=u.attackTicks=u.slope=u.flashTicks=u.landingTicks=u.deathX=u.deathY=u.lastBuff=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.x=i==0?70:i==2?140:i==1?400:330;u.y=ground.surface(u.x,35);u.face=u.team==0?1:-1;u.botStyle=(roster+i)%4;u.weapon=new int[]{0,3,5,9}[(roster+i)%4];refreshAim(u);}}
     void configureOnlineTeam(){configureTeam(1);unitCount=6;for(int i=0;i<6;i++){Unit u=units[i];u.team=i%2;u.human=true;u.hp=MAXHP;u.energy=240;u.rage=0;u.heals=10;u.dead=false;u.vy=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.x=i%2==0?60+i/2*55:420-i/2*55;u.y=ground.surface(u.x,35);u.face=i%2==0?1:-1;refreshAim(u);}}
@@ -47,7 +47,7 @@ final class Battle {
     Battle(Ground ground){this.ground=ground;}
     int rand(int n){seed=seed*1103515245+12345;return (seed>>>1)%n;}
     void start(boolean two){
-        deferNext=pendingNext=false;teams=false;unitCount=2;active=0;turn=1;over=false;hotseat=two;winner=-1;ballCount=blastCount=bursts=settle=trailCount=0;
+        explicitHumans=false;deferNext=pendingNext=false;teams=false;unitCount=2;active=0;turn=1;over=false;hotseat=two;winner=-1;ballCount=blastCount=bursts=settle=trailCount=0;
         for(int i=0;i<6;i++){damage[i]=kills[i]=0;}damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rand(61)-30;lastWind=0;countdown=turnLimit;botWait=0;selectedWeapon=0;
         for(int i=0;i<unitCount;i++){Unit u=units[i];u.botStyle=-1;u.x=i==0?100:350;u.y=ground.surface(u.x,35);u.vy=0;u.hp=MAXHP;u.energy=240;u.rage=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.face=i==0?1:-1;u.walk=0;u.attackTicks=0;u.slope=0;u.heals=10;u.flashTicks=u.landingTicks=0;u.dead=false;u.deathX=u.deathY=0;refreshAim(u);}
         clear();

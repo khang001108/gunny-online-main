@@ -1,12 +1,12 @@
-# Gunny Java Online 6.3.0
+# Gunny Java Online 6.3.2
 
 Bộ server độc lập cho Render + Supabase, kèm web tải game dùng được trên trình duyệt màn 320px.
 
 ## Cập nhật server đang dùng
 
-1. Supabase → SQL Editor: chạy [migration 6.3.0](supabase/migrations/202611040001_gunny_rewards.sql). Giữ hồ sơ, xu và tài khoản hiện có.
+1. Nếu chưa chạy bản 6.3.0, Supabase → SQL Editor: chạy [migration nhận thưởng](supabase/migrations/202611040001_gunny_rewards.sql). Giữ hồ sơ, xu và tài khoản hiện có.
 2. Upload **toàn bộ nội dung** gói này vào gốc repo GitHub hiện tại. Phải có `Dockerfile`, `render.yaml`, `.dockerignore`, `backend/`, `public/`, `supabase/` ngay ở gốc. Đợi Render deploy.
-3. `/health` phải có `async:1`, `seats:6`. Cài JAR/JAD 6.3.0 đúng E72 hoặc E6. Cấu hình [email tiếng Việt](supabase/templates/confirm-signup-vi.html) và Site URL theo [hướng dẫn](docs/UPDATE-6.3.0.md).
+3. `/health` phải có `async:1`, `seats:6`, `departures:1`. Cài JAR/JAD 6.3.2 đúng E72 hoặc E6. Cấu hình [email tiếng Việt](supabase/templates/confirm-signup-vi.html) và Site URL theo [hướng dẫn](docs/UPDATE-6.3.1.md).
 
 ## Project mới
 
@@ -28,4 +28,4 @@ JDK 17 trở lên. Chạy `./verify.ps1` để kiểm tra HTTP, giao thức cũ/
 
 Đã thử với 6 MIDlet trong MicroEmulator ở 320×240 và 640×480. Chưa thử bản này trên Nokia vật lý hay Supabase/Render thật. Phòng đang chơi vẫn ở RAM; Render khởi động lại sẽ mất trận chưa lưu. Hồ sơ và phần thưởng đã ghi được lưu tại Supabase.
 
-[Hướng dẫn cập nhật, email, xu và web](docs/UPDATE-6.3.0.md)
+[Hướng dẫn cập nhật, email, xu và web](docs/UPDATE-6.3.1.md)
