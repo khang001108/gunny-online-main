@@ -1,0 +1,34 @@
+import java.io.*;
+import java.util.*;
+
+/** Persistent friend relationships; room invitations and presence are session state. */
+final class SocialServer {
+ final GunnyServer server;final CloudStore store;final Map<String,Boolean> memory=new HashMap<>();
+ SocialServer(GunnyServer s){server=s;store=s.store;}
+ List<Map<String,Object>> relations(String id)throws Exception{
+  if(store instanceof CloudStore.Memory){List<Map<String,Object>> rows=new ArrayList<>();synchronized(memory){for(var e:memory.entrySet()){String[] pair=e.getKey().split(":");if(pair[0].equals(id)||pair[1].equals(id))rows.add(Map.of("sender",pair[0],"receiver",pair[1],"accepted",e.getValue()));}}return rows;}
+  return ((List<?>)store.request("/rest/v1/gunny_friends?or=(sender.eq."+id+",receiver.eq."+id+")&select=sender,receiver,accepted","GET",null,true)).stream().map(Json::obj).toList();
+ }
+ CloudStore.Profile target(int id)throws Exception{
+  if(store instanceof CloudStore.Memory m){for(var a:m.accounts.values())if(a.profile().publicId==id)return a.profile();throw new IllegalArgumentException("Không có ID này.");}
+  List<?> rows=(List<?>)store.request("/rest/v1/profiles?public_id=eq."+id+"&select=id","GET",null,true);if(rows.isEmpty())throw new IllegalArgumentException("Không có ID này.");return store.profile(Json.str(Json.obj(rows.get(0)),"id"));
+ }
+ void friend(GunnyServer.Session s,int id,int mode)throws Exception{
+  CloudStore.Profile p=target(id);if(p.id.equals(s.id))throw new IllegalArgumentException("Đây là ID của bạn.");
+  if(store instanceof CloudStore.Memory){synchronized(memory){String forward=s.id+":"+p.id,reverse=p.id+":"+s.id;if(mode==0){if(!memory.containsKey(reverse))memory.putIfAbsent(forward,false);}else if(mode==1){if(!Boolean.FALSE.equals(memory.get(reverse)))throw new IllegalArgumentException("Không có yêu cầu này.");memory.put(reverse,true);}else if(mode==2){if(Boolean.FALSE.equals(memory.get(reverse)))memory.remove(reverse);}else throw new IllegalArgumentException("Sai thao tác.");}}
+  else store.request("/rest/v1/rpc/gunny_friend_action","POST",Json.write(Map.of("p_user",s.id,"p_target",id,"p_mode",mode)),true);
+ }
+ boolean handles(String op){return Set.of("social","friend","invite","inviteanswer","allyai","socialpulse").contains(op);}
+ GunnyServer.Session online(String id){for(var s:server.sessions.values())if(s.id.equals(id)&&System.currentTimeMillis()-s.lastSeen<45000)return s;return null;}
+ void person(DataOutputStream out,CloudStore.Profile p,boolean online)throws IOException{out.writeInt(p.publicId);out.writeUTF(p.name);out.writeBoolean(online);out.writeByte(p.gender);out.writeByte(p.skin);out.writeBoolean(p.custom);for(int v:p.look)out.writeByte(v);}
+ void handle(String op,GunnyServer.Session s,DataInputStream in,DataOutputStream out)throws Exception{
+  if(op.equals("socialpulse")){out.writeInt(s.inviteRoom);out.writeUTF(s.inviteFrom);return;}
+  if(op.equals("friend")){friend(s,in.readInt(),in.readUnsignedByte());out.writeUTF("Đã cập nhật bạn bè.");return;}
+  if(op.equals("social")){int tab=in.readUnsignedByte();List<CloudStore.Profile> list=new ArrayList<>();if(tab==0||tab==3){for(var r:relations(s.id)){boolean accepted=Boolean.TRUE.equals(r.get("accepted"));String sender=(String)r.get("sender"),receiver=(String)r.get("receiver");if(tab==0&&accepted||tab==3&&!accepted&&receiver.equals(s.id))list.add(store.profile(sender.equals(s.id)?receiver:sender));}}
+   else for(var p:server.sessions.values()){var room=server.rooms.get(p.room);if(p!=s&&online(p.id)!=null&&(tab!=1||room==null)&&list.stream().noneMatch(x->x.id.equals(p.id)))list.add(p.profile);}
+   list.sort(Comparator.comparingInt(p->p.publicId));out.writeInt(s.profile.publicId);out.writeShort(Math.min(128,list.size()));for(int i=0;i<Math.min(128,list.size());i++)person(out,list.get(i),online(list.get(i).id)!=null);return;}
+  if(op.equals("invite")){int id=in.readInt();var room=server.requireRoom(s);CloudStore.Profile p=target(id);var peer=online(p.id);synchronized(room){if(room.phase!=0||room.kind==1&&room.timedOut||!room.customAllies&&room.kind!=1&&room.kind!=2)throw new IllegalArgumentException("Chỉ mời vào phòng riêng đang chờ.");boolean empty=false;int team=room.kind==1?1:room.slot(s)%2;for(int i=team;i<room.count;i+=2)if(room.members[i]==null&&!(i==2&&room.allyBot>=0))empty=true;if(!empty)throw new IllegalArgumentException("Đội đã đủ người.");if(peer==null||peer==s)throw new IllegalArgumentException("Người chơi không online.");var other=server.rooms.get(peer.room);if(other!=null&&other.phase!=0)throw new IllegalArgumentException("Người chơi đang trong trận.");peer.inviteRoom=room.id;peer.inviteTeam=team;peer.inviteFrom=s.profile.name;}out.writeUTF("Đã gửi lời mời vào đội.");return;}
+  if(op.equals("inviteanswer")){boolean accept=in.readBoolean();var room=server.rooms.get(s.inviteRoom);int team=s.inviteTeam;s.inviteRoom=0;if(!accept){out.writeBoolean(false);return;}if(room==null)throw new IllegalArgumentException("Lời mời đã hết hạn.");if(s.room==room.id)throw new IllegalArgumentException("Bạn đã ở trong phòng.");var current=server.rooms.get(s.room);if(current!=null&&current.phase!=0)throw new IllegalArgumentException("Bạn đang trong trận.");synchronized(room){if(room.phase!=0||room.kind==1&&room.timedOut)throw new IllegalArgumentException("Phòng không còn chờ trận.");boolean available=false;for(int i=team;i<room.count;i+=2)if(room.members[i]==null&&!(i==2&&room.allyBot>=0))available=true;if(!available)throw new IllegalArgumentException("Đội đã đủ người.");}server.leave(s);synchronized(room){if(room.phase!=0||room.kind==1&&room.timedOut)throw new IllegalArgumentException("Phòng không còn chờ trận.");int slot=-1;for(int i=team;i<room.count;i+=2)if(room.members[i]==null&&!(i==2&&room.allyBot>=0))slot=i;if(slot<0)throw new IllegalArgumentException("Đội đã đủ người.");room.members[slot]=s;s.room=room.id;s.armed=room.kind==1;room.refreshWaiting();out.writeBoolean(true);server.lobby(out,room,s);}return;}
+  if(op.equals("allyai")){int bot=in.readByte();var room=server.requireRoom(s);synchronized(room){if(s!=room.host||room.phase!=0||!room.customAllies||room.members[2]!=null||bot< -1||bot>7)throw new IllegalArgumentException("Không thể đổi AI trong ô đồng minh.");room.allyBot=bot;room.refreshWaiting();server.lobby(out,room,s);}return;}
+ }
+}

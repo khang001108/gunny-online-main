@@ -1,10 +1,13 @@
-# Gunny Java 6.6.0
+# Gunny Java 6.9.2
 
-Cập nhật cả server và game của những người chơi cùng nhau. `/health` có `"chunks":1`. Không cần SQL mới.
+Thay nút hành động trong phòng online bằng đúng hai sprite gốc trong `gunny-main/Source Flash/FlashSV1/ui/vietnam/swf/room.swf`:
 
-Server gửi các đoạn theo số thứ tự: di chuyển được chốt khi lấy lực; hiệu ứng POW riêng; từng loạt đạn được chốt khi tất cả viên trong loạt chạm/nổ hoặc bay hụt. X3 cùng lúc là một loạt; các phát nối tiếp được gửi riêng. Máy nhận phát các khung hình đã xử lý ở nhịp game, không ngoại suy vị trí theo gói mạng. Server vẫn tự tính toàn bộ va chạm, sát thương, đất và kết quả. Thao tác của người bắn tiếp tục chạy tại máy; các lệnh di chuyển và nhả lực được xử lý đúng thứ tự, không áp dụng lệnh trùng.
+- Chủ phòng: `room.view.roomView.startBtnAsset` (180), chữ gốc “Bắt đầu”.
+- Khách: `room.view.roomView.prepBtnAsset` (175), chữ gốc “Chuẩn bị”, dùng cho thao tác sẵn sàng/bỏ sẵn sàng.
 
-Server giữ các đoạn chưa xem; gói lặp không phát hai lần. Chỉ khi mọi người xem xong đoạn cuối mới mở đủ thời gian lượt kế. Game cũ dùng đường tương thích trước đây. Chưa kiểm tra Nokia vật lý.
+Giữ nguyên hình và chữ trên sprite, xuất đủ bốn trạng thái gốc, không vẽ lại nhãn nút. Dùng trong phòng riêng và tổ đội; dấu xác nhận trên ô nhân vật giữ nguyên. Nút bắt đầu offline cũng dùng cùng sprite gốc. Trạng thái “Đang tìm”, “Đã sẵn” hoặc “Về trận” hiện riêng bên dưới khi cần, không đè lên ảnh.
+
+Cài game E72/E6 6.9.2. Server 6.9.x vẫn chơi được; gói server đi kèm cập nhật trang tải. Không có SQL mới. Manifest nguồn và SHA-256 lưu tại `source-assets/room/actions/manifest.json`.
 
 
 # Gunny Java 6.3.1

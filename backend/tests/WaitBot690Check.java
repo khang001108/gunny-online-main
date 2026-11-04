@@ -1,0 +1,13 @@
+import java.net.*;
+import java.nio.file.*;
+
+public final class WaitBot690Check {
+ static void ok(boolean b,String s){if(!b)throw new AssertionError(s);System.out.println("PASS: "+s);}
+ public static void main(String[] args)throws Exception{CloudStore.Memory store=new CloudStore.Memory();try(GunnyServer server=new GunnyServer(new InetSocketAddress("127.0.0.1",0),Path.of("backend/assets"),store)){
+  var a=Matchmaking680Check.person(store,30);var r=Matchmaking680Check.room(server,a,null);server.matchmaker.start(a,0,"");server.matchmaker.voteBot(a);ok(r.phase==3&&r.count==2&&r.botMatch&&!r.battle.units[1].human&&r.battle.units[1].hp>0,"One-person H vote starts 1v1 against an authoritative bot");
+  var b=Matchmaking680Check.person(store,31);var c=Matchmaking680Check.person(store,32);var pair=Matchmaking680Check.room(server,b,c);server.matchmaker.start(b,0,"");server.matchmaker.voteBot(b);server.matchmaker.voteBot(b);ok(pair.phase==0&&pair.botVotes==1,"One player or repeated H cannot approve for the whole party");server.matchmaker.voteBot(c);ok(pair.phase==3&&pair.count==4&&pair.members[0]==b&&pair.members[2]==c&&!pair.battle.units[1].human&&!pair.battle.units[3].human&&pair.battle.units[3].hp>0,"Both human votes start 2v2 with two enemy bots");
+  var d=Matchmaking680Check.person(store,33);var timeout=Matchmaking680Check.room(server,d,null);server.matchmaker.start(d,0,"");synchronized(timeout){timeout.queueSince=System.currentTimeMillis()-60001;timeout.tick();}ok(timeout.timedOut&&!timeout.queued&&timeout.phase==0&&d.room==timeout.id,"Private timeout stops search while preserving the original room");boolean denied=false;try{server.matchmaker.voteBot(d);}catch(IllegalArgumentException e){denied=true;}ok(denied,"H after expiry cannot start a stale bot match");server.matchmaker.start(d,0,"");ok(timeout.queued&&!timeout.timedOut&&timeout.botVotes==0,"New search gets a clean timer and no old votes");
+  var e=Matchmaking680Check.person(store,34);var solo=server.new Room(e,-1,0,-1);solo.kind=1;solo.strict=true;e.room=solo.id;server.rooms.put(solo.id,solo);synchronized(solo){solo.queueSince=System.currentTimeMillis()-60001;solo.tick();}ok(solo.timedOut&&!solo.canStart(),"Expired Solo queue is ineligible for another match");
+  var f=Matchmaking680Check.person(store,35);var g=Matchmaking680Check.person(store,36);var changed=Matchmaking680Check.room(server,f,g);server.matchmaker.start(f,0,"");server.matchmaker.voteBot(f);changed.refreshWaiting();ok(changed.botVotes==0&&!changed.queued&&changed.queueSince==0,"Roster change clears votes and search timer");
+ }System.out.println("All 6.9.0 wait limit and bot-consensus checks passed");}
+}

@@ -1,16 +1,16 @@
-# Gunny Java Online 6.6.0
+# Gunny Java Online 6.9.2
 
 Bộ server độc lập cho Render + Supabase, kèm web tải game dùng được trên trình duyệt màn 320px.
 
 ## Cập nhật server đang dùng
 
 1. Nếu chưa chạy bản 6.3.0, Supabase → SQL Editor: chạy [migration nhận thưởng](supabase/migrations/202611040001_gunny_rewards.sql). Giữ hồ sơ, xu và tài khoản hiện có.
-2. Upload **toàn bộ nội dung** gói này vào gốc repo GitHub hiện tại. Phải có `Dockerfile`, `render.yaml`, `.dockerignore`, `backend/`, `public/`, `supabase/` ngay ở gốc. Đợi Render deploy.
-3. `/health` phải có `async:1`, `seats:6`, `departures:1`, `pow:2`, `replay:1`, `chunks:1`. Cài JAR/JAD 6.6.0 đúng E72 hoặc E6. Cấu hình [email tiếng Việt](supabase/templates/confirm-signup-vi.html) và Site URL theo [hướng dẫn](docs/UPDATE-6.3.1.md).
+2. Chạy thêm [migration bạn bè và thẻ chung](supabase/migrations/202611040002_gunny_social_shared.sql) trong SQL Editor bằng truy vấn mới, không ghi đè migration trước. Upload **toàn bộ nội dung** gói này vào gốc repo GitHub hiện tại. Phải có `Dockerfile`, `render.yaml`, `.dockerignore`, `backend/`, `public/`, `supabase/` ngay ở gốc. Đợi Render deploy.
+3. `/health` phải có `async:1`, `seats:6`, `departures:1`, `pow:2`, `replay:1`, `chunks:1`, `social:1`. Cài JAR/JAD 6.9.2 đúng E72 hoặc E6. Cấu hình [email tiếng Việt](supabase/templates/confirm-signup-vi.html) và Site URL theo [hướng dẫn](docs/UPDATE-6.3.1.md).
 
 ## Project mới
 
-Tạo Supabase project, chạy lần lượt hai file trong `supabase/migrations`. Tạo Render Web Service dùng Dockerfile ở gốc repo, Singapore, Health Check `/health`. Giữ Root Directory trống. Thêm `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` trong **Environment của Render**. Không ghi khóa thật vào file và upload lên GitHub. Bộ ví dụ `.env.example` không chứa khóa hoạt động.
+Tạo Supabase project, chạy lần lượt ba file trong `supabase/migrations`. Tạo Render Web Service dùng Dockerfile ở gốc repo, Singapore, Health Check `/health`. Giữ Root Directory trống. Thêm `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` trong **Environment của Render**. Không ghi khóa thật vào file và upload lên GitHub. Bộ ví dụ `.env.example` không chứa khóa hoạt động.
 
 ## Web tải game
 
@@ -20,7 +20,7 @@ Tạo Supabase project, chạy lần lượt hai file trong `supabase/migrations
 
 Đấu đơn chờ và ghép người chơi thật ở màn VS. Tổ đội có 6 ô mở cho trận 3v3, đủ 6 người sẵn sàng sẽ tự bắt đầu. Tạo phòng mở thiết lập riêng, giữ giao diện phòng cổ điển.
 
-Thao tác và bắn chạy ngay trên client bằng vật lý offline; server kiểm tra và xử lý ngầm. Máy còn lại nhận và xem tuần tự đoạn di chuyển, POW và từng loạt đạn sau khi server xử lý xong đoạn đó. Không phải chờ cả lượt. Rào cuối lượt chờ các máy phát lại xong trước khi chạy đồng hồ lượt kế tiếp. [Cách cập nhật 6.6.0](docs/UPDATE-6.6.0.md). Kết quả dùng ảnh gốc, sau đó lật 1 trong 9 thẻ để nhận xu; SQL bảo đảm không cộng thưởng hai lần.
+Thao tác và bắn chạy ngay trên client bằng vật lý offline; server kiểm tra và xử lý ngầm. Máy còn lại nhận và xem tuần tự đoạn di chuyển, POW và từng loạt đạn sau khi server xử lý xong đoạn đó. Không phải chờ cả lượt. Rào cuối lượt chờ các máy phát lại xong trước khi chạy đồng hồ lượt kế tiếp. [Cách cập nhật 6.9.2](docs/UPDATE-6.9.2.md). Kết quả dùng ảnh gốc, sau đó lật 1 trong 9 thẻ để nhận xu; SQL bảo đảm không cộng thưởng hai lần.
 
 ## Chạy thử
 
