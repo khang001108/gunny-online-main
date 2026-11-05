@@ -1,10 +1,12 @@
-# Cập nhật 7.2.0
+# Cập nhật 7.2.2
 
-Tài khoản mới chọn nhân vật nam/nữ và tên khi đăng nhập lần đầu; máy chủ lưu lựa chọn. Tài khoản cũ không phải chọn lại. Túi có hai nút người đỏ/nữ và xanh/nam, hỗ trợ điều hướng/OK và chạm. Đổi giới tính giữ tiền và đồ sở hữu; ô đang mặc chỉ dùng đồ đã sở hữu của giới tính đích, món chưa có được thay bằng món khởi đầu. Được đổi trong phòng chờ, khóa trong trận.
+Popup mời căn thanh cuộn sang trái, nâng nút tạo mới vào khung, biểu tượng xanh/nam và đỏ/nữ. Bạn bè dùng cùng popup, chỉ còn Bạn bè/Thêm bạn; tìm tên hoặc ID, gửi và nhận yêu cầu kết bạn. Sảnh hiển thị số tài khoản online thay hai combobox. Bỏ nút X cạnh số phòng, rời bằng phím mềm phải hoặc toolbar.
 
-Nền phòng thường và tổ đội dùng chung bitmap gốc `asset.core.framesmallBg`, phủ kín cả phần dưới bảng bên phải. Không cắt ảnh tham khảo làm asset.
+Đấu đơn bỏ viền nhấp nháy ở bản đồ; khi chờ hiện Ngẫu nhiên, khi có đối thủ thật hiện map đã ghép.
 
-Chạy migration `202611050005_gunny_character.sql` sau các migration 7.1.9. Cài đúng JAR/JAD 7.2.0 và server cùng gói. Chưa triển khai dịch vụ hoặc chạy SQL trên Supabase thật.
+Trong trận nhấn @ mở sáu cảm xúc: thích, không thích, tức giận, haha, khóc, lợn. Dùng bốn hướng/OK hoặc chạm. Cảm xúc hiện 3 giây và đồng bộ người cùng phòng; không làm lộ nhân vật tàng hình. Asset gốc chat.swf, không cắt ảnh tham khảo. Cập nhật cả game/server; không có migration SQL mới so với 7.2.0.
+
+Chưa triển khai lên server thật.
 
 
 # Gunny Java 6.3.1
