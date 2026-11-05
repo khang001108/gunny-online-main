@@ -1,10 +1,10 @@
 MIDlet-Name: Gunny Java
-MIDlet-Version: 7.3.0
+MIDlet-Version: 7.4.0
 MIDlet-Vendor: GunnyJava
 MIDlet-1: Gunny Java,icon.png,GunnyMIDlet
 MicroEdition-Configuration: CLDC-1.1
 MicroEdition-Profile: MIDP-2.0
 MIDlet-Icon: icon.png
 MIDlet-Permissions-Opt: javax.microedition.io.Connector.https
-MIDlet-Jar-URL: Gunny-E72-2009-Online-730.jar
-MIDlet-Jar-Size: 6697724
+MIDlet-Jar-URL: Gunny-E72-2009-Online-740.jar
+MIDlet-Jar-Size: 9719677
