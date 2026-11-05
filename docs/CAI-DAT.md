@@ -1,12 +1,10 @@
-# Cập nhật 7.2.2
+# Long polling 7.3.0
 
-Popup mời căn thanh cuộn sang trái, nâng nút tạo mới vào khung, biểu tượng xanh/nam và đỏ/nữ. Bạn bè dùng cùng popup, chỉ còn Bạn bè/Thêm bạn; tìm tên hoặc ID, gửi và nhận yêu cầu kết bạn. Sảnh hiển thị số tài khoản online thay hai combobox. Bỏ nút X cạnh số phòng, rời bằng phím mềm phải hoặc toolbar.
+Server advertises longpoll:1. New JAR opens a separate binary POST /wait connection carrying magic, room ID and opaque state cursor. It waits up to 12 seconds and returns a new cursor when state changes. This is a wake hint; authoritative state still comes from /api sync and existing chunks, sequence/ack and terrain revision remain intact. Movement/commands and local render-completion acknowledgments bypass the idle wait. A 10-second sync heartbeat remains.
 
-Đấu đơn bỏ viền nhấp nháy ở bản đồ; khi chờ hiện Ngẫu nhiên, khi có đối thủ thật hiện map đã ghép.
+Wait handlers use a separate bounded executor (32 connections), one outstanding wait per authenticated session. They release room locks before sleeping. Overload/errors fall back to existing polling after three wait failures. Old JARs continue using /api without /wait. No new database migration.
 
-Trong trận nhấn @ mở sáu cảm xúc: thích, không thích, tức giận, haha, khóc, lợn. Dùng bốn hướng/OK hoặc chạm. Cảm xúc hiện 3 giây và đồng bộ người cùng phòng; không làm lộ nhân vật tàng hình. Asset gốc chat.swf, không cắt ảnh tham khảo. Cập nhật cả game/server; không có migration SQL mới so với 7.2.0.
-
-Chưa triển khai lên server thật.
+This reduces empty idle requests; active animations may still generate frequent updates. No performance or two-connection compatibility claim for physical Nokia hardware until handset tests. Update server and matching JAR; deployment has not been performed.
 
 
 # Gunny Java 6.3.1
