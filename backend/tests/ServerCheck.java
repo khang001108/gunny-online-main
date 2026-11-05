@@ -20,10 +20,9 @@ public final class ServerCheck {
             base="http://127.0.0.1:"+server.port();ok(HTTP.send(HttpRequest.newBuilder(URI.create(base+"/health")).GET().build(),HttpResponse.BodyHandlers.ofString()).body().contains("\"ok\":true"),"Health endpoint reports the live server");
             for(String path:List.of("/","/auth/confirmed")){
                 HttpResponse<String> page=HTTP.send(HttpRequest.newBuilder(URI.create(base+path)).GET().build(),HttpResponse.BodyHandlers.ofString());
-                ok(page.statusCode()==200&&page.body().contains("Tiếp tục trong Gunny")&&!page.body().contains("localhost"),"Email redirect landing page is available at "+path);
+                ok(page.statusCode()==200&&page.body().contains("Chào mừng, Gunner!")&&!page.body().contains("localhost"),"Email redirect landing page is available at "+path);
                 ok(page.headers().firstValue("Cache-Control").orElse("").equals("no-store")&&page.headers().firstValue("Referrer-Policy").orElse("").equals("no-referrer"),"Email landing does not cache the page or leak referrers");
-                String hash=Base64.getEncoder().encodeToString(java.security.MessageDigest.getInstance("SHA-256").digest(GunnyServer.EMAIL_SCRIPT.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-                ok(page.headers().firstValue("Content-Security-Policy").orElse("").contains("'sha256-"+hash+"'"),"Email landing permits only its own URL-cleanup script");
+                ok(page.headers().firstValue("Content-Security-Policy").orElse("").contains("script-src 'self'"),"Email landing permits only same-origin scripts");
             }
             ok(HTTP.send(HttpRequest.newBuilder(URI.create(base+"/auth/confirmed")).method("HEAD",HttpRequest.BodyPublishers.noBody()).build(),HttpResponse.BodyHandlers.ofString()).body().isEmpty(),"Email landing supports HEAD without a response body");
             ok(HTTP.send(HttpRequest.newBuilder(URI.create(base+"/auth/confirmed")).POST(HttpRequest.BodyPublishers.noBody()).build(),HttpResponse.BodyHandlers.ofString()).statusCode()==405,"Email landing never accepts posted account tokens");

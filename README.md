@@ -1,16 +1,19 @@
-# Gunny Java Online 7.5.2
+# Gunny Java Online 7.5.3
 
 Bộ server độc lập cho Render + Supabase, kèm web tải game dùng được trên trình duyệt màn 320px.
 
-## Cập nhật server đang dùng
+## Cập nhật server đang dùng — 7.5.3
 
-1. Nếu chưa chạy bản 6.3.0, Supabase → SQL Editor: chạy [migration nhận thưởng](supabase/migrations/202611040001_gunny_rewards.sql). Giữ hồ sơ, xu và tài khoản hiện có.
-2. Chạy thêm [migration bạn bè và thẻ chung](supabase/migrations/202611040002_gunny_social_shared.sql) trong SQL Editor bằng truy vấn mới, không ghi đè migration trước. Upload **toàn bộ nội dung** gói này vào gốc repo GitHub hiện tại. Phải có `Dockerfile`, `render.yaml`, `.dockerignore`, `backend/`, `public/`, `supabase/` ngay ở gốc. Đợi Render deploy.
-3. `/health` phải có `async:1`, `seats:6`, `departures:1`, `pow:2`, `replay:1`, `chunks:1`, `social:1`, `items:2`. Cài JAR/JAD 7.5.2 đúng E72 hoặc E6. Cấu hình [email tiếng Việt](supabase/templates/confirm-signup-vi.html) và Site URL theo [hướng dẫn](docs/UPDATE-6.3.1.md).
+1. Giữ bản sao lưu, chạy [SQL cập nhật đầy đủ](supabase/UPDATE-7.5.3-ALL.sql) trong Supabase SQL Editor. File giữ tài khoản/đồ/số dư cũ, cài API còn thiếu và bản mới theo đúng thứ tự. Nếu đã có đủ toàn bộ SQL 7.5.2 thì chỉ cần `202611060003_gunny_features.sql`. Không chạy lại từng SQL cũ phía dưới sau bản cập nhật mới.
+2. Upload toàn bộ gói vào gốc repo và deploy Render. Giữ các biến Supabase đã có; admin dùng GUNNY_ADMIN_PASSWORD ít nhất 16 ký tự. Cài JAR/JAD 7.5.3 đúng E72/E6.
+3. Supabase → Authentication → URL Configuration: Site URL `https://gunny-online-main.onrender.com`, Redirect URLs thêm `https://gunny-online-main.onrender.com/auth/confirmed` (đổi tên miền nếu server của bạn khác). Cập nhật [mẫu email](supabase/templates/confirm-signup-vi.html). Không để localhost:3000.
+4. Xem [hướng dẫn đầy đủ 7.5.3](docs/UPDATE-7.5.3.md) cho trang chúc mừng/đăng nhập, cộng tiền admin, đồ số 1 miễn phí và sắp xếp túi. Đường dẫn `/account/` là người chơi, `/admin/` là quản trị.
 
 ## Project mới
 
 Tạo Supabase project, chạy lần lượt các file trong `supabase/migrations`. Tạo Render Web Service dùng Dockerfile ở gốc repo, Singapore, Health Check `/health`. Giữ Root Directory trống. Thêm `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` trong **Environment của Render**. Không ghi khóa thật vào file và upload lên GitHub. Bộ ví dụ `.env.example` không chứa khóa hoạt động.
+
+Các mục phiên bản cũ dưới đây chỉ để đối chiếu; bản 7.5.3 đã gộp SQL đầy đủ ở trên.
 
 ## Quản trị 7.5.0
 
