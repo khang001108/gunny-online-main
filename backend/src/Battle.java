@@ -144,11 +144,14 @@ final class Battle {
     void charge(){if(input()){refreshAim(units[active]);charging=true;chargeDir=1;units[active].power=0;}}
     void fire(){if(!input())return;refreshAim(units[active]);if(shotObserver!=null)shotObserver.beforeShot();charging=false;units[active].pendingPower=units[active].power;sequentialAttack=extra>0;bursts=1+extra;burstDelay=freezeShot||isThrown(units[active].weapon)?THROW_WINDUP:0;if(pow)units[active].rage=0;else units[active].rage=Math.min(100,units[active].rage+10);}
     void pass(){if(input()){next();}}
-    void tick(){
-        ageTrails();
+    void tickVisuals(){
         for(int i=0;i<unitCount;i++){if(units[i].attackTicks>0)units[i].attackTicks--;if(units[i].flashTicks>0)units[i].flashTicks--;if(units[i].landingTicks>0)units[i].landingTicks--;}
         for(int i=damagePopupCount-1;i>=0;i--)if(++damagePopups[i].age>=42){for(int j=i+1;j<damagePopupCount;j++)damagePopups[j-1]=damagePopups[j];damagePopups[--damagePopupCount]=null;}
         for(int i=blastCount-1;i>=0;i--){blasts[i].time++;if(blasts[i].time>24){blasts[i]=blasts[--blastCount];blasts[blastCount]=null;}}
+    }
+    void tick(){
+        ageTrails();
+        tickVisuals();
         if(over||pendingNext)return;
         if(units[active].frozen==2){if(--countdown<=0)next();return;}
         for(int n=0;n<unitCount;n++){

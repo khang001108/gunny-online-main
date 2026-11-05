@@ -16,7 +16,7 @@ Cookie đăng nhập HttpOnly, SameSite Strict, Secure, hết hạn tuyệt đ�
 - Danh sách lấy từ auth.users, bao gồm cả tài khoản đã đăng ký nhưng chưa xác nhận email/chọn nhân vật. Tìm tên, email hoặc public ID, tối đa 100 bản ghi mỗi trang.
 - Giờ đăng nhập gần nhất tách riêng giờ kết nối gần nhất. Heartbeat ghi theo đợt mỗi 30 giây ở luồng riêng; số online dùng kết nối 60 giây gần đây. Việc tải trang không chạy truy vấn DB trên vòng tick trận đấu.
 - Offline lâu nhất là khoảng mất kết nối đã ghi nhận và khoảng offline hiện tại. Lịch sử đầy đủ trước khi cài bản này không thể khôi phục; giá trị chưa biết hiển thị Chưa ghi nhận. Lần đăng nhập cũ khởi tạo từ auth last_sign_in_at; kết nối gần nhất và khoảng offline bắt đầu ghi từ bản này.
-- Chọn ngày giờ Việt Nam (UTC+7), lý do, liên hệ khiếu nại. Chọn lại ngày để gia hạn, hoặc huỷ lịch. Lịch mặc định giữ nguyên khi đăng nhập; checkbox cho phép tự huỷ nếu đăng nhập trước hạn. Thông báo lúc login giải thích rõ kết quả, số ngày còn lại làm tròn lên.
+- Chọn ngày giờ Việt Nam (UTC+7), lý do, liên hệ khiếu nại. Chọn lại ngày để gia hạn, hoặc huỷ lịch. Mặc định tự huỷ lịch khi đăng nhập trước hạn; checkbox được đánh dấu sẵn cho lịch mới, có thể bỏ chọn nếu cần giữ lịch cố định. Thông báo lúc login giải thích rõ kết quả, số ngày còn lại làm tròn lên.
 - Muốn giữ hết ngày 10/12/2026: chọn 10/12/2026 23:59. Tới hạn thì xoá vĩnh viễn auth.users và hồ sơ phụ thuộc qua cascade. Đã xoá không thể đăng nhập để cứu lại. Tài khoản đang online cũng bị thu hồi phiên trong tối đa một chu kỳ kiểm tra sau khi DB xoá.
 - Có log thao tác trong gunny_admin_audit. Bảng quản trị/thông báo/RPC chỉ service_role truy cập.
 
@@ -38,3 +38,8 @@ SQL/cron chưa được chạy trên Supabase thật. Cần thực hiện hai b�
 ## Vá danh sách tài khoản 06/11/2026
 
 Nếu trang chỉ hiện dấu —, chưa phải kết quả có 0 tài khoản. Bản SQL đầu có alias a trùng biến record a trong PL/pgSQL. Chạy `supabase/migrations/202611060001_gunny_admin_accounts_fix.sql` trong SQL Editor rồi làm mới trang. File chỉ thay hàm và nạp lại schema, không đặt lại hoặc xoá dữ liệu tài khoản. Không cần đổi JAR. Bản web cập nhật cũng hiện lỗi tải dữ liệu cố định thay vì giấu lỗi lúc mở trang.
+
+
+## Cập nhật lựa chọn tự huỷ lịch xoá
+
+Chạy `supabase/migrations/202611060002_gunny_admin_auto_cancel.sql` để đặt mặc định mới và chuyển các lịch đang chờ sang tự huỷ khi đăng nhập trước hạn. File không xoá tài khoản, không thay đổi ngày hẹn. Sau đó cập nhật web/server và tải lại trang. Tài khoản đã quá hạn vẫn bị xoá; đăng nhập sau hạn không cứu lại tài khoản. Tỷ lệ giữ 100 xu = 1 tiền, các nút nhanh là 2.000 / 5.000 / 10.000 xu.

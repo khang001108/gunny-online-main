@@ -4,7 +4,7 @@ create table if not exists public.gunny_account_admin(
  user_id uuid primary key references auth.users(id) on delete cascade,
  last_login_at timestamptz,last_seen_at timestamptz,max_offline_seconds bigint,
  delete_at timestamptz,delete_reason text not null default '',appeal text not null default '',
- cancel_on_login boolean not null default false
+ cancel_on_login boolean not null default true
 );
 insert into public.gunny_account_admin(user_id,last_login_at,last_seen_at)
  select id,last_sign_in_at,null from auth.users on conflict do nothing;
@@ -79,7 +79,7 @@ begin
  if p_op='schedule' then
   start_t:=(p_data->>'delete_at')::timestamptz;if start_t is null or start_t<=t then raise exception 'Choose a future date';end if;
   if char_length(coalesce(p_data->>'appeal',''))>250 or char_length(coalesce(p_data->>'reason',''))>300 then raise exception 'Text too long';end if;
-  update public.gunny_account_admin set delete_at=start_t,delete_reason=coalesce(p_data->>'reason',''),appeal=coalesce(p_data->>'appeal',''),cancel_on_login=coalesce((p_data->>'cancel_on_login')::boolean,false) where user_id=uid;
+  update public.gunny_account_admin set delete_at=start_t,delete_reason=coalesce(p_data->>'reason',''),appeal=coalesce(p_data->>'appeal',''),cancel_on_login=coalesce((p_data->>'cancel_on_login')::boolean,true) where user_id=uid;
  elsif p_op='cancel-delete' then
   update public.gunny_account_admin set delete_at=null where user_id=uid;
  elsif p_op='login' then
