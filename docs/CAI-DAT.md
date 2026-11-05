@@ -35,6 +35,11 @@ Popup dùng NativePopup và asset gốc của game. Nội dung dài có Tiếp t
 SQL/cron chưa được chạy trên Supabase thật. Cần thực hiện hai bước SQL và secret ở trên sau khi xem lại bản sao lưu. Chưa deploy Render và chưa kiểm tra trên điện thoại Nokia vật lý.
 
 
+## Vá danh sách tài khoản 06/11/2026
+
+Nếu trang chỉ hiện dấu —, chưa phải kết quả có 0 tài khoản. Bản SQL đầu có alias a trùng biến record a trong PL/pgSQL. Chạy `supabase/migrations/202611060001_gunny_admin_accounts_fix.sql` trong SQL Editor rồi làm mới trang. File chỉ thay hàm và nạp lại schema, không đặt lại hoặc xoá dữ liệu tài khoản. Không cần đổi JAR. Bản web cập nhật cũng hiện lỗi tải dữ liệu cố định thay vì giấu lỗi lúc mở trang.
+
+
 # Gunny Java 6.3.1
 
 Upload toàn bộ gói server mới rồi chờ Render deploy, sau đó cài JAR/JAD 6.3.1 đúng E72 hoặc E6. `/health` phải có `"departures":1`. Bản này không cần SQL mới nếu đã chạy migration `202611040001_gunny_rewards.sql` của 6.3.0; giữ nguyên tài khoản, xu và mẫu email đã cấu hình.

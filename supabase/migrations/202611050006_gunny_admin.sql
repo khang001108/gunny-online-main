@@ -33,9 +33,9 @@ begin
  if p_op='accounts' then
   select coalesce(jsonb_agg(r),'[]') into result from (
    select u.id,u.email,coalesce(p.display_name,'Chưa tạo nhân vật') display_name,p.public_id,
-    u.created_at,a.last_login_at,a.last_seen_at,a.max_offline_seconds,a.delete_at,a.delete_reason,a.appeal,a.cancel_on_login,
+    u.created_at,ac.last_login_at,ac.last_seen_at,ac.max_offline_seconds,ac.delete_at,ac.delete_reason,ac.appeal,ac.cancel_on_login,
     coalesce(p.coins,0) coins,coalesce(p.shopping_money,0) shopping_money
-   from auth.users u left join public.profiles p on p.id=u.id left join public.gunny_account_admin a on a.user_id=u.id
+   from auth.users u left join public.profiles p on p.id=u.id left join public.gunny_account_admin ac on ac.user_id=u.id
    where coalesce(p.display_name,'') ilike '%'||left(coalesce(p_data->>'search',''),100)||'%'
      or u.email ilike '%'||left(coalesce(p_data->>'search',''),100)||'%'
      or p.public_id::text=coalesce(p_data->>'search','')

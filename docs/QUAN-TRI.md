@@ -33,3 +33,8 @@ Popup dùng NativePopup và asset gốc của game. Nội dung dài có Tiếp t
 `Admin750Check` dùng tài khoản giả lập trên loopback: chặn truy cập chưa login, sai mật khẩu, CSRF, thông báo riêng/chung, lặp mỗi login, xoá theo lịch và thu hồi phiên. `Admin750Check preview` chạy bản xem thử ở localhost:8765 với dữ liệu giả lập và mật khẩu thử trong mã test; không được đưa chế độ thử này lên Render. Production chạy GunnyServer.
 
 SQL/cron chưa được chạy trên Supabase thật. Cần thực hiện hai bước SQL và secret ở trên sau khi xem lại bản sao lưu. Chưa deploy Render và chưa kiểm tra trên điện thoại Nokia vật lý.
+
+
+## Vá danh sách tài khoản 06/11/2026
+
+Nếu trang chỉ hiện dấu —, chưa phải kết quả có 0 tài khoản. Bản SQL đầu có alias a trùng biến record a trong PL/pgSQL. Chạy `supabase/migrations/202611060001_gunny_admin_accounts_fix.sql` trong SQL Editor rồi làm mới trang. File chỉ thay hàm và nạp lại schema, không đặt lại hoặc xoá dữ liệu tài khoản. Không cần đổi JAR. Bản web cập nhật cũng hiện lỗi tải dữ liệu cố định thay vì giấu lỗi lúc mở trang.
