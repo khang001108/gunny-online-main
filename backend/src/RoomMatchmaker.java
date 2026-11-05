@@ -18,7 +18,7 @@ final class RoomMatchmaker {
  }
  void start(GunnyServer.Session s,int target,String password)throws Exception{
   if(target!=0)throw new IllegalArgumentException("Đã bỏ đấu phòng theo mã.");
-  synchronized(server.rooms){var a=server.requireRoom(s);synchronized(a){if(a.host!=s||a.phase!=0)throw new IllegalArgumentException("Chỉ chủ phòng đang chờ được tìm đối thủ.");if(a.queued&&target==0){a.queued=false;a.queueSince=0;a.botVotes=0;return;}if(a.opponents()){a.start();return;}if(!ready(a))throw new IllegalArgumentException("Chờ đồng minh sẵn sàng.");if(a.kind==2&&size(a)!=3)throw new IllegalArgumentException("Tổ đội cần đủ 3 người cùng đội.");
+  synchronized(server.rooms){var a=server.requireRoom(s);synchronized(a){if(a.host!=s||a.phase!=0)throw new IllegalArgumentException("Chỉ chủ phòng đang chờ được tìm đối thủ.");if(a.queued&&target==0){a.queued=false;a.queueSince=0;a.botVotes=0;return;}for(var member:a.members)if(member!=null&&((member.profile.owned&(1<<member.profile.equipped))==0||member.equipment&&(member.profile.wornMask&1)==0))throw new IllegalArgumentException("Không có trang bị vũ khí không thể bắt đầu");if(a.opponents()){a.start();return;}if(!ready(a))throw new IllegalArgumentException("Chờ đồng minh sẵn sàng.");if(a.kind==2&&size(a)!=3)throw new IllegalArgumentException("Tổ đội cần đủ 3 người cùng đội.");
    a.queued=true;a.timedOut=false;a.queueSince=System.currentTimeMillis();a.botVotes=0;for(var b:server.rooms.values()){if(b==a)continue;synchronized(b){if(b.queued&&compatible(a,b)){merge(a,b);return;}}}
 
   }}

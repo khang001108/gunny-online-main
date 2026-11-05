@@ -1,11 +1,13 @@
-# Gunny Java Online 7.5.3
+# Gunny Java Online 7.5.4
 
 Bộ server độc lập cho Render + Supabase, kèm web tải game dùng được trên trình duyệt màn 320px.
 
-## Cập nhật server đang dùng — 7.5.3
+## Cập nhật server đang dùng — 7.5.4
+
+Bản 7.5.4 sửa máy bay, hiệu ứng, đạo cụ và popup; [chi tiết](docs/UPDATE-7.5.4.md). Không thêm SQL. Nếu đã chạy đủ SQL 7.5.3, bỏ qua bước 1.
 
 1. Giữ bản sao lưu, chạy [SQL cập nhật đầy đủ](supabase/UPDATE-7.5.3-ALL.sql) trong Supabase SQL Editor. File giữ tài khoản/đồ/số dư cũ, cài API còn thiếu và bản mới theo đúng thứ tự. Nếu đã có đủ toàn bộ SQL 7.5.2 thì chỉ cần `202611060003_gunny_features.sql`. Không chạy lại từng SQL cũ phía dưới sau bản cập nhật mới.
-2. Upload toàn bộ gói vào gốc repo và deploy Render. Giữ các biến Supabase đã có; admin dùng GUNNY_ADMIN_PASSWORD ít nhất 16 ký tự. Cài JAR/JAD 7.5.3 đúng E72/E6.
+2. Upload toàn bộ gói vào gốc repo và deploy Render. Giữ các biến Supabase đã có; admin dùng GUNNY_ADMIN_PASSWORD ít nhất 16 ký tự. Cài JAR/JAD 7.5.4 đúng E72/E6.
 3. Supabase → Authentication → URL Configuration: Site URL `https://gunny-online-main.onrender.com`, Redirect URLs thêm `https://gunny-online-main.onrender.com/auth/confirmed` (đổi tên miền nếu server của bạn khác). Cập nhật [mẫu email](supabase/templates/confirm-signup-vi.html). Không để localhost:3000.
 4. Xem [hướng dẫn đầy đủ 7.5.3](docs/UPDATE-7.5.3.md) cho trang chúc mừng/đăng nhập, cộng tiền admin, đồ số 1 miễn phí và sắp xếp túi. Đường dẫn `/account/` là người chơi, `/admin/` là quản trị.
 

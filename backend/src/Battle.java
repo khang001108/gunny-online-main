@@ -101,15 +101,17 @@ final class Battle {
         for(int distance=4;distance<=AIM_RAY_LENGTH;distance++)if(ground.solid(aimPointX(u,distance),aimPointY(u,distance)))return distance;
         return AIM_RAY_LENGTH;
     }
+    boolean blockedStep(int from,int to,int except,int radius){for(int i=0;i<unitCount;i++)if(i!=except&&units[i].hp>0){int before=Math.abs(from-units[i].x),after=Math.abs(to-units[i].x);if(after<radius&&after<=before)return true;}return false;}
     boolean occupied(int x,int except,int radius){for(int i=0;i<unitCount;i++)if(i!=except&&units[i].hp>0&&Math.abs(x-units[i].x)<radius)return true;return false;}
     void move(int dir){
         if(!input())return;Unit u=units[active];u.face=dir;
-        refreshAim(u);int nx=u.x+dir;if(u.energy<2||nx<12||nx>=W-12||occupied(nx,active,20))return;
+        refreshAim(u);int nx=u.x+dir;if(u.energy<2||nx<12||nx>=W-12||blockedStep(u.x,nx,active,20))return;
         int rise=0;while(rise<6&&(ground.solid(nx-2,u.y-rise-1)||ground.solid(nx+2,u.y-rise-1)))rise++;
         if(rise>=6)return;u.x=nx;u.y-=rise;u.energy-=2;u.walk++;refreshAim(u);
     }
+    static int propCost(int id){return id==0||id==1?110:id==2?90:id==3||id==4?150:0;}
     boolean prop(int id){
-        if(!input()||id<0||id>5)return false;Unit u=units[active];int cost=id==0||id==1?110:id==2?90:id==3||id==4?150:id==6?70:id>=7&&id<=10?120-(id-6)*10:0;
+        if(!input()||id<0||id>5)return false;Unit u=units[active];int cost=propCost(id);
         if(u.energy<cost||freezeShot&&(id==0||id==1||id==2||id==4||id==5))return false;
         if(id==0){if(extra>2)return false;extra+=2;fly=false;}
         else if(id==1){if(triple)return false;triple=true;fly=false;}
@@ -215,7 +217,7 @@ final class Battle {
     }
     void impact(Ball b){
         int x=b.x/256,y=b.y/256;
-        if(b.fly){int surface=ground.surface(x,Math.max(0,y-18));if(surface<H&&x>12&&x<W-12&&!occupied(x,b.owner,20)){units[b.owner].x=x;units[b.owner].y=surface;units[b.owner].vy=0;units[b.owner].landingTicks=32;}return;}
+        if(b.fly){int surface=ground.surface(x,Math.max(0,y-18));if(surface<H&&x>12&&x<W-12){units[b.owner].x=x;units[b.owner].y=surface;units[b.owner].vy=0;units[b.owner].landingTicks=32;}return;}
         if(b.freeze){Blast ice=new Blast();ice.freeze=true;ice.x=x;ice.y=y;ice.weapon=b.weapon;if(blastCount<blasts.length)blasts[blastCount++]=ice;for(int i=0;i<unitCount;i++){Unit u=units[i];int dx=x-u.x,dy=y-u.y+12;if(u.hp>0&&!ally(b.owner,i)&&dx*dx+dy*dy<31*31){u.freezeTurns=2;u.frozen=1;}}hitSerial++;return;}
         Blast fx=new Blast();fx.x=x;fx.y=y;fx.radius=b.radius;fx.owner=b.owner;fx.weapon=b.weapon;
         if(blastCount<blasts.length)blasts[blastCount++]=fx;
