@@ -20,8 +20,8 @@ final class Battle {
     static int windStep(int wind,Ball b){return wind/(b.fly||b.freeze?7:b.weapon==4?11:b.weapon==2?5:b.weapon==7?8:b.weapon==1?9:7);}
     static int baseDamage(int weapon){return weapon==0?290:weapon==1?390:weapon==2?300:weapon==4?370:weapon==7?315:330;}
     static int baseRadius(int weapon){return weapon==0?15:weapon==1?10:weapon==2?10:weapon==4?17:weapon==7?14:12;}
-    void configureTeam(int ally){teams=true;unitCount=4;hotseat=false;int roster=rand(4);for(int i=0;i<4;i++){Unit u=units[i];u.team=i%2;u.human=i==0||i==2&&ally==2;u.hp=MAXHP;u.energy=240;u.rage=0;u.heals=5;u.dead=false;u.vy=u.walk=u.attackTicks=u.slope=u.flashTicks=u.landingTicks=u.deathX=u.deathY=u.lastBuff=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.x=i==0?70:i==2?140:i==1?400:330;u.y=ground.surface(u.x,35);u.face=u.team==0?1:-1;u.botStyle=(roster+i)%4;u.weapon=new int[]{0,3,5,9}[(roster+i)%4];refreshAim(u);}}
-    void configureOnlineTeam(){configureTeam(1);unitCount=6;for(int i=0;i<6;i++){Unit u=units[i];u.team=i%2;u.human=true;u.hp=MAXHP;u.energy=240;u.rage=0;u.heals=5;u.dead=false;u.vy=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.x=i%2==0?60+i/2*55:420-i/2*55;u.y=ground.surface(u.x,35);u.face=i%2==0?1:-1;refreshAim(u);}}
+    void configureTeam(int ally){teams=true;unitCount=4;hotseat=false;int roster=rand(4);for(int i=0;i<4;i++){Unit u=units[i];u.team=i%2;u.human=i==0||i==2&&ally==2;u.maxHp=MAXHP;u.maxEnergy=240;u.attackBonus=0;u.statsEnabled=false;u.hp=MAXHP;u.energy=240;u.rage=0;u.heals=5;u.dead=false;u.vy=u.walk=u.attackTicks=u.slope=u.flashTicks=u.landingTicks=u.deathX=u.deathY=u.lastBuff=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.x=i==0?70:i==2?140:i==1?400:330;u.y=ground.surface(u.x,35);u.face=u.team==0?1:-1;u.botStyle=(roster+i)%4;u.weapon=new int[]{0,3,5,9}[(roster+i)%4];refreshAim(u);}}
+    void configureOnlineTeam(){configureTeam(1);unitCount=6;for(int i=0;i<6;i++){Unit u=units[i];u.team=i%2;u.human=true;u.maxHp=MAXHP;u.maxEnergy=240;u.attackBonus=0;u.statsEnabled=false;u.hp=MAXHP;u.energy=240;u.rage=0;u.heals=5;u.dead=false;u.vy=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.x=i%2==0?60+i/2*55:420-i/2*55;u.y=ground.surface(u.x,35);u.face=i%2==0?1:-1;refreshAim(u);}}
     void completeTurn(){pendingNext=false;boolean deferred=deferNext;deferNext=false;next();deferNext=deferred;}
     final Ball[] balls=new Ball[20];
     final Blast[] blasts=new Blast[16];
@@ -50,7 +50,7 @@ final class Battle {
     static final int[] ITEM_COST={50,150,170,150,120,120};
     static final String[] ITEM_NAMES={"Tàng hình","Đạn băng","Hồi máu nhóm","Tàng hình nhóm","Dẫn đường","Kích nộ"};
     static boolean validKit(int[] kit){return kit!=null&&kit.length==3&&kit[0]>=0&&kit[0]<6&&kit[1]>=0&&kit[1]<6&&kit[2]>=0&&kit[2]<6&&kit[0]!=kit[1]&&kit[0]!=kit[2]&&kit[1]!=kit[2];}
-    static final class Unit {final int[] kit={0,1,2};int itemUsed,frozen,freezeTurns,invisible,flyCooldown;boolean assist,flightAim;int team,botStyle=-1;boolean human;int x,y,vy,hp=MAXHP,energy=240,rage,angle=45,power=60,face=1,walk,weapon,attackTicks,slope,heals=5,deathX,deathY,lastPower=-1,pendingPower=-1,flashTicks,landingTicks,lastBuff;boolean dead;}
+    static final class Unit {int maxHp=MAXHP,maxEnergy=240,attackBonus,wornMask=3;boolean statsEnabled;final int[] kit={0,1,2};int itemUsed,frozen,freezeTurns,invisible,flyCooldown;boolean assist,flightAim;int team,botStyle=-1;boolean human;int x,y,vy,hp=MAXHP,energy=240,rage,angle=45,power=60,face=1,walk,weapon,attackTicks,slope,heals=5,deathX,deathY,lastPower=-1,pendingPower=-1,flashTicks,landingTicks,lastBuff;boolean dead;}
     static final class Ball {int x,y,vx,vy,owner,age,damage,radius,weapon;boolean guided,freeze,fly,homing,powered;}
     static final class Blast {boolean freeze;int x,y,radius,time,damage,owner,weapon;}
     Battle(Ground ground){this.ground=ground;}
@@ -58,7 +58,7 @@ final class Battle {
     void start(boolean two){
         explicitHumans=false;deferNext=pendingNext=false;teams=false;unitCount=2;active=0;turn=1;over=false;hotseat=two;winner=-1;ballCount=blastCount=bursts=settle=trailCount=0;
         for(int i=0;i<6;i++){damage[i]=kills[i]=0;Unit u=units[i];u.itemUsed=u.frozen=u.freezeTurns=u.invisible=u.flyCooldown=0;u.assist=false;u.kit[0]=0;u.kit[1]=1;u.kit[2]=2;}damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rand(61)-30;lastWind=0;countdown=turnLimit;botWait=0;selectedWeapon=0;
-        for(int i=0;i<unitCount;i++){Unit u=units[i];u.botStyle=-1;u.x=i==0?100:350;u.y=ground.surface(u.x,35);u.vy=0;u.hp=MAXHP;u.energy=240;u.rage=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.face=i==0?1:-1;u.walk=0;u.attackTicks=0;u.slope=0;u.heals=5;u.flashTicks=u.landingTicks=0;u.dead=false;u.deathX=u.deathY=0;refreshAim(u);}
+        for(int i=0;i<unitCount;i++){Unit u=units[i];u.botStyle=-1;u.x=i==0?100:350;u.y=ground.surface(u.x,35);u.vy=0;u.maxHp=MAXHP;u.maxEnergy=240;u.attackBonus=0;u.statsEnabled=false;u.hp=MAXHP;u.energy=240;u.rage=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.face=i==0?1:-1;u.walk=0;u.attackTicks=0;u.slope=0;u.heals=5;u.flashTicks=u.landingTicks=0;u.dead=false;u.deathX=u.deathY=0;refreshAim(u);}
         clear();
     }
     void clear(){for(int i=0;i<6;i++)units[i].flightAim=false;freezeShot=false;botPhase=0;botPowQueued=false;sequentialAttack=false;usedProps=usedPropCount=0;extra=boost=0;triple=pow=fly=charging=false;}
@@ -114,7 +114,7 @@ final class Battle {
         if(id==0){if(extra>2)return false;extra+=2;fly=false;}
         else if(id==1){if(triple)return false;triple=true;fly=false;}
         else if(id==2){if(boost>=100)return false;boost+=50;fly=false;}
-        else if(id==3){if(u.hp==MAXHP||u.heals<=0)return false;u.hp=Math.min(MAXHP,u.hp+500);u.heals--;}
+        else if(id==3){if(u.hp==u.maxHp||u.heals<=0)return false;u.hp=Math.min(u.maxHp,u.hp+500);u.heals--;}
         else if(id==4){if(u.flyCooldown>0)return false;u.flyCooldown=3;freezeShot=false;extra=boost=0;triple=pow=false;fly=true;}
         else if(id==5){if(pow||u.rage<100)return false;u.rage=0;pow=true;fly=false;}
         else if(id==6){if(extra>2)return false;extra++;fly=false;}
@@ -135,7 +135,7 @@ final class Battle {
         if(id<0||id>=6||(u.itemUsed&(1<<slot))!=0||u.energy<ITEM_COST[id])return false;
         if(id==0){if(u.invisible>0)return false;u.invisible=2;}
         else if(id==1){if(freezeShot||fly||bursts>0)return false;freezeShot=true;extra=boost=0;triple=pow=false;u.assist=false;}
-        else if(id==2){boolean hurt=false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&ally(active,i)&&units[i].hp<MAXHP)hurt=true;if(!hurt)return false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&ally(active,i))units[i].hp=Math.min(MAXHP,units[i].hp+300);}
+        else if(id==2){boolean hurt=false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&ally(active,i)&&units[i].hp<units[i].maxHp)hurt=true;if(!hurt)return false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&ally(active,i))units[i].hp=Math.min(units[i].maxHp,units[i].hp+300);}
         else if(id==3){boolean visible=false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&ally(active,i)&&units[i].invisible==0)visible=true;if(!visible)return false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&ally(active,i))units[i].invisible=Math.max(2,units[i].invisible);}
         else if(id==4){if(u.assist||fly||freezeShot)return false;u.assist=true;}
         else if(id==5){if(u.rage>=100)return false;u.rage=Math.min(100,u.rage+50);}
@@ -201,7 +201,7 @@ final class Battle {
         if(freezeShot||isThrown(u.weapon)){b.x=u.x*256;b.y=launchBaseY(u)*256;}
         int speed=(25+power*2)*256/24;b.vx=cs*speed/1024;b.vy=-sn*speed/1024;b.owner=active;b.fly=fly;b.homing=cheatAim&&active==0&&!fly&&!freezeShot;b.guided=u.assist&&!fly&&!freezeShot;
         b.freeze=freezeShot;b.powered=pow;b.weapon=u.weapon;b.radius=pow?Math.max(20,baseRadius(u.weapon)+5):baseRadius(u.weapon);
-        int base=baseDamage(u.weapon);
+        int base=baseDamage(u.weapon)+u.attackBonus;
         b.damage=base*(100+boost)/100;if(triple)b.damage=b.damage*60/100;if(extra>0)b.damage=b.damage*82/100;if(pow)b.damage=b.damage*170/100;
         if(b.guided)b.damage=b.damage/2;
         return b;
@@ -218,13 +218,13 @@ final class Battle {
         if(blastCount<blasts.length)blasts[blastCount++]=fx;
         for(int i=0;i<unitCount;i++){
             Unit u=units[i];int dx=x-u.x,dy=y-u.y+12,dist=dx*dx+dy*dy,r=b.radius+23;
-            if(u.hp>0&&dist<r*r){int damage=b.damage*(100-(int)Math.sqrt(dist)*65/r)/100;if(u.freezeTurns>0){u.freezeTurns=u.frozen=0;damage=damage/2;}int received=Math.min(u.hp,damage);u.hp=Math.max(0,u.hp-damage);if(i!=b.owner&&(!teams||u.team!=units[b.owner].team)){this.damage[b.owner]+=received;if(u.hp==0)kills[b.owner]++;}u.rage=Math.min(100,u.rage+(received*100+MAXHP-1)/MAXHP);fx.damage=damage;showDamage(u,damage,b.powered);}
+            if(u.hp>0&&dist<r*r){int damage=b.damage*(100-(int)Math.sqrt(dist)*65/r)/100;if(u.freezeTurns>0){u.freezeTurns=u.frozen=0;damage=damage/2;}int received=Math.min(u.hp,damage);u.hp=Math.max(0,u.hp-damage);if(i!=b.owner&&(!teams||u.team!=units[b.owner].team)){this.damage[b.owner]+=received;if(u.hp==0)kills[b.owner]++;}u.rage=Math.min(100,u.rage+(received*100+u.maxHp-1)/u.maxHp);fx.damage=damage;showDamage(u,damage,b.powered);}
         }
         ground.crater(x,y,b.radius);hitSerial++;
     }
     void check(){boolean left=false,right=false;for(int i=0;i<unitCount;i++){Unit u=units[i];if(u.hp<=0&&!u.dead){u.dead=true;u.deathX=clamp(u.x,12,W-12);u.deathY=clamp(u.y,40,H-4);}if(u.hp>0){if((teams?u.team:i)==0)left=true;else right=true;}}if(!left||!right){finishPower();over=true;winner=!left?(!right?2:1):0;charging=false;winSerial++;}}
     void finishPower(){Unit u=units[active];if(u.pendingPower>=0){u.lastPower=u.pendingPower;u.pendingPower=-1;}}
-    void next(){finishPower();check();if(over)return;if(deferNext){pendingNext=true;charging=false;return;}Unit previous=units[active];if(previous.invisible>0)previous.invisible--;if(previous.frozen==2){previous.freezeTurns=Math.max(0,previous.freezeTurns-1);previous.frozen=previous.freezeTurns>0?1:0;}do{active=(active+1)%unitCount;}while(units[active].hp<=0);turn++;units[active].energy=240;if(units[active].flyCooldown>0)units[active].flyCooldown--;units[active].assist=false;if(units[active].frozen==1)units[active].frozen=2;countdown=units[active].frozen==2?30:turnLimit;botWait=settle=0;lastWind=wind;wind=rand(61)-30;clear();}
+    void next(){finishPower();check();if(over)return;if(deferNext){pendingNext=true;charging=false;return;}Unit previous=units[active];if(previous.invisible>0)previous.invisible--;if(previous.frozen==2){previous.freezeTurns=Math.max(0,previous.freezeTurns-1);previous.frozen=previous.freezeTurns>0?1:0;}do{active=(active+1)%unitCount;}while(units[active].hp<=0);turn++;units[active].energy=units[active].maxEnergy;if(units[active].flyCooldown>0)units[active].flyCooldown--;units[active].assist=false;if(units[active].frozen==1)units[active].frozen=2;countdown=units[active].frozen==2?30:turnLimit;botWait=settle=0;lastWind=wind;wind=rand(61)-30;clear();}
     int error(int angle,int power){
         Ball b=make(angle,power);Unit t=units[enemyOf(active)];int best=999999;
         // One coarse sample per frame is enough for AI; gameplay uses four swept substeps.
@@ -256,7 +256,7 @@ final class Battle {
         botActing=true;
         try{
             Unit u=units[active],enemy=units[enemyOf(active)];botWait++;
-            if(botWait==1){botBlocked=0;if(u.hp<=MAXHP-(u.botStyle==3?350:600)&&u.heals>0)prop(3);}
+            if(botWait==1){botBlocked=0;if(u.hp<=u.maxHp-(u.botStyle==3?350:600)&&u.heals>0)prop(3);}
             if(botWait<=12&&u.energy>=92){
                 int distance=Math.abs(u.x-enemy.x),toward=enemy.x<u.x?-1:1,near=u.botStyle==1?65:u.botStyle==0?145:95,far=u.botStyle==1?160:u.botStyle==0?260:220,direction=distance<near?-toward:distance>far?toward:0;
                 if(direction==0){int left=ground.surface(u.x-10,Math.max(0,u.y-18)),right=ground.surface(u.x+10,Math.max(0,u.y-18));if(left+4<right)direction=-1;else if(right+4<left)direction=1;}

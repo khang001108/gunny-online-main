@@ -1,7 +1,7 @@
 FROM eclipse-temurin:21-jdk AS build
 WORKDIR /app
 COPY backend/src src
-RUN mkdir classes && javac --release 17 -encoding UTF-8 -d classes src/Battle.java src/ShopCatalog.java src/Json.java src/CloudStore.java src/SocialServer.java src/RoomMatchmaker.java src/GunnyServer.java
+RUN mkdir classes && javac --release 17 -encoding UTF-8 -d classes src/Battle.java src/ShopCatalog.java src/ItemRules.java src/Json.java src/CloudStore.java src/SocialServer.java src/RoomMatchmaker.java src/GunnyServer.java
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
