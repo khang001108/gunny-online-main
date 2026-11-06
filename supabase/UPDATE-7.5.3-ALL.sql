@@ -269,7 +269,7 @@ begin
  end if;
  if p_item<0 then mask:=mask & ~(1<<p_kind);
  elsif p_kind=1 then mask:=(mask&1)|2;
- elsif p_kind>=2 then mask:=(mask&~2)|(1<<p_kind);
+ elsif p_kind>=2 then mask:=(mask & (~2))|(1<<p_kind);
  else mask:=mask|1;end if;
  update public.profiles set equipped=weapon,skin=skin_id,look=parts,worn_mask=mask,custom_look=((mask&2)=0) where id=p_user;
 end;$$;

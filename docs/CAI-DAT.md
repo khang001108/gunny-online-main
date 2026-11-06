@@ -27,6 +27,14 @@ Server phân biệt mã lỗi RPC thay vì coi mọi HTTP 404 là thiếu API. P
 
 Chỉ cần deploy lại server, không cài lại JAR và không chạy lại SQL gộp. Nếu lỗi vẫn xuất hiện, thử mặc đồ một lần rồi lấy dòng mã lỗi trong Render Logs hoặc popup. File `supabase/diagnose-equip.sql` chỉ đọc cấu trúc/quyền, không thay đổi tài khoản hay trang bị.
 
+## Sửa SQL 42883 khi mặc quần áo
+
+Đã xác định biểu thức `mask&~2` bị phân tích thành toán tử không tồn tại `&~`. Đã sửa thành `mask & (~2)` trong migration gốc và file SQL gộp.
+
+Project đã chạy SQL trước: mở `supabase/FIX-GUNNY-EQUIP.sql`, sao chép toàn bộ vào SQL Editor rồi Run. File chỉ thay định nghĩa hàm `gunny_equip`, giữ nguyên kiểm tra sở hữu đồ và quyền service_role, rồi nạp lại cache. Không reset hồ sơ, đồ hay tiền; không cần cài lại JAR hoặc deploy Render cho riêng sửa lỗi này. Sau khi SQL thành công, đóng popup trong game và thử mặc lại.
+
+Project mới dùng SQL gộp đã cập nhật hoặc chạy đủ thư mục migrations (có `202611060004_gunny_equip_operator_fix.sql`). Không cần chạy cả hai cách.
+
 
 # Gunny Java 6.3.1
 
