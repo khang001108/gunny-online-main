@@ -1,12 +1,25 @@
-# Máy bay, POW và bàn phím Nokia — 7.5.5
+# Nhạc gốc và Mộc Diệp Trấn — 7.5.6
 
-Cập nhật cả server và JAR/JAD 7.5.5 cho các máy chơi cùng nhau. Không có SQL mới. Luồng email xác nhận một lần của 7.5.4 được giữ nguyên.
+Cập nhật cả server và JAR/JAD 7.5.6 cho các máy cùng chơi: map số 4 đã thay địa hình. Không có SQL mới. Các sửa lỗi máy bay, POW và phím W của 7.5.5 được giữ lại.
 
-- Máy xem phát lại không còn vẽ vệt bom/vũ khí phía sau máy bay hoặc đạn băng. Kiểm tra nằm ngay ở hàm tạo vệt dùng chung cho mọi đường phát lại.
-- W của E72 (mã phím số 1 khi không giữ Fn) dùng buff x3 như w/W. Chỉ áp dụng mã số trên các dòng Nokia QWERTY được nhận diện; bàn phím số thông thường giữ điều khiển cũ.
-- Gói hoạt ảnh dài, gồm POW, được chia nhỏ khoảng tối đa 16 KiB khi các khung hình riêng lẻ vừa giới hạn. Từng khung hình, thứ tự và địa hình đầu đoạn được giữ đủ. Một khung hình địa hình lớn riêng lẻ vẫn được giữ nguyên để tránh cắt hỏng giao thức.
-- Nếu đồng bộ trong trận gặp lỗi I/O, thử lại một lần và chuyển sang polling một kết nối. Lệnh đồng bộ có sequence ID nên không dùng POW/bắn trùng khi server đã nhận gói trước đó. Không tự gửi lại giao dịch mua đồ hoặc cộng tiền.
-- Chưa tái hiện trực tiếp mã native Error-5 trên Nokia thật. Đã giả lập mất phản hồi sau khi server nhận lệnh, kiểm tra không mất trận hoặc dùng POW hai lần. Cần thử lại trên E72 để xác nhận lỗi phần mạng/TLS của máy đã hết.
+| Cảnh | Mã nhạc trong Resource/sound |
+| --- | --- |
+| Sảnh chính, đăng nhập | 062 |
+| Chiến thắng | 063 |
+| Thua cuộc | 064 |
+| Sảnh online, phòng online, tổ đội, phòng offline | 065 |
+| Đu Quay (tên cũ Làng Mặt Trời) | 053 |
+| Rừng Nhiệt Đới (tên cũ Rừng Rễ Cây) | 054 |
+| Lớp Học Ma Thuật (tên cũ Phòng Giả Kim) | 1004 |
+| Phố Nấm Lùn (tên cũ Đảo Trên Mây) | 059 |
+| Mộc Diệp Trấn (thay Bờ Biển Nắng) | 1035 |
+| Đáy Biển | 055 |
+
+Map Mộc Diệp Trấn lấy nguyên asset `Resource/image/map/1035`, gồm nền, địa hình, thumbnail, banner và mask va chạm cho E6. Server dùng cùng hình địa hình land4. Năm map còn lại chỉ đổi tên/nhạc theo bảng, giữ hình và địa hình.
+
+Nhạc là các khung MP3 gốc tách khỏi FLV, không cắt ngắn hoặc nén lại. Nhạc nền lặp; thắng/thua phát một lần. Tuỳ chọn bật/tắt âm thanh vẫn có hiệu lực. JAR E72 khoảng 13,1 MB và E6 khoảng 35,1 MB vì giữ đầy đủ nhạc gốc.
+
+Đã kiểm tra đủ luồng MP3, chọn nhạc theo màn, tên map và va chạm client/server ở hai độ phân giải. Cần nghe thử trên Nokia thật để xác nhận khả năng phát âm thanh của máy.
 
 
 # Gunny Java 6.3.1
