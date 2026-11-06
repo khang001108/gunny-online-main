@@ -186,6 +186,7 @@ final class Battle {
     }
     void guide(Ball b){int best=-1;long distance=100L*100*256*256;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&!ally(b.owner,i)){long dx=units[i].x*256L-b.x,dy=(units[i].y-12)*256L-b.y,d=dx*dx+dy*dy;if(d<distance){distance=d;best=i;}}if(best<0)return;Unit t=units[best];int dx=t.x*256-b.x,dy=(t.y-12)*256-b.y,len=Math.max(1,(int)Math.sqrt((double)dx*dx+(double)dy*dy));int speed=Math.max(500,(int)Math.sqrt((double)b.vx*b.vx+(double)b.vy*b.vy));b.vx+=(dx*speed/len-b.vx)/12;b.vy+=(dy*speed/len-b.vy)/12;}
     void stampTrail(Ball b){
+        if(b.fly||b.freeze)return;
         if(trailCount==TRAIL_CAPACITY)return;
         int i=trailCount++;trailX[i]=b.x;trailY[i]=b.y;trailWeapon[i]=b.weapon;trailFrame[i]=ballFrame(b);trailAge[i]=0;
         // Original particle lifetimes: brick 0.2s, dart/electric/grenade 0.5s.
