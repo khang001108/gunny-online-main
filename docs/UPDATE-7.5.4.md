@@ -13,3 +13,15 @@ Không có SQL mới trong bản này. Nếu đã chạy đầy đủ SQL 7.5.3 
 - Thiếu vũ khí báo “Không có trang bị vũ khí không thể bắt đầu” trước thông báo chờ đồng minh, kiểm tra ở JAR và server khi bắt đầu/chuẩn bị.
 
 Đã kiểm tra giả lập 320×240, 640×480, hai khách online, gói nhị phân lặp lại, luật máy bay và bộ kiểm tra server. Chưa kiểm thử trên điện thoại Nokia thật.
+
+## Email xác nhận một lần
+
+Giữ mẫu email mặc định trong Supabase; không cần sửa mục Confirm sign up hay dán HTML. Người chơi mở email, bấm liên kết xác nhận một lần; Supabase xác nhận email rồi chuyển tới trang **“Chúc mừng bạn đăng ký thành công!”**. Trang không có form đăng nhập hoặc nút xác nhận tiếp; người chơi đóng trang và đăng nhập trong game.
+
+- Authentication → URL Configuration → Site URL: `https://gunny-online-main.onrender.com`.
+- Redirect URLs: thêm `https://gunny-online-main.onrender.com/auth/confirmed`.
+- Giữ xác nhận email được bật. Cấu hình SMTP đã có tiếp tục dùng để gửi thư; chỉ bỏ yêu cầu tuỳ biến mẫu email.
+- Cập nhật server/web và dùng thư gửi mới sau khi sửa URL; thư cũ có localhost không tự đổi được.
+- `/` và `/auth/confirmed` nhận kết quả xác nhận tự động. `/account/` vẫn là trang tài khoản riêng, `/admin/` vẫn là quản trị.
+- Liên kết TokenHash của mẫu cũ vẫn được xử lý tự động. Liên kết hết hạn/không hợp lệ không báo đăng ký thành công.
+- Không có SQL mới và không cần cài lại JAR cho thay đổi email này.

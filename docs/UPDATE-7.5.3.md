@@ -12,7 +12,7 @@ Trang admin thêm Cộng xu / tiền trong Quản lý tài khoản, số nguyên
 
 1. Supabase → Authentication → URL Configuration: Site URL là `https://gunny-online-main.onrender.com` (không để localhost).
 2. Redirect URLs: thêm `https://gunny-online-main.onrender.com/auth/confirmed`.
-3. Supabase → Authentication → Email Templates → Confirm signup: dán mẫu `supabase/templates/confirm-signup-vi.html` trong gói mới. Mẫu đưa TokenHash tới trang /auth/confirmed, xác minh thật qua server rồi mới chúc mừng. Không gửi khoá service_role cho trình duyệt. Liên kết cũ trỏ localhost không thể tự sửa; dùng thư mới hoặc đăng nhập nếu email đã được xác nhận.
+3. Giữ mẫu email mặc định của Supabase; không cần sửa Confirm sign up. Bấm liên kết trong email sẽ xác nhận và tự mở trang chúc mừng, không có form đăng nhập hoặc nút xác nhận lần hai. Liên kết cũ trỏ localhost không thể tự sửa; dùng thư mới.
 4. Trên Render, tự dùng RENDER_EXTERNAL_URL; có thể đặt GUNNY_PUBLIC_URL nếu dùng tên miền riêng. Khi đổi miền nhớ đổi Site URL/Redirect URLs cùng miền.
 
 Trang `/account/` cho người chơi đăng nhập bằng email/mật khẩu game và xem tên/ID/số dư. Cookie HttpOnly/Secure, không lưu mật khẩu/token Supabase vào localStorage; trang người chơi không phải trang admin và không cho cộng tiền. Trang xác nhận hỗ trợ cả email TokenHash mới và access-token fragment cũ, xoá token khỏi thanh địa chỉ trước khi xử lý. Giao diện không tuyên bố email đã xác nhận khi chưa kiểm tra được token. Web đăng nhập không đóng phiên đang chơi trong JAR.
