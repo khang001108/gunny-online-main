@@ -21,6 +21,12 @@ Nhạc là các khung MP3 gốc tách khỏi FLV, không cắt ngắn hoặc né
 
 Đã kiểm tra đủ luồng MP3, chọn nhạc theo màn, tên map và va chạm client/server ở hai độ phân giải. Cần nghe thử trên Nokia thật để xác nhận khả năng phát âm thanh của máy.
 
+## Bản vá chẩn đoán trang bị
+
+Server phân biệt mã lỗi RPC thay vì coi mọi HTTP 404 là thiếu API. PGRST202 là không tìm được chữ ký hàm trong cache API; P0002 là không có dòng dữ liệu cho truy vấn strict; 42501 là lỗi quyền; 42883 là một hàm được gọi không tồn tại. Game hiển thị tên API/mã lỗi, Render Logs có dạng `Supabase RPC gunny_equip HTTP 404 code ...`, không ghi request, mật khẩu hay API key. Thay đổi này sửa chẩn đoán; chưa kết luận hay tự sửa nguyên nhân ở Supabase thật.
+
+Chỉ cần deploy lại server, không cài lại JAR và không chạy lại SQL gộp. Nếu lỗi vẫn xuất hiện, thử mặc đồ một lần rồi lấy dòng mã lỗi trong Render Logs hoặc popup. File `supabase/diagnose-equip.sql` chỉ đọc cấu trúc/quyền, không thay đổi tài khoản hay trang bị.
+
 
 # Gunny Java 6.3.1
 
