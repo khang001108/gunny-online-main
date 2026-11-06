@@ -15,3 +15,5 @@ Bộ asset không có level 0 nên bắt đầu 01. 01→02 cần 50 EXP, 02→0
 Túi đồ giữ bảng thông tin dưới nhân vật, level dùng huy hiệu gốc kèm EXP, xếp hạng theo tổng trận thắng, số trận thắng và lực chiến gồm đồ đang mặc. Thưởng người thua có sát thương giữ nguyên từ 7.5.7: 250 xu đấu đơn/phòng riêng, 500 xu tổ đội, được mở một thẻ. Thua không gây sát thương nhận EXP, không có xu/thẻ. Hòa không có xu/thẻ. Ảnh POW dùng đồ thực đang mặc.
 
 Kiểm tra cục bộ gồm ngưỡng cấp 01/02 và 70, bitmap gốc/màu, giao diện hai độ phân giải, API EXP/thưởng, cú pháp SQL/PLpgSQL và gói cài. Chưa thử trên Nokia thật hoặc chạy SQL trên Supabase của bạn.
+
+Sửa bố cục offline: bỏ nút Bạn bè khỏi thanh phòng, điều hướng và vùng bấm; giữ Mời bot. Huy hiệu level nằm trong thẻ nhân vật. Túi đồ nâng nhân vật/ô mặc và đưa toàn bộ bảng thông tin vào nền sáng bên trong. Không cần SQL mới cho các sửa bố cục này.
