@@ -1,50 +1,17 @@
-# Nhạc gốc và Mộc Diệp Trấn — 7.5.6
+# Level asset gốc và một file SQL — 7.5.8
 
-Cập nhật cả server và JAR/JAD 7.5.6 cho các máy cùng chơi: map số 4 đã thay địa hình. Không có SQL mới. Các sửa lỗi máy bay, POW và phím W của 7.5.5 được giữ lại.
+1. Supabase → SQL Editor: mở **supabase/GUNNY-ALL.sql**, sao chép toàn bộ và Run. Dùng cùng một file cho project mới hoặc project đã chạy các bản trước, kể cả 7.5.7. Không chạy thêm UPDATE-7.5.3-ALL, UPDATE-7.5.7 hay từng migration sau đó.
+2. Cập nhật toàn bộ server lên Render, giữ nguyên biến môi trường đang dùng.
+3. Cài JAR/JAD 7.5.8 đúng E72/E6.
 
-| Cảnh | Mã nhạc trong Resource/sound |
-| --- | --- |
-| Sảnh chính, đăng nhập | 062 |
-| Chiến thắng | 063 |
-| Thua cuộc | 064 |
-| Sảnh online, phòng online, tổ đội, phòng offline | 065 |
-| Đu Quay (tên cũ Làng Mặt Trời) | 053 |
-| Rừng Nhiệt Đới (tên cũ Rừng Rễ Cây) | 054 |
-| Lớp Học Ma Thuật (tên cũ Phòng Giả Kim) | 1004 |
-| Phố Nấm Lùn (tên cũ Đảo Trên Mây) | 059 |
-| Mộc Diệp Trấn (thay Bờ Biển Nắng) | 1035 |
-| Đáy Biển | 055 |
+File SQL gộp chạy trong một giao dịch và chỉ giữ định nghĩa mới nhất của mỗi API. Gộp cả bản vá gunny_equip, shop, trang bị, tài khoản, quản trị, cấp tiền/xu, thông báo, EXP và thưởng người thua. Có thể chạy lại, không xóa/reset tài khoản, đồ, số dư, số trận thắng, EXP hay lịch xóa đang có. Các file cũ đã chuyển vào history để tra cứu; migrations giữ cho quy trình CLI, không phải danh sách cần chạy thêm bằng tay. Template email chỉ là giao diện thư, không tạo dữ liệu game.
 
-Map Mộc Diệp Trấn lấy nguyên asset `Resource/image/map/1035`, gồm nền, địa hình, thumbnail, banner và mask va chạm cho E6. Server dùng cùng hình địa hình land4. Năm map còn lại chỉ đổi tên/nhạc theo bảng, giữ hình và địa hình.
+Nếu Supabase đã bật pg_cron, file gộp thiết lập duy nhất lịch dọn tài khoản mỗi phút. Nếu chưa bật, server vẫn bảo trì khi đang chạy; muốn lịch chạy cả khi Render ngủ thì bật pg_cron rồi chạy lại cùng file GUNNY-ALL.sql.
 
-Nhạc là các khung MP3 gốc tách khỏi FLV, không cắt ngắn hoặc nén lại. Nhạc nền lặp; thắng/thua phát một lần. Tuỳ chọn bật/tắt âm thanh vẫn có hiệu lực. JAR E72 khoảng 13,1 MB và E6 khoảng 35,1 MB vì giữ đầy đủ nhạc gốc.
+Đã thay chữ level tự ghép bằng bitmap gốc `asset.LevelIcon.Level_1` đến `Level_70` lấy từ thư viện Flash đã có. Không tự vẽ số hoặc tô lại màu. Cấp 01–10 bạc; 11–20 xanh lá; 21–30 xanh dương; 31–40 cam; 41–50 bạc/tím; 51–60 vàng; 61–70 huy hiệu vàng có cánh. Dùng đúng hình từng cấp ở túi đồ, phòng chờ, trong trận và kết quả.
 
-Đã kiểm tra đủ luồng MP3, chọn nhạc theo màn, tên map và va chạm client/server ở hai độ phân giải. Cần nghe thử trên Nokia thật để xác nhận khả năng phát âm thanh của máy.
+Bộ asset không có level 0 nên bắt đầu 01. 01→02 cần 50 EXP, 02→03 cần 100, 03→04 cần 150. Tổng 300 EXP đạt cấp 04. EXP đã tích lũy giữ nguyên, không cộng lại thưởng. Cấp cao nhất theo bộ ảnh là 70 (120.750 EXP), hiển thị MAX; tổng EXP vẫn tiếp tục lưu. Thắng +300 EXP, thua/hòa +100 EXP. Offline lưu riêng RMS, không chuyển sang online.
 
-## Bản vá chẩn đoán trang bị
+Túi đồ giữ bảng thông tin dưới nhân vật, level dùng huy hiệu gốc kèm EXP, xếp hạng theo tổng trận thắng, số trận thắng và lực chiến gồm đồ đang mặc. Thưởng người thua có sát thương giữ nguyên từ 7.5.7: 250 xu đấu đơn/phòng riêng, 500 xu tổ đội, được mở một thẻ. Thua không gây sát thương nhận EXP, không có xu/thẻ. Hòa không có xu/thẻ. Ảnh POW dùng đồ thực đang mặc.
 
-Server phân biệt mã lỗi RPC thay vì coi mọi HTTP 404 là thiếu API. PGRST202 là không tìm được chữ ký hàm trong cache API; P0002 là không có dòng dữ liệu cho truy vấn strict; 42501 là lỗi quyền; 42883 là một hàm được gọi không tồn tại. Game hiển thị tên API/mã lỗi, Render Logs có dạng `Supabase RPC gunny_equip HTTP 404 code ...`, không ghi request, mật khẩu hay API key. Thay đổi này sửa chẩn đoán; chưa kết luận hay tự sửa nguyên nhân ở Supabase thật.
-
-Chỉ cần deploy lại server, không cài lại JAR và không chạy lại SQL gộp. Nếu lỗi vẫn xuất hiện, thử mặc đồ một lần rồi lấy dòng mã lỗi trong Render Logs hoặc popup. File `supabase/diagnose-equip.sql` chỉ đọc cấu trúc/quyền, không thay đổi tài khoản hay trang bị.
-
-## Sửa SQL 42883 khi mặc quần áo
-
-Đã xác định biểu thức `mask&~2` bị phân tích thành toán tử không tồn tại `&~`. Đã sửa thành `mask & (~2)` trong migration gốc và file SQL gộp.
-
-Project đã chạy SQL trước: mở `supabase/FIX-GUNNY-EQUIP.sql`, sao chép toàn bộ vào SQL Editor rồi Run. File chỉ thay định nghĩa hàm `gunny_equip`, giữ nguyên kiểm tra sở hữu đồ và quyền service_role, rồi nạp lại cache. Không reset hồ sơ, đồ hay tiền; không cần cài lại JAR hoặc deploy Render cho riêng sửa lỗi này. Sau khi SQL thành công, đóng popup trong game và thử mặc lại.
-
-Project mới dùng SQL gộp đã cập nhật hoặc chạy đủ thư mục migrations (có `202611060004_gunny_equip_operator_fix.sql`). Không cần chạy cả hai cách.
-
-
-# Gunny Java 6.3.1
-
-Upload toàn bộ gói server mới rồi chờ Render deploy, sau đó cài JAR/JAD 6.3.1 đúng E72 hoặc E6. `/health` phải có `"departures":1`. Bản này không cần SQL mới nếu đã chạy migration `202611040001_gunny_rewards.sql` của 6.3.0; giữ nguyên tài khoản, xu và mẫu email đã cấu hình.
-
-- Hộp tạo phòng dùng bố cục và ảnh native theo mẫu mới; tên phòng/mật mã/checkbox vẫn có tương tác, mật mã không hiển thị chữ “Không”.
-- Nền sảnh đổi sang ảnh có ô đất trống; bỏ logo lớn khỏi nền sảnh, giữ logo ở đăng nhập. Công trình native nằm ở ô dưới phải và có nhãn Online, chọn được bằng phím hoặc chạm. Nút Online cũ được thay bằng công trình này.
-- Thanh công cụ lấy lại bitmap gốc trong SWF `01abe2636b0f2ab4da71`: shop 32, túi 31, chân thú 63, ngựa 49, bạn bè 29, giấy/bút dùng ảnh native `source-assets/lobby/info.png`, cửa 25, khung 42. Không phóng lại thanh từ ảnh chụp bị vỡ pixel.
-- Luồng kết nối có bộ giám sát độc lập, bao gồm cả khi Connector.open chưa trả về. Đăng nhập bị kẹt quá 30 giây sẽ về sảnh để thử lại; kết nối trong trận tối đa 60 giây. Phím phải/Trở về/nút X khi đang kết nối có thể hủy ngay. Phản hồi cũ sau hủy không được ghi đè phiên mới. Không thử lại mù một yêu cầu đăng ký/thay đổi dữ liệu.
-- Khi người chơi chủ động rời trận hoặc không phản hồi 45 giây, đối phương nhận thông báo. Trận tạm dừng, đồng hồ không chạy. Chọn **Tiếp tục chơi** để máy điều khiển nhân vật đã thoát, hoặc **Kết thúc, nhận thắng**. Server xác nhận quyền lựa chọn và chiến thắng, lưu thưởng theo cơ chế chống cộng lặp hiện có. Đồng đội cùng phe không được nhận thắng khi người cùng phe thoát.
-- Các client cũ không hỗ trợ thông báo rời trận vẫn dùng đường dữ liệu cũ. Nên cập nhật tất cả máy lên 6.3.1 để dùng đủ lựa chọn mới.
-
-Trang tải vẫn ở `/download/`, kèm game hai máy, bản vá và HTML/PDF hướng dẫn. Không tự deploy hoặc thay cấu hình trên tài khoản Render/Supabase thật. Kiểm tra trên giả lập không thay thế thử trực tiếp Nokia vật lý.
+Kiểm tra cục bộ gồm ngưỡng cấp 01/02 và 70, bitmap gốc/màu, giao diện hai độ phân giải, API EXP/thưởng, cú pháp SQL/PLpgSQL và gói cài. Chưa thử trên Nokia thật hoặc chạy SQL trên Supabase của bạn.

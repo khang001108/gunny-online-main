@@ -1,68 +1,33 @@
-# Gunny Java Online 7.5.6
+# Gunny Java Online 7.5.8
 
-Bộ server độc lập cho Render + Supabase, kèm web tải game dùng được trên trình duyệt màn 320px.
+## Cài mới hoặc cập nhật
 
-## Cập nhật server đang dùng — 7.5.6
+1. Supabase → SQL Editor: chạy duy nhất [GUNNY-ALL.sql](supabase/GUNNY-ALL.sql). File dùng được cho project mới hoặc đã có dữ liệu, gộp đầy đủ shop, trang bị, bản vá equip, quản trị, thông báo, EXP và thưởng người thua. Không chạy thêm SQL cũ sau file này.
+2. Cập nhật toàn bộ repo server lên Render. Giữ nguyên biến môi trường Supabase và GUNNY_ADMIN_PASSWORD (tối thiểu 16 ký tự). Không đưa khóa vào mã nguồn.
+3. Cài JAR/JAD 7.5.8 đúng E72 hoặc E6. Người chơi cùng trận nên dùng cùng phiên bản. [Hướng dẫn](docs/CAI-DAT.md).
 
-Bản 7.5.6 đổi nhạc theo mã gốc, đổi tên map và thay Bờ Biển Nắng bằng Mộc Diệp Trấn (asset 1035); [chi tiết](docs/UPDATE-7.5.6.md). Không thêm SQL. Nếu đã chạy đủ SQL 7.5.3, bỏ qua bước 1.
+SQL giữ tài khoản, đồ, số dư, EXP, số trận thắng và lịch xóa đang có. Chỉ các hồ sơ chưa có EXP mới bắt đầu từ 0 EXP. SQL chạy trong một giao dịch, có thể chạy lại; không có lệnh xóa/reset tài khoản. Bản gộp chỉ giữ định nghĩa RPC cuối cùng, có cả sửa toán tử trang bị.
 
-1. Giữ bản sao lưu, chạy [SQL cập nhật đầy đủ](supabase/UPDATE-7.5.3-ALL.sql) trong Supabase SQL Editor. File giữ tài khoản/đồ/số dư cũ, cài API còn thiếu và bản mới theo đúng thứ tự. Nếu đã có đủ toàn bộ SQL 7.5.2 thì chỉ cần `202611060003_gunny_features.sql`. Không chạy lại từng SQL cũ phía dưới sau bản cập nhật mới.
-2. Upload toàn bộ gói vào gốc repo và deploy Render. Giữ các biến Supabase đã có; admin dùng GUNNY_ADMIN_PASSWORD ít nhất 16 ký tự. Cài JAR/JAD 7.5.6 đúng E72/E6.
-3. Supabase → Authentication → URL Configuration: Site URL `https://gunny-online-main.onrender.com`, Redirect URLs thêm `https://gunny-online-main.onrender.com/auth/confirmed` (đổi tên miền nếu server của bạn khác). Giữ mẫu email mặc định của Supabase; không cần sửa Confirm sign up. Không để localhost:3000.
-4. Xem [hướng dẫn đầy đủ 7.5.3](docs/UPDATE-7.5.3.md) cho tài khoản người chơi, cộng tiền admin, đồ số 1 miễn phí và sắp xếp túi. Đường dẫn `/account/` là người chơi, `/admin/` là quản trị.
+**Không cần tải từng migration, UPDATE-7.5.3-ALL hay UPDATE-7.5.7.** Các file trong `supabase/history/` và `supabase/migrations/` là lịch sử nguồn để tra cứu hoặc dành cho quy trình CLI đã có; không phải danh sách cần chạy thủ công. `supabase/templates/` chỉ là mẫu email, không thay SQL.
 
-## Project mới
+Nếu pg_cron đã được bật, file gộp thiết lập một lịch dọn tài khoản mỗi phút. Nếu chưa bật, backend vẫn bảo trì trong lúc đang chạy; có thể bật pg_cron trong Supabase rồi chạy lại cùng GUNNY-ALL.sql.
 
-Tạo Supabase project, chạy lần lượt các file trong `supabase/migrations`. Tạo Render Web Service dùng Dockerfile ở gốc repo, Singapore, Health Check `/health`. Giữ Root Directory trống. Thêm `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` trong **Environment của Render**. Không ghi khóa thật vào file và upload lên GitHub. Bộ ví dụ `.env.example` không chứa khóa hoạt động.
+## Level và phần thưởng
 
-Các mục phiên bản cũ dưới đây chỉ để đối chiếu; bản 7.5.3 đã gộp SQL đầy đủ ở trên.
+Dùng đúng bitmap gốc `asset.LevelIcon.Level_1` đến `Level_70`, giữ số, họa tiết và màu từng nhóm cấp. Bắt đầu 01; 01→02 cần 50 EXP, 02→03 cần 100, mỗi cấp tiếp theo tăng 50 EXP. EXP cũ giữ nguyên; chỉ đổi mốc hiển thị từ 0 sang 01. Cấp cao nhất theo bộ asset là 70, số EXP tổng vẫn được lưu.
 
-## Quản trị 7.5.0
+Thắng +300 EXP, thua +100 EXP. Người thua có sát thương nhận nửa xu thưởng trận (250 xu đấu đơn/phòng riêng; 500 xu tổ đội) và mở một thẻ thưởng. Không gây sát thương thì chỉ nhận EXP. Gửi lại kết quả/thẻ không cộng trùng.
 
-Mở `/admin/` sau khi chạy migration quản trị và cấu hình GUNNY_ADMIN_PASSWORD. Xem docs/QUAN-TRI.md. Không có mật khẩu mặc định.
+Level hiện ở túi đồ, phòng chờ, trong trận và kết quả. Túi đồ hiện EXP, hạng theo tổng trận thắng, số trận thắng, lực chiến tính cả trang bị đang mặc. Ảnh POW dùng đúng ngoại hình đang mặc. Xem [thay đổi 7.5.8](docs/UPDATE-7.5.8.md).
 
-## Shop 7.4.4
+## Web và tài khoản
 
-Chạy thêm [migration shop](supabase/migrations/202611050001_gunny_shop.sql), cập nhật server và game cùng bản. Xu dùng số dư kiếm trong game; mua bằng giỏ hàng, không nạp tiền. [Hướng dẫn](docs/UPDATE-7.4.4.md).
+- `/admin/`: quản lý tài khoản, lịch xóa, thông báo và cấp tiền/xu. Không có mật khẩu mặc định.
+- `/download/`: tải JAD/JAR E72/E6 và hướng dẫn HTTPS. Giữ thư mục public vì Docker đóng gói các file này.
+- Xác nhận email mở trang chúc mừng một lần, rồi quay lại game đăng nhập. Cấu hình Supabase Site URL/Redirect URL bằng địa chỉ Render thật, không dùng localhost.
 
-## Bốn vũ khí 7.4.4
+## Kiểm tra và chạy thử
 
-Sau migration shop, chạy [migration vũ khí](supabase/migrations/202611050002_gunny_arsenal.sql), cập nhật game và server 7.4.4 (`arsenal:2`). [Chi tiết](docs/UPDATE-7.4.4.md).
+Cần JDK 17 trở lên. Chạy `./verify.ps1` để kiểm tra API, giao thức, hồ sơ, phần thưởng, tải file và xác nhận email. `./backend/run-local.ps1 -TestAccounts` chạy server với tài khoản trong RAM tại localhost:8080; không dùng chế độ tài khoản thử trên Render.
 
-## Tiền mua sắm và trang bị 7.4.4
-
-Sau SQL shop/vũ khí, chạy [migration trang bị và ví](supabase/migrations/202611050003_gunny_equipment.sql). Tỷ lệ 100 xu chiến đấu = 1 tiền mua sắm; đồ đang mặc có chỉ số thực trong trận. Cập nhật cả game/server (`equipment:1`). [Hướng dẫn](docs/UPDATE-7.4.4.md).
-
-## Web tải game
-
-`https://TEN-SERVER.onrender.com/download/` có JAD/JAR cả E72 và E6, bản vá và hướng dẫn HTML/PDF. **Giữ thư mục public trong repo** vì Docker cần đóng gói các file này. Trang không dùng JavaScript hay tài nguyên bên ngoài. Nokia chưa truy cập HTTPS được có thể nhận file từ máy tính hoặc dùng gói `Gunny-download.zip` qua HTTP trong cùng Wi-Fi.
-
-## Thẻ danh sách phòng
-
-Thẻ dùng nhãn Tự do / Khiêu chiến và ảnh map theo phòng thật. Khóa ô đồng minh hiện 1/1, mở trống hiện 1/2; ô có AI cũng tính đã có người. Cần cập nhật cả game và server (`cards:1`). [Chi tiết 7.4.4](docs/UPDATE-7.4.4.md).
-
-## Thanh công cụ trong phòng
-
-Năm biểu tượng dùng lại hình và viền vàng của sảnh Online, đặt sát nhau dưới phòng; giữ tooltip và hỗ trợ chạm/kéo/thả. Khung bản đồ thay Quan chiến. [Chi tiết 7.4.4](docs/UPDATE-7.4.4.md).
-
-## Thiết lập phòng
-
-Bảng tạo phòng dùng asset gốc; tạo thường hiện Thi đấu, tạo Tổ đội hiện Tổ đội. Có khóa mật mã và hỗ trợ bốn phím hướng. [Chi tiết 7.4.4](docs/UPDATE-7.4.4.md).
-
-## Đạo cụ
-
-Chọn ba ô Z/X/C trong phòng, mỗi đạo cụ dùng một lần mỗi trận và tốn thể lực. Q/W/E/R/T và B giữ buff cũ; F đổi vũ khí. [Chi tiết sáu đạo cụ và thể lực](docs/UPDATE-7.4.4.md).
-
-## Phòng và lượt
-
-Đấu đơn chờ và ghép người chơi thật ở màn VS. Tổ đội có 6 ô mở cho trận 3v3, đủ 6 người sẵn sàng sẽ tự bắt đầu. Tạo phòng mở thiết lập riêng, giữ giao diện phòng cổ điển.
-
-Thao tác và bắn chạy ngay trên client bằng vật lý offline; server kiểm tra và xử lý ngầm. Máy còn lại nhận và xem tuần tự đoạn di chuyển, POW và từng loạt đạn sau khi server xử lý xong đoạn đó. Không phải chờ cả lượt. Rào cuối lượt chờ các máy phát lại xong trước khi chạy đồng hồ lượt kế tiếp. [Cách cập nhật 7.4.4](docs/UPDATE-7.4.4.md). Kết quả dùng ảnh gốc, sau đó lật 1 trong 9 thẻ để nhận xu; SQL bảo đảm không cộng thưởng hai lần.
-
-## Chạy thử
-
-JDK 17 trở lên. Chạy `./verify.ps1` để kiểm tra HTTP, giao thức cũ/mới, tài khoản mock, bản đồ, thưởng lặp và tải file an toàn. Chạy `./backend/run-local.ps1 -TestAccounts` để tạo server localhost 8080 với tài khoản thử trong RAM. Chế độ thử không dùng được trên Render. Game giả lập nhập `http://127.0.0.1:8080`.
-
-Đã thử với 6 MIDlet trong MicroEmulator ở 320×240 và 640×480. Chưa thử bản này trên Nokia vật lý hay Supabase/Render thật. Phòng đang chơi vẫn ở RAM; Render khởi động lại sẽ mất trận chưa lưu. Hồ sơ và phần thưởng đã ghi được lưu tại Supabase.
-
-[Hướng dẫn cập nhật, email, xu và web](docs/UPDATE-6.3.1.md)
+Đã kiểm tra giả lập hai độ phân giải và API server. Chưa thử trên Nokia vật lý hoặc chạy SQL trên Supabase của bạn. Phòng đang chơi ở RAM; khởi động lại Render mất trận chưa lưu. Hồ sơ và phần thưởng đã ghi được lưu trong Supabase.
