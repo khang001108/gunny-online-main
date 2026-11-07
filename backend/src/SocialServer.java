@@ -13,10 +13,11 @@ final class SocialServer {
   if(store instanceof CloudStore.Memory m){for(var a:m.accounts.values())if(a.profile().publicId==id)return a.profile();throw new IllegalArgumentException("Không có ID này.");}
   List<?> rows=(List<?>)store.request("/rest/v1/profiles?public_id=eq."+id+"&select=id","GET",null,true);if(rows.isEmpty())throw new IllegalArgumentException("Không có ID này.");return store.profile(Json.str(Json.obj(rows.get(0)),"id"));
  }
- void friend(GunnyServer.Session s,int id,int mode)throws Exception{
-  CloudStore.Profile p=target(id);if(p.id.equals(s.id))throw new IllegalArgumentException("Đây là ID của bạn.");
+ String friend(GunnyServer.Session s,int id,int mode)throws Exception{
+  CloudStore.Profile p=target(id);if(p.id.equals(s.id))throw new IllegalArgumentException("Đây là ID của bạn.");if(mode==0||mode==1)for(var relation:relations(s.id))if(Boolean.TRUE.equals(relation.get("accepted"))&&(p.id.equals(relation.get("sender"))||p.id.equals(relation.get("receiver"))))return "Hai bạn đã là bạn bè.";
   if(store instanceof CloudStore.Memory){synchronized(memory){String forward=s.id+":"+p.id,reverse=p.id+":"+s.id;if(mode==0){if(!memory.containsKey(reverse))memory.putIfAbsent(forward,false);}else if(mode==1){if(!Boolean.FALSE.equals(memory.get(reverse)))throw new IllegalArgumentException("Không có yêu cầu này.");memory.put(reverse,true);}else if(mode==2){if(Boolean.FALSE.equals(memory.get(reverse)))memory.remove(reverse);}else throw new IllegalArgumentException("Sai thao tác.");}}
   else store.request("/rest/v1/rpc/gunny_friend_action","POST",Json.write(Map.of("p_user",s.id,"p_target",id,"p_mode",mode)),true);
+  return mode==1?"Đã đồng ý kết bạn.":mode==0?"Đã gửi lời mời kết bạn.":"Đã từ chối lời mời.";
  }
  boolean handles(String op){return Set.of("playerinfo","findfriend","presence","battleemote","battleemotes","social","friend","invite","inviteanswer","allyai","socialpulse","slot","emote").contains(op);}
  GunnyServer.Session online(String id){for(var s:server.sessions.values())if(s.id.equals(id)&&System.currentTimeMillis()-s.lastSeen<45000)return s;return null;}
@@ -30,7 +31,7 @@ final class SocialServer {
   if(op.equals("slot")){int seat=in.readUnsignedByte();var r=server.requireRoom(s);synchronized(r){if(r.host!=s||r.phase!=0||seat<0||seat==r.slot(s)||seat>=r.count)throw new IllegalArgumentException("Chỉ chủ phòng được đổi ô chờ.");if(r.members[seat]!=null)server.leave(r.members[seat]);else if(seat==2&&r.allyBot>=0)r.allyBot=-1;else if(r.selectedBots[seat]>=0)r.selectedBots[seat]=-1;else r.closedSlots^=1<<seat;r.refreshWaiting();server.lobby(out,r,s);}return;}
   if(op.equals("emote")){int value=in.readUnsignedByte();var r=server.requireRoom(s);synchronized(r){int seat=r.slot(s);if(seat<0||value>1)throw new IllegalArgumentException("Biểu cảm không hợp lệ.");r.emotes[seat]=value;server.lobby(out,r,s);}return;}
   if(op.equals("socialpulse")){out.writeInt(s.inviteRoom);out.writeUTF(s.inviteFrom);return;}
-  if(op.equals("friend")){friend(s,in.readInt(),in.readUnsignedByte());out.writeUTF("Đã cập nhật bạn bè.");return;}
+  if(op.equals("friend")){out.writeUTF(friend(s,in.readInt(),in.readUnsignedByte()));return;}
   if(op.equals("social")){int tab=in.readUnsignedByte();List<CloudStore.Profile> list=new ArrayList<>();if(tab==0||tab==3){for(var r:relations(s.id)){boolean accepted=Boolean.TRUE.equals(r.get("accepted"));String sender=(String)r.get("sender"),receiver=(String)r.get("receiver");if(tab==0&&accepted||tab==3&&!accepted&&receiver.equals(s.id))list.add(store.profile(sender.equals(s.id)?receiver:sender));}}
    else for(var p:server.sessions.values()){var room=server.rooms.get(p.room);if(p!=s&&online(p.id)!=null&&(tab!=1||room==null)&&list.stream().noneMatch(x->x.id.equals(p.id)))list.add(p.profile);}
    list.sort(Comparator.comparingInt(p->p.publicId));out.writeInt(s.profile.publicId);out.writeShort(Math.min(128,list.size()));for(int i=0;i<Math.min(128,list.size());i++)person(out,list.get(i),online(list.get(i).id)!=null);return;}

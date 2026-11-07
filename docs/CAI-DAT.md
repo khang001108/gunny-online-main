@@ -1,11 +1,15 @@
-# Cỡ cả sáu map và Mộc Diệp Trấn — 7.6.6
+# Đồng bộ sảnh và Bạn bè — 7.6.7
 
-Cả 6 map tăng chiều cao từ 220 lên 264 đơn vị (+20%), giữ chiều ngang 480 và kích thước nhân vật. Dùng lại ảnh fore gốc từ Resource, không vẽ nền mới. Đất/vật thể cao và dày hơn, phần mép dưới đi xuống sát vùng thanh lực thay vì bị cắt ngang cao trong vùng chơi.
+Danh sách phòng ở sảnh tự tải lại theo lịch riêng mỗi khoảng 2 giây, không bị tác vụ presence/progress/socialpulse liên tục dời mốc tải. Đã bỏ phụ thuộc mốc lastPoll dùng chung.
 
-Đồng bộ ảnh E72/E6, chiều cao vật lý, dữ liệu va chạm, mặt nạ vùng cứng, địa hình server, phá đất/phát lại và tỷ lệ bản đồ nhỏ. Giữ nguyên cỡ nhân vật, HUD, sức nổ, tốc độ đạn và mức gió theo cấp.
+Bạn bè có trạng thái tải riêng cho danh sách, tìm kiếm, thao tác và hồ sơ. Trạng thái mạng chung không làm danh sách trống nhấp nháy nữa. Dữ liệu khác tab/thế hệ yêu cầu bị bỏ qua; yêu cầu UI được chờ xử lý thay vì mất khi worker đang bận. Danh sách Bạn bè/lời mời tự kiểm tra lại khoảng 4 giây khi mở.
 
-Mộc Diệp Trấn bỏ toàn bộ mặt nạ cứng: phá được cả gỗ và vòng sắt như trước. Hai quy tắc khác giữ nguyên: Đu Quay không đục được, Phố Nấm Lùn phá phần cỏ trên và giữ lớp đất cứng.
+Tab Thêm bạn: dòng đầu “Tìm kiếm bạn bè” bên trái, nút cộng bên phải lấy từ vòng cộng xanh trong asset giỏ hàng gốc. Các dòng bên dưới hiển thị lời mời nhận được. Chọn dòng tìm hoặc nút cộng mở khung nhập dùng đúng frame, nút, ô nhập và font đã có; không vẽ template mới. Có thể gõ QWERTY trực tiếp hoặc chọn Nhập để dùng bộ gõ native như đăng nhập, rồi Tìm. Kết quả hiển thị trong bảng cũ cùng nút Kết bạn.
 
-Bắt buộc cập nhật toàn bộ server (backend/assets/land0..5.png và hard0..5.dat) và JAR/JAD 7.6.6 trên tất cả máy cùng chơi. Không dùng chung JAR cũ vì kích thước địa hình/va chạm đã đổi. Không có SQL mới nếu đã cập nhật giá shop bằng GUNNY-ALL.sql từ 7.6.2.
+Gửi/đồng ý kết bạn hiện popup tiến trình và kết quả bằng NativePopup đang dùng. Phản hồi từ server là nguồn trạng thái. Chấp nhận lại quan hệ đã thành bạn trả về trạng thái đã kết bạn thay vì báo lỗi lời mời. Không đổi SQL.
 
-Đã kiểm tra kích thước/va chạm của cả 6 map ở hai độ phân giải, dữ liệu client/server đồng nhất, vùng cứng, Mộc Diệp Trấn phá toàn bộ, camera và bản đồ nhỏ. Chưa thử trên Nokia thật hoặc Render/Supabase thật.
+Chọn Xem bạn bè mở ngay khung thông tin cũ và dòng Đang tải…, sau đó thay bằng nhân vật/trang bị/chỉ số. Đóng khung khi đang tải không tự mở lại khi dữ liệu cũ về. Mềm trái xem tooltip, mềm phải/0/X trở về như bản 7.6.4.
+
+Cập nhật server và JAR/JAD 7.6.7. Không có SQL mới nếu đã chạy GUNNY-ALL.sql từ 7.6.2. Giữ cả sáu map cao 264 và Mộc Diệp Trấn phá được toàn bộ.
+
+Kiểm tra bằng hai client: phòng xuất hiện/biến mất tự động, tìm người, gửi/nhận/đồng ý kết bạn, tự cập nhật danh sách và mở/đóng hồ sơ đang tải, hai độ phân giải. Chưa thử Nokia thật hoặc Supabase/Render thật.
