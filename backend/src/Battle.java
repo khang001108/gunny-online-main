@@ -1,6 +1,6 @@
 /** Fixed-point artillery rules for CLDC 1.1. No desktop or Android APIs. */
 final class Battle {
-    static final int W=480,H=220,MAXHP=2000;
+    static final int W=480,H=264,MAXHP=2000;
     static final int AIM_RADIUS=60;
     static final int AIM_RAY_LENGTH=78;
     static final int THROW_WINDUP=6;
@@ -143,7 +143,7 @@ final class Battle {
         else if(id==3){boolean visible=false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&ally(active,i)&&units[i].invisible==0)visible=true;if(!visible)return false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&ally(active,i))units[i].invisible=Math.max(2,units[i].invisible);}
         else if(id==4){if(u.assist||fly||freezeShot)return false;u.assist=true;}
         else if(id==5){if(u.rage>=100)return false;u.rage=Math.min(100,u.rage+50);}
-        u.energy-=ITEM_COST[id];u.itemUsed|=1<<slot;return true;
+        u.energy-=ITEM_COST[id];u.itemUsed|=1<<slot;u.flashTicks=36;u.lastBuff=11+id;usedProps|=1<<(11+id);if(usedPropCount<usedPropHistory.length)usedPropHistory[usedPropCount++]=11+id;return true;
     }
     void charge(){if(input()){refreshAim(units[active]);charging=true;chargeDir=1;units[active].power=0;}}
     void fire(){if(!input())return;refreshAim(units[active]);if(shotObserver!=null)shotObserver.beforeShot();charging=false;units[active].pendingPower=units[active].power;sequentialAttack=extra>0;bursts=1+extra;burstDelay=freezeShot||isThrown(units[active].weapon)?THROW_WINDUP:0;if(pow)units[active].rage=0;else units[active].rage=Math.min(100,units[active].rage+10);}

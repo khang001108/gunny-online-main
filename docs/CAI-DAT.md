@@ -1,11 +1,11 @@
-# Xem trang bị bạn bè — 7.6.3
+# Cỡ cả sáu map và Mộc Diệp Trấn — 7.6.6
 
-Chỉ giữ bảng nhân vật bên trái, thu gọn và căn giữa bằng asset khung túi đồ gốc. Bỏ bảng liệt kê trang bị bên phải.
+Cả 6 map tăng chiều cao từ 220 lên 264 đơn vị (+20%), giữ chiều ngang 480 và kích thước nhân vật. Dùng lại ảnh fore gốc từ Resource, không vẽ nền mới. Đất/vật thể cao và dày hơn, phần mép dưới đi xuống sát vùng thanh lực thay vì bị cắt ngang cao trong vùng chơi.
 
-Dùng phím hướng chọn ô đang có vật phẩm. Phím mềm phải hoặc OK bật/tắt thông tin món đang chọn, dùng cùng tooltip nền mờ/chữ màu/chỉ số như túi đồ. Viền chọn nhấp nháy khi xem thông tin. Nhãn cuối là “Đang trang bị”, không lấy trạng thái sở hữu từ túi của người xem.
+Đồng bộ ảnh E72/E6, chiều cao vật lý, dữ liệu va chạm, mặt nạ vùng cứng, địa hình server, phá đất/phát lại và tỷ lệ bản đồ nhỏ. Giữ nguyên cỡ nhân vật, HUD, sức nổ, tốc độ đạn và mức gió theo cấp.
 
-Phím mềm trái, số 0 hoặc nút X trở về danh sách bạn bè. Chạm ô để chọn, chạm lại hoặc chạm dòng “Phải: thông tin” để bật/tắt tooltip. Chỉ xem, không có thao tác mặc/gỡ, mua hay di chuyển đồ của bạn bè.
+Mộc Diệp Trấn bỏ toàn bộ mặt nạ cứng: phá được cả gỗ và vòng sắt như trước. Hai quy tắc khác giữ nguyên: Đu Quay không đục được, Phố Nấm Lùn phá phần cỏ trên và giữ lớp đất cứng.
 
-Cài JAR/JAD 7.6.3 đúng E72/E6. Server giữ API playerinfo từ 7.6.2; gói server mới chủ yếu cập nhật trang tải. Nếu đã cập nhật server/SQL 7.6.2 thì không cần chạy SQL lại. Các giá shop và vật liệu map từ 7.6.2 giữ nguyên.
+Bắt buộc cập nhật toàn bộ server (backend/assets/land0..5.png và hard0..5.dat) và JAR/JAD 7.6.6 trên tất cả máy cùng chơi. Không dùng chung JAR cũ vì kích thước địa hình/va chạm đã đổi. Không có SQL mới nếu đã cập nhật giá shop bằng GUNNY-ALL.sql từ 7.6.2.
 
-Đã kiểm tra hai độ phân giải, chọn vật phẩm, mềm phải bật/tắt, mềm trái trở về, tooltip không che vật đang chọn và không thay đổi hồ sơ người xem. Chưa thử trên Nokia thật.
+Đã kiểm tra kích thước/va chạm của cả 6 map ở hai độ phân giải, dữ liệu client/server đồng nhất, vùng cứng, Mộc Diệp Trấn phá toàn bộ, camera và bản đồ nhỏ. Chưa thử trên Nokia thật hoặc Render/Supabase thật.
