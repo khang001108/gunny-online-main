@@ -1,11 +1,11 @@
-# Tối ưu zoom B POW — 7.6.1
+# Xem trang bị bạn bè — 7.6.3
 
-Cài JAR/JAD 7.6.1 đúng E72/E6. Cập nhật gói server để trang tải phát đúng JAR mới. Không có SQL mới; nếu đã chạy GUNNY-ALL.sql thì không cần chạy lại. Luật gió theo cấp từ 7.6.0 giữ nguyên.
+Chỉ giữ bảng nhân vật bên trái, thu gọn và căn giữa bằng asset khung túi đồ gốc. Bỏ bảng liệt kê trang bị bên phải.
 
-Nền cinematic POW chỉ được chụp một lần, thay vì vẽ lại địa hình và đọc toàn màn hình ở mọi khung hình. Giữ nền và tâm zoom ổn định trong đoạn cinematic; HUD, vòng sáng và ảnh nhân vật vẫn vẽ theo nhịp cũ. Khi zoom/độ tối không đổi, dùng lại khung hình đã xử lý, không chạy lại vòng lặp tính màu toàn màn hình.
+Dùng phím hướng chọn ô đang có vật phẩm. Phím mềm phải hoặc OK bật/tắt thông tin món đang chọn, dùng cùng tooltip nền mờ/chữ màu/chỉ số như túi đồ. Viền chọn nhấp nháy khi xem thông tin. Nhãn cuối là “Đang trang bị”, không lấy trạng thái sở hữu từ túi của người xem.
 
-Khi zoom thay đổi, tọa độ theo cột và độ tối cơ bản được tính sẵn để giảm phép chia trong vòng lặp điểm ảnh. Ảnh offscreen được giải phóng ngay sau khi chụp; các bộ đệm được dọn khi kết thúc POW, sang trận mới hoặc về sảnh. Ghép ảnh nhân vật POW dùng chung một bộ đệm tạm cho các lớp trong lần ghép, giảm cấp phát và áp lực thu gom rác.
+Phím mềm trái, số 0 hoặc nút X trở về danh sách bạn bè. Chạm ô để chọn, chạm lại hoặc chạm dòng “Phải: thông tin” để bật/tắt tooltip. Chỉ xem, không có thao tác mặc/gỡ, mua hay di chuyển đồ của bạn bè.
 
-Giữ nguyên asset, ngoại hình đang mặc, công thức zoom/làm tối, thời lượng 150 tick và thời điểm bắn. Áp dụng chung offline và online. Nền giữ yên có chủ ý trong cinematic, trở lại vẽ trận bình thường khi POW kết thúc.
+Cài JAR/JAD 7.6.3 đúng E72/E6. Server giữ API playerinfo từ 7.6.2; gói server mới chủ yếu cập nhật trang tải. Nếu đã cập nhật server/SQL 7.6.2 thì không cần chạy SQL lại. Các giá shop và vật liệu map từ 7.6.2 giữ nguyên.
 
-Kiểm tra pixel so với công thức cũ ở các mốc zoom vào/giữ/zoom ra, tái sử dụng bộ đệm và khung hình, giải phóng bộ nhớ, giả lập E72/E6 và các luồng online. Chưa đo FPS trên Nokia thật; không cam kết mức tăng FPS cụ thể trên thiết bị.
+Đã kiểm tra hai độ phân giải, chọn vật phẩm, mềm phải bật/tắt, mềm trái trở về, tooltip không che vật đang chọn và không thay đổi hồ sơ người xem. Chưa thử trên Nokia thật.

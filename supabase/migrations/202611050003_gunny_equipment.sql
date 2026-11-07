@@ -45,7 +45,7 @@ declare v_money integer;v_owned integer;cost integer;
 begin
  if p_weapon is null or p_weapon not in(0,1,2,3,4,5,7,9) then raise exception 'Invalid weapon';end if;
  select shopping_money,owned into strict v_money,v_owned from public.profiles where id=p_user for update;
- cost:=(array[0,650,950,450,550,800,1100,700,600,1200])[p_weapon+1];
+ cost:=(array[0,180,180,180,180,180,180,180,180,180])[p_weapon+1];
  if (v_owned & (1<<p_weapon))=0 then
   if v_money<cost then raise exception 'Insufficient coins';end if;
   v_money:=v_money-cost;v_owned:=v_owned | (1<<p_weapon);
@@ -66,7 +66,7 @@ begin
   for i in 0..9 loop
    if (m & (1<<i))<>0 then
     if k=0 and i not in(0,1,2,3,4,5,7,9) then raise exception 'Invalid weapon';end if;
-    price:=case when k=0 then (array[0,650,950,450,550,800,1100,700,600,1200])[i+1] when k=1 then 300 when k in(5,6) then 100 else 150 end;
+    price:=case when k=0 then (array[0,180,180,180,180,180,180,180,180,180])[i+1] when k=1 then 300 when k in(5,6) then 100 else 150 end;
     if (owned_mask & (1<<i))=0 then cost:=cost+price;end if;
    end if;
   end loop;
