@@ -1,11 +1,11 @@
-# Gió nhẹ cho người chơi cấp thấp — 7.6.0
+# Tối ưu zoom B POW — 7.6.1
 
-Cập nhật cả server và JAR/JAD 7.6.0 đúng E72/E6. Không có SQL mới; đã chạy GUNNY-ALL.sql ở 7.5.8 thì không cần chạy lại. Project mới dùng duy nhất supabase/GUNNY-ALL.sql.
+Cài JAR/JAD 7.6.1 đúng E72/E6. Cập nhật gói server để trang tải phát đúng JAR mới. Không có SQL mới; nếu đã chạy GUNNY-ALL.sql thì không cần chạy lại. Luật gió theo cấp từ 7.6.0 giữ nguyên.
 
-Giới hạn gió theo cấp: cấp 01 tối đa ±1.0, cấp 02 ±1.1, cấp 11 ±2.0, từ cấp 21 trở lên ±3.0 như trước. Giới hạn tăng 0.1 mỗi cấp. Gió vẫn ngẫu nhiên cả hai chiều, có thể bằng 0; chỉ giảm biên độ, không đổi công thức gió riêng của từng vũ khí hay trọng lực.
+Nền cinematic POW chỉ được chụp một lần, thay vì vẽ lại địa hình và đọc toàn màn hình ở mọi khung hình. Giữ nền và tâm zoom ổn định trong đoạn cinematic; HUD, vòng sáng và ảnh nhân vật vẫn vẽ theo nhịp cũ. Khi zoom/độ tối không đổi, dùng lại khung hình đã xử lý, không chạy lại vòng lặp tính màu toàn màn hình.
 
-Offline dùng cấp hiện tại của người chơi khi bắt đầu trận. Online server lấy giới hạn thấp nhất từ các tài khoản người thật trong phòng, bỏ qua cấp của bot. Cả hai đội dùng cùng mức gió; giới hạn được chốt khi bắt đầu trận. Có hiệu lực ngay lượt đầu và mọi lượt sau, gồm đấu đơn, tổ đội và phòng riêng. Đồng hồ gió hiển thị đúng gió thật được server gửi về, không có hệ số ẩn theo từng người.
+Khi zoom thay đổi, tọa độ theo cột và độ tối cơ bản được tính sẵn để giảm phép chia trong vòng lặp điểm ảnh. Ảnh offscreen được giải phóng ngay sau khi chụp; các bộ đệm được dọn khi kết thúc POW, sang trận mới hoặc về sảnh. Ghép ảnh nhân vật POW dùng chung một bộ đệm tạm cho các lớp trong lần ghép, giảm cấp phát và áp lực thu gom rác.
 
-Giữ các sửa từ 7.5.9: ngoại hình online trên dốc đúng người chơi, người thua có sát thương mở được thẻ và có thể rời phòng sau khi nhận thẻ riêng. Giữ asset level 01–70, bố cục túi đồ và thanh phòng offline đã sửa.
+Giữ nguyên asset, ngoại hình đang mặc, công thức zoom/làm tối, thời lượng 150 tick và thời điểm bắn. Áp dụng chung offline và online. Nền giữ yên có chủ ý trong cinematic, trở lại vẽ trận bình thường khi POW kết thúc.
 
-Kiểm tra ngưỡng cấp, giới hạn gió nhiều lượt, cả hai chiều, giao diện hai độ phân giải và đồng bộ gió giữa hai client với server. Chưa thử trên Nokia vật lý hoặc Supabase/Render thật.
+Kiểm tra pixel so với công thức cũ ở các mốc zoom vào/giữ/zoom ra, tái sử dụng bộ đệm và khung hình, giải phóng bộ nhớ, giả lập E72/E6 và các luồng online. Chưa đo FPS trên Nokia thật; không cam kết mức tăng FPS cụ thể trên thiết bị.

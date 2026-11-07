@@ -1,12 +1,12 @@
-# Gunny Java Online 7.6.0
+# Gunny Java Online 7.6.1
 
 ## Cài mới hoặc cập nhật
 
-7.6.0 giảm gió cho người chơi cấp thấp: cấp 01 tối đa ±1.0, tăng dần đến ±3.0 từ cấp 21. Phòng online lấy giới hạn theo cấp thấp nhất và dùng chung cho mọi người. Giữ các sửa trang bị và thẻ thưởng từ 7.5.9. Nếu đã chạy GUNNY-ALL.sql ở 7.5.8 thì không cần chạy SQL lại.
+7.6.1 tối ưu zoom B POW: chụp nền một lần, dùng lại khung hình khi zoom/độ tối giữ nguyên, giảm phép chia và cấp phát bộ đệm. Giữ asset và thời gian bắn, cùng luật gió theo cấp từ 7.6.0 và các sửa thẻ/trang bị. Nếu đã chạy GUNNY-ALL.sql ở 7.5.8 thì không cần chạy SQL lại.
 
 1. Supabase → SQL Editor: chạy duy nhất [GUNNY-ALL.sql](supabase/GUNNY-ALL.sql). File dùng được cho project mới hoặc đã có dữ liệu, gộp đầy đủ shop, trang bị, bản vá equip, quản trị, thông báo, EXP và thưởng người thua. Không chạy thêm SQL cũ sau file này.
 2. Cập nhật toàn bộ repo server lên Render. Giữ nguyên biến môi trường Supabase và GUNNY_ADMIN_PASSWORD (tối thiểu 16 ký tự). Không đưa khóa vào mã nguồn.
-3. Cài JAR/JAD 7.6.0 đúng E72 hoặc E6. Người chơi cùng trận nên dùng cùng phiên bản. [Hướng dẫn](docs/CAI-DAT.md).
+3. Cài JAR/JAD 7.6.1 đúng E72 hoặc E6. Người chơi cùng trận nên dùng cùng phiên bản. [Hướng dẫn](docs/CAI-DAT.md).
 
 SQL giữ tài khoản, đồ, số dư, EXP, số trận thắng và lịch xóa đang có. Chỉ các hồ sơ chưa có EXP mới bắt đầu từ 0 EXP. SQL chạy trong một giao dịch, có thể chạy lại; không có lệnh xóa/reset tài khoản. Bản gộp chỉ giữ định nghĩa RPC cuối cùng, có cả sửa toán tử trang bị.
 
@@ -20,7 +20,7 @@ Dùng đúng bitmap gốc `asset.LevelIcon.Level_1` đến `Level_70`, giữ s�
 
 Thắng +300 EXP, thua +100 EXP. Người thua có sát thương nhận nửa xu thưởng trận (250 xu đấu đơn/phòng riêng; 500 xu tổ đội) và mở một thẻ thưởng. Không gây sát thương thì chỉ nhận EXP. Gửi lại kết quả/thẻ không cộng trùng.
 
-Level hiện ở túi đồ, phòng chờ, trong trận và kết quả. Túi đồ hiện EXP, hạng theo tổng trận thắng, số trận thắng, lực chiến tính cả trang bị đang mặc. Ảnh POW dùng đúng ngoại hình đang mặc. Xem [thay đổi 7.6.0](docs/UPDATE-7.6.0.md).
+Level hiện ở túi đồ, phòng chờ, trong trận và kết quả. Túi đồ hiện EXP, hạng theo tổng trận thắng, số trận thắng, lực chiến tính cả trang bị đang mặc. Ảnh POW dùng đúng ngoại hình đang mặc. Xem [thay đổi 7.6.1](docs/UPDATE-7.6.1.md).
 
 ## Web và tài khoản
 
