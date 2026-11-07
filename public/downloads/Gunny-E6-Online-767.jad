@@ -13,4 +13,4 @@ Nokia-MIDlet-Target-Display-Size: 640,480
 MIDlet-Touch-Support: true
 MIDlet-Permissions-Opt: javax.microedition.io.Connector.https
 MIDlet-Jar-URL: Gunny-E6-Online-767.jar
-MIDlet-Jar-Size: 35817905
+MIDlet-Jar-Size: 35828680
