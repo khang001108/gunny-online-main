@@ -145,7 +145,7 @@ final class Battle {
         else if(id==5){if(u.rage>=100)return false;u.rage=Math.min(100,u.rage+50);}
         u.energy-=ITEM_COST[id];u.itemUsed|=1<<slot;u.flashTicks=36;u.lastBuff=11+id;usedProps|=1<<(11+id);if(usedPropCount<usedPropHistory.length)usedPropHistory[usedPropCount++]=11+id;return true;
     }
-    void charge(){if(input()){refreshAim(units[active]);charging=true;chargeDir=1;units[active].power=0;}}
+    void charge(){if(input()&&!charging){refreshAim(units[active]);charging=true;chargeDir=1;units[active].power=0;}}
     void fire(){if(!input())return;refreshAim(units[active]);if(shotObserver!=null)shotObserver.beforeShot();charging=false;units[active].pendingPower=units[active].power;sequentialAttack=extra>0;bursts=1+extra;burstDelay=freezeShot||isThrown(units[active].weapon)?THROW_WINDUP:0;if(pow)units[active].rage=0;else units[active].rage=Math.min(100,units[active].rage+10);}
     void pass(){if(input()){next();}}
     void tickVisuals(){
@@ -179,7 +179,7 @@ final class Battle {
         if(settle>0){if(--settle==0){check();if(!over)next();}return;}
         if(busy())return;check();if(over)return;
         if(!humanTurn()){botTurn();return;}
-        if(charging){Unit u=units[active];u.power+=2*chargeDir;if(u.power>=100){u.power=100;chargeDir=-1;}else if(u.power<=0){u.power=0;chargeDir=1;}}
+        if(charging){Unit u=units[active];u.power+=chargeDir;if(u.power>=100){u.power=100;chargeDir=-1;}else if(u.power<=0){u.power=0;charging=false;next();}return;}
         if(--countdown<=0)next();
     }
     static int ballFrame(Ball b){

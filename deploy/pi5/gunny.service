@@ -1,0 +1,22 @@
+[Unit]
+Description=Gunny Java Online
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gunny
+Group=gunny
+WorkingDirectory=/opt/gunny
+EnvironmentFile=/etc/gunny/gunny.env
+ExecStart=/usr/bin/java -Xms64m -Xmx512m -Djava.awt.headless=true -cp /opt/gunny/classes GunnyServer
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/gunny
+
+[Install]
+WantedBy=multi-user.target

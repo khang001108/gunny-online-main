@@ -1,4 +1,6 @@
 .env
+gunny.env
+deploy/backups/
 .env.*
 !.env.example
 backend/build/

@@ -11,5 +11,6 @@ COPY backend/assets/ /app/assets1/
 COPY public/ /app/public/
 USER gunny
 ENV PORT=8080
-EXPOSE 8080
+ENV TCP_PORT=22122
+EXPOSE 8080 22122
 CMD ["java","-Xms32m","-Xmx256m","-Djava.awt.headless=true","-cp","classes","GunnyServer"]

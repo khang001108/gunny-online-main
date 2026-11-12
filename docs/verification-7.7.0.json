@@ -1,0 +1,19 @@
+{
+  "version": "7.7.0",
+  "production_deployed": false,
+  "supabase_migration_executed": false,
+  "project": "mnquwasxacifkktmckdv",
+  "image": "gunny-online:7.7.0",
+  "image_id": "sha256:90da9968cd5032ba21313d3ed0cd1ad455956323e3ddc751ec69c132476bca74",
+  "backend_pass_checks": 137,
+  "native_controls": [
+    "320x240 passed",
+    "640x480 passed"
+  ],
+  "native_tcp_clients": [
+    "320x240 passed",
+    "640x480 passed"
+  ],
+  "isolated_postgresql_17": "passed: repeatable migration, preservation guard, defaults, extension, expiry, RLS",
+  "physical_handsets_tested": false
+}
