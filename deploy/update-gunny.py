@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Interactive Docker updater for Gunny 7.8.0. Never executes a SQL migration."""
+"""Interactive Docker updater for Gunny 7.8.1. Never executes a SQL migration."""
 import argparse
 import contextlib
 import datetime
@@ -19,7 +19,7 @@ import urllib.request
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "7.8.0"
+VERSION = "7.8.1"
 PROJECT = "mnquwasxacifkktmckdv"
 MIGRATION = ROOT / "supabase/migrations/202611120001_virtual_accounts_retention.sql"
 EXPANSION = ROOT / "supabase/migrations/202611130001_forge_dungeon.sql"
@@ -210,10 +210,10 @@ def verify_endpoints(http, tcp, modern=True):
                 raise OSError("Image chưa có đồng bộ cấp và trạng thái TCP trực tiếp của 7.8.0")
     if modern:
         for device in ("E72-2009", "E6"):
-            with urllib.request.urlopen(base + "/download/Gunny-" + device + "-Online-780.jad", timeout=3) as response:
+            with urllib.request.urlopen(base + "/download/Gunny-" + device + "-Online-" + VERSION.replace(".", "") + ".jad", timeout=3) as response:
                 jad = response.read(8192).decode()
-            if "MIDlet-Version: 7.8.0" not in jad or "socket://" not in jad:
-                raise OSError("Bộ cài không khớp bản 7.8.0")
+            if ("MIDlet-Version: " + VERSION) not in jad or "socket://" not in jad:
+                raise OSError("Bộ cài không khớp bản " + VERSION)
 
 
 def wait_ready(container, modern=True, timeout=40):
@@ -335,7 +335,7 @@ def update(docker, args):
         image = docker.image(args.image)
     if old["Image"] == image["Id"]:
         wait_ready(old)
-        print("Container đã chạy đúng image và qua kiểm tra 7.8.0.")
+        print("Container đã chạy đúng image và qua kiểm tra " + VERSION + ".")
         return
     run_id = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid.uuid4().hex[:6]
     folder = args.state_dir / run_id
@@ -410,7 +410,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", nargs="?", choices=["menu", "check", "update", "rollback"], default="menu")
     parser.add_argument("--container", default="gunny-online")
-    parser.add_argument("--image", default="gunny-online:7.8.0")
+    parser.add_argument("--image", default="gunny-online:" + VERSION)
     parser.add_argument("--state-dir", type=Path, default=ROOT / "deploy/backups/updater")
     parser.add_argument("--sql-confirmed", action="store_true", help="Owner confirms the SQL was run manually; still verify schema")
     parser.add_argument("--build", action="store_true", help="Rebuild even when the image already exists")
@@ -424,7 +424,7 @@ def main():
             parser.print_help()
             return 0
         print("GUNNY " + VERSION + " · CẬP NHẬT DOCKER")
-        print("1. Kiểm tra\n2. Cập nhật lên 7.8.0\n3. Quay lại bản trước\n0. Thoát")
+        print("1. Kiểm tra\n2. Cập nhật lên " + VERSION + "\n3. Quay lại bản trước\n0. Thoát")
         choice = input("Chọn: ").strip()
         if choice == "0":
             return 0

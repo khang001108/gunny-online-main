@@ -113,7 +113,7 @@ public final class GunnyServer implements AutoCloseable {
     int tcpPort(){return tcp==null?0:tcp.port();}
     void startTcp(String bind,int port,int maximum)throws IOException {if(tcp!=null)throw new IllegalStateException("TCP already started");tcp=new TcpGameServer(bind,port,this,maximum);}
     static Path publicRoot(){String configured=CloudStore.env("GUNNY_PUBLIC");if(!configured.isEmpty())return Path.of(configured).toAbsolutePath().normalize();Path local=Path.of("public").toAbsolutePath().normalize();if(Files.isDirectory(local))return local;Path mounted=Path.of("/opt/gunny/public");if(Files.isDirectory(mounted))return mounted.toAbsolutePath().normalize();return local;}
-    static boolean downloadFile(String name){return name.matches("Gunny-E72-2009-Online-(?:769|770|771|780)\\.(jar|jad)|Gunny-E6-Online-(?:769|770|771|780)\\.(jar|jad)|Huong-dan-HTTPS-E72-E6\\.pdf|MBedTLS-1\\.4\\.3\\.sis|ssl-v21\\.zip");}
+    static boolean downloadFile(String name){return name.matches("Gunny-E72-2009-Online-(?:769|770|771|780|781)\\.(jar|jad)|Gunny-E6-Online-(?:769|770|771|780|781)\\.(jar|jad)|Huong-dan-HTTPS-E72-E6\\.pdf|MBedTLS-1\\.4\\.3\\.sis|ssl-v21\\.zip");}
     void download(HttpExchange x)throws IOException {
         if(!x.getRequestMethod().equals("GET")&&!x.getRequestMethod().equals("HEAD")){x.getResponseHeaders().set("Allow","GET, HEAD");x.sendResponseHeaders(405,-1);x.close();return;}
         if(x.getRequestURI().getPath().equals("/download")){x.getResponseHeaders().set("Location","/download/");x.sendResponseHeaders(302,-1);x.close();return;}String path=x.getRequestURI().getPath().substring("/download".length());if(path.isEmpty()||path.equals("/"))path="/index.html";

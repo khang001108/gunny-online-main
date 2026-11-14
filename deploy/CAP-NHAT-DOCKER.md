@@ -9,7 +9,7 @@ sudo bash /home/khazg/gunny/gunny-online-main/deploy/cap-nhat-gunny.sh
 Nhập mật khẩu hệ thống khi sudo hỏi. Menu có:
 
 1. **Kiểm tra**: xem container/image hiện tại và kiểm tra SQL 7.7.0 và 7.8.0 bằng API chỉ đọc.
-2. **Cập nhật lên 7.8.0**: yêu cầu bạn xác nhận đã tự chạy SQL, xác minh schema,
+2. **Cập nhật lên 7.8.1**: yêu cầu bạn xác nhận đã tự chạy SQL, xác minh schema,
    chạy thử image rồi đổi container.
 3. **Quay lại bản trước**: khôi phục container đã lưu ở lần cập nhật gần nhất.
 0. **Thoát**.
@@ -23,7 +23,7 @@ Ngay cả khi có xác nhận, tool vẫn chặn cập nhật nếu không xác 
 ## Tool thực hiện những gì
 
 - Đọc cấu hình trực tiếp từ container cũ, không yêu cầu nhập lại khoá Supabase/admin.
-- Dùng image `gunny-online:7.8.0` đã build. Nếu chưa có, build từ thư mục repo.
+- Dùng image `gunny-online:7.8.1` đã build. Nếu chưa có, build từ thư mục repo.
 - Chạy thử image bằng tài khoản RAM trên các cổng localhost ngẫu nhiên; không đưa
   khoá Supabase vào container thử.
 - Giữ biến môi trường, cổng publish, network và restart policy đang dùng; đổi đường
@@ -65,6 +65,6 @@ tạo container lỗi, rollback lặp, chống ghi đè container khác và từ
 Các kiểm thử phục hồi dùng Docker mô phỏng; chưa chạy đổi container production
 vì chưa có xác nhận SQL.
 
-Bản tool hiện tại chuẩn bị cập nhật **7.8.0**, kiểm tra `actors/live/growth`,
+Bản tool hiện tại chuẩn bị cập nhật **7.8.1**, kiểm tra `actors/live/growth`,
 `expansion/forge/dungeon` và hai JAD 780. Image ARM64 đã được build và chạy thử
 riêng bằng tài khoản RAM; container production vẫn giữ nguyên. Tool không tự chạy SQL.

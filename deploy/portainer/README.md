@@ -13,7 +13,7 @@ Nếu Caddy chạy trong container, cần dùng network chung và upstream `gunn
 Tại thư mục gốc repo, build image trên Docker endpoint sẽ chạy game:
 
 ```sh
-docker build -t gunny-online:7.8.0 .
+docker build -t gunny-online:7.8.1 .
 ```
 
 Trong Portainer, chọn đúng Environment → stack game hiện có. Đối chiếu và cập nhật
@@ -64,8 +64,7 @@ nhưng tên miền không vào được trong Wi-Fi nhà, kiểm tra NAT loopbac
 DNS nội bộ trỏ tên miền về IP LAN. Một lần timeout từ LAN qua IP công cộng chưa đủ
 để kết luận cổng Internet bị đóng.
 
-Trước khi cập nhật lên 7.8.0, chủ máy tự rà soát và chạy migration tài khoản 7.7.0
-(nếu chưa chạy), rồi migration rèn/phó bản 7.8.0 theo
-[docs/UPDATE-7.8.0.md](../../docs/UPDATE-7.8.0.md). Container không tự chạy SQL.
-Cập nhật cả server và hai bộ cài 780. Image chuẩn bị sẵn không đồng nghĩa container
-đang chạy đã được cập nhật.
+Nếu Supabase đang ở schema 7.7.0, chạy một lần
+[SQL nâng cấp gộp](../../supabase/UPDATE-7.7.0-TO-7.8.0.sql).
+Bản 7.8.1 dùng schema 7.8.0. Đặt `GUNNY_IMAGE=gunny-online:7.8.1` trong stack
+Portainer rồi cập nhật stack để đưa bộ cài 781 lên trang tải.
