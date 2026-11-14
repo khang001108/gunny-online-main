@@ -36,7 +36,7 @@ final class LobbyChatServer {
 
     static boolean handles(String op) {
         return op.equals("chatpoll") || op.equals("chatsend") || op.equals("chatread")
-                || op.equals("chatfriends") || op.equals("chatmentions");
+                || op.equals("chatfriends") || op.equals("chatmentions") || op.equals("chatroom") || op.equals("chatroomsend");
     }
 
     void handle(String op, GunnyServer.Session session, DataInputStream in, DataOutputStream out) throws Exception {
@@ -44,6 +44,10 @@ final class LobbyChatServer {
     }
 
     void handle(String op, GunnyServer.Session session, DataInputStream in, DataOutputStream out, boolean expandedEmoji) throws Exception {
+        if (op.startsWith("chatroom")) {
+            roomSpeech(op,session,in,out,expandedEmoji);
+            return;
+        }
         if (op.equals("chatmentions")) {
             String prefix = in.readUTF();
             if (prefix.length() > 13) throw new IllegalArgumentException("Tên người chơi dài tối đa 13 ký tự.");
@@ -91,6 +95,49 @@ final class LobbyChatServer {
         out.writeBoolean(Boolean.TRUE.equals(state.get("unread")));
         writeMessages(out, (List<?>) state.get("preview"), expandedEmoji);
         writeMessages(out, (List<?>) state.get("history"), expandedEmoji);
+    }
+
+    record Speech(GunnyServer.Session author, int phase, String text, int emoji, long sentAt) {}
+
+    private void roomSpeech(String op, GunnyServer.Session session, DataInputStream in,
+                            DataOutputStream out, boolean expandedEmoji) throws IOException {
+        int roomId=in.readInt(), phase=in.readUnsignedByte();
+        var room=server.rooms.get(roomId);
+        if(room==null || roomId!=session.room) throw new IllegalArgumentException("Bạn đã rời phòng.");
+        synchronized(room) {
+            int seat=room.slot(session);
+            if(seat<0 || phase!=room.phase || phase>1) throw new IllegalArgumentException("Phòng đã đổi trạng thái.");
+            long now=clock.millis();
+            if(op.equals("chatroomsend")) {
+                String text=in.readUTF().replaceAll("[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]", " ").strip();
+                int emoji=in.readByte();
+                if(text.length()>96 || text.isEmpty() && emoji<0 || emoji<-1 || emoji>(expandedEmoji?66:5))
+                    throw new IllegalArgumentException("Tin nhắn tối đa 96 ký tự hoặc một cảm xúc.");
+                Speech previous=room.speech[seat];
+                if(previous!=null && previous.author==session && now-previous.sentAt<650)
+                    throw new IllegalArgumentException("Chờ một chút trước khi gửi tiếp.");
+                room.speech[seat]=new Speech(session,phase,text,emoji,now);
+            }
+            out.writeInt(roomId);
+            out.writeByte(phase);
+            int count=0;
+            for(int i=0;i<room.count;i++)if(visibleSpeech(room,i,phase,now))count++;
+            out.writeByte(count);
+            for(int i=0;i<room.count;i++) {
+                if(!visibleSpeech(room,i,phase,now))continue;
+                Speech speech=room.speech[i];
+                out.writeByte(i);
+                out.writeShort((int)(3800-(now-speech.sentAt)));
+                out.writeUTF(speech.text);
+                out.writeByte(!expandedEmoji && speech.emoji>5?3:speech.emoji);
+            }
+        }
+    }
+
+    private boolean visibleSpeech(GunnyServer.Room room,int seat,int phase,long now) {
+        Speech speech=room.speech[seat];
+        return speech!=null && speech.author==room.members[seat] && speech.phase==phase
+                && now-speech.sentAt>=0 && now-speech.sentAt<3800;
     }
 
     private static void writeMessages(DataOutputStream out, List<?> rows, boolean expandedEmoji) throws IOException {
