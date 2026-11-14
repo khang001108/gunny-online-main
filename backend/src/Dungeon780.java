@@ -27,8 +27,6 @@ final class Dungeon780 {
    return;
   }
   if(op.equals("dungeonrooms")){
-   if(Progression.level(s.profile.experience)<15)s.profile=server.store.profile(s.id);
-   eligible(s,0);
    server.roomList(out,s,true);
    return;
   }

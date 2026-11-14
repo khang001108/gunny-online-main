@@ -20,7 +20,8 @@ final class SocialServer {
   return mode==1?"Đã đồng ý kết bạn.":mode==0?"Đã gửi lời mời kết bạn.":"Đã từ chối lời mời.";
  }
  boolean handles(String op){return Set.of("playerinfo","findfriend","presence","battleemote","battleemotes","social","friend","invite","inviteanswer","allyai","socialpulse","slot","emote").contains(op);}
- GunnyServer.Session online(String id){for(var s:server.sessions.values())if(s.id.equals(id)&&System.currentTimeMillis()-s.lastSeen<45000)return s;return null;}
+ boolean isOnline(GunnyServer.Session s){long now=System.currentTimeMillis();return s.expiry>now&&now-s.lastSeen<45000;}
+ GunnyServer.Session online(String id){for(var s:server.sessions.values())if(s.id.equals(id)&&isOnline(s))return s;return null;}
  void person(DataOutputStream out,CloudStore.Profile p,boolean online,boolean actors)throws IOException{out.writeInt(p.publicId);out.writeUTF(p.name);out.writeBoolean(online);out.writeByte(p.gender);out.writeByte(p.skin);out.writeBoolean(p.custom);for(int v:p.look)out.writeByte(v);if(actors)out.writeInt(p.experience);}
  void emptyBattleEmotes(DataOutputStream out)throws IOException{for(int i=0;i<6;i++){out.writeByte(255);out.writeShort(0);}}
  void handle(String op,GunnyServer.Session s,DataInputStream in,DataOutputStream out)throws Exception{

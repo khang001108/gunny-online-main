@@ -19,7 +19,11 @@ chỉnh hạn chung/riêng và gia hạn thêm ngày; tự xoá tắt mặc đ�
 Xem [hướng dẫn cập nhật 7.7.0](docs/UPDATE-7.7.0.md). Với project đang chạy, tự chạy
 [migration riêng](supabase/migrations/202611120001_virtual_accounts_retention.sql)
 trong SQL Editor của project `mnquwasxacifkktmckdv`, rồi mới cập nhật server/client.
-Nếu schema đang ở 7.7.0, chạy một lần [SQL nâng cấp gộp](supabase/UPDATE-7.7.0-TO-7.8.0.sql). Schema 7.8.0 đã cập nhật đầy đủ có thể dùng luôn bản 7.8.1.
+Nếu schema đang ở 7.7.0, chạy một lần [SQL nâng cấp gộp](supabase/UPDATE-7.7.0-TO-7.8.0.sql).
+Nếu máy chủ đã chạy 7.8.1 trước bản cập nhật chat, chạy [SQL chat](supabase/migrations/202611150001_gunny_chat.sql).
+Nếu máy chủ đã có chat, chạy [SQL mở rộng emoji](supabase/migrations/202611150002_gunny_chat_emoji.sql).
+Ở sảnh online, nhấn G hoặc chạm icon Chat để mở Hiện tại và Chat mật.
+Chat công khai làm mới lúc 0 giờ Việt Nam. Tin nhắn bạn bè lưu 30 ngày.
 Không tự chạy migration khi container khởi động.
 
 Build backend: `docker build -t gunny-online:7.8.1 .`.
