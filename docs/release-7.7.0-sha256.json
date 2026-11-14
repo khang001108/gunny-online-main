@@ -66,5 +66,8 @@
   "public/review-lobby.jpg": "bd7344d2fa3b4549f092285619e69d28722dc67202a74e91ecab0b654ef3a268",
   "public/review-lobby.png": "b1f093a7a38a5000efa949af31203d3d4b5d6d514dc2fb73e1c45a219e5e1833",
   "public/review-room.jpg": "5d0a4aeb8a6af39e221b853e0fb611ad75793e101c79ce77250ab15011bb4944",
-  "public/review-room.png": "9e9608fc73f206c09a66ce5008b3275b7a3a080a584494bd1bafaa46cd95dd94"
+  "public/review-room.png": "9e9608fc73f206c09a66ce5008b3275b7a3a080a584494bd1bafaa46cd95dd94",
+  "supabase/migrations/202611120001_virtual_accounts_retention.sql": "274110436b25eae327c6c811efb4ee535fb4978c33759515a04b10f347da2f9f",
+  "deploy/update-gunny.py": "f4042de96275601d510c511f6ccb9f76bd01862ab51ff0fc364154686a121db9",
+  "backend/tests/retention770_review.py": "b6d68e0ce59b7c70c116663cd280e34ffa25c859819014c96f24bf14078e4928"
 }

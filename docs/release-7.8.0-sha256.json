@@ -1,0 +1,34 @@
+{
+  "public/downloads/Gunny-E6-Online-780.jad": {
+    "bytes": 658,
+    "sha256": "227c2adf5bdc72e76083c6effcb0671beff4fa232965db3377c82fce2c4e0e4a"
+  },
+  "public/downloads/Gunny-E6-Online-780.jar": {
+    "bytes": 43318409,
+    "sha256": "20e4e5ec62f8eb959fbfb15c737f87367222cf62b56eb26fd63b3c579682a81b"
+  },
+  "public/downloads/Gunny-E72-2009-Online-780.jad": {
+    "bytes": 444,
+    "sha256": "79eb7ab18bd77e8431c4e0f41f9c26dea50dba04d8598c841fd5ac1f9d16026e"
+  },
+  "public/downloads/Gunny-E72-2009-Online-780.jar": {
+    "bytes": 16723919,
+    "sha256": "ababc67a98ea45499d5e2498b0750849e15d9f38b09cc9641ab58baab44816bc"
+  },
+  "supabase/GUNNY-ALL.sql": {
+    "bytes": 61076,
+    "sha256": "a18b9c6c528193ea61e9ed4787f90f5272b9ac3824f593bbf6b4ed250832ac5e"
+  },
+  "supabase/migrations/202611120001_virtual_accounts_retention.sql": {
+    "bytes": 18688,
+    "sha256": "274110436b25eae327c6c811efb4ee535fb4978c33759515a04b10f347da2f9f"
+  },
+  "supabase/migrations/202611130001_forge_dungeon.sql": {
+    "bytes": 10881,
+    "sha256": "a25df599a5a2e605e26d4039950df23971ba1ace8a471717ca71ca42ee7b14c1"
+  },
+  "supabase/UPDATE-7.7.0-TO-7.8.0.sql": {
+    "bytes": 22605,
+    "sha256": "06d663b1b1e28388af15bcf55e3267d618bdc0f303b77f8abb3d9718642267b8"
+  }
+}

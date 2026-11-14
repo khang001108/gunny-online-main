@@ -15,5 +15,15 @@
     "640x480 passed"
   ],
   "isolated_postgresql_17": "passed: repeatable migration, preservation guard, defaults, extension, expiry, RLS",
-  "physical_handsets_tested": false
+  "physical_handsets_tested": false,
+  "docker_updater": "9 recovery/gating tests passed; live container config checked read-only; no production deployment",
+  "sql_review_2026_11_13": {
+    "postgres_version": "17.11",
+    "postgresql_tests_passed": 39,
+    "updater_tests_passed": 11,
+    "production_sql_executed": false,
+    "production_container_updated": false,
+    "report": "docs/REVIEW-SQL-7.7.0-2026-11-13.md",
+    "migration_sha256": "274110436b25eae327c6c811efb4ee535fb4978c33759515a04b10f347da2f9f"
+  }
 }

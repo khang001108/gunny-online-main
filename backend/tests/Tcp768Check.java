@@ -4,7 +4,7 @@ import java.nio.file.Path;
 
 /** End-to-end persistent TCP frame check against the real HTTP game handler. */
 public final class Tcp768Check {
- static final int FLAGS=0x1ffff;
+ static final int FLAGS=0x3ffff;
  static byte[] body(String op,Writer writer)throws Exception {
   var bytes=new ByteArrayOutputStream();var out=new DataOutputStream(bytes);out.writeInt(GunnyServer.MAGIC);out.writeUTF(op);if(writer!=null)writer.write(out);out.close();return bytes.toByteArray();
  }

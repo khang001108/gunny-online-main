@@ -1,4 +1,4 @@
--- GUNNY ALL — 7.6.2
+-- GUNNY ALL — 7.8.0
 -- Run this ONE file in Supabase SQL Editor, for a new or existing Gunny project.
 -- Includes shop, equipment fix, accounts, admin, notices, EXP and loser rewards.
 -- Preserves existing accounts, passwords, items, balances, wins, EXP and schedules.
@@ -509,7 +509,9 @@ begin;
 -- Transaction guard: only login policy/admin metadata may change in this upgrade.
 create temporary table gunny_770_preserve on commit drop as
  select u.id,u.email,u.encrypted_password,to_jsonb(p) profile
- from auth.users u join public.profiles p on p.id=u.id;
+ from auth.users u left join public.profiles p on p.id=u.id;
+create temporary table gunny_770_schedules on commit drop as
+ select user_id,delete_at,delete_reason,appeal,cancel_on_login from public.gunny_account_admin;
 create table if not exists public.gunny_retention_policy(
  singleton boolean primary key default true check(singleton),
  offline_days integer not null default 90 check(offline_days between 1 and 3650),
@@ -523,6 +525,57 @@ alter table public.gunny_account_admin add column if not exists offline_days int
 alter table public.gunny_account_admin add column if not exists protected_until timestamptz;
 alter table public.gunny_account_admin add column if not exists retention_since timestamptz not null default now();
 insert into public.gunny_account_admin(user_id) select id from auth.users on conflict do nothing;
+alter table public.gunny_account_admin add column if not exists pending_extension_days integer not null default 0 check(pending_extension_days>=0);
+comment on column public.gunny_account_admin.pending_extension_days is 'Additive extension credit while retention is disabled; consumed on enabling.';
+
+-- A durable UUID key prevents retries from adding days twice, even after audit cleanup/account deletion.
+create table if not exists public.gunny_offline_extensions(
+ request_key uuid primary key,user_id uuid not null,
+ days integer not null check(days between 1 and 3650),created_at timestamptz not null default now()
+);
+alter table public.gunny_offline_extensions enable row level security;
+revoke all on public.gunny_offline_extensions from public,anon,authenticated;
+grant all on public.gunny_offline_extensions to service_role;
+
+-- Import valid receipts if an earlier 7.7.0 draft was used. Never reapply their days.
+create temporary table gunny_770_legacy_extensions(
+ id bigint,at timestamptz,request_key uuid,user_id uuid,days integer
+) on commit drop;
+do $legacy_receipts$
+declare entry record; parsed_key uuid; parsed_user uuid; parsed_days integer;
+begin
+ for entry in select id,at,target,detail from public.gunny_admin_audit where action='extend-offline' loop
+  begin
+   -- Cast exactly as the old handler did: UUID case/braces/compact notation and integer text normalize.
+   parsed_key:=(entry.detail->>'request_key')::uuid;parsed_user:=entry.target::uuid;
+   parsed_days:=(entry.detail->>'days')::integer;
+   if parsed_key is not null and parsed_user is not null and parsed_days between 1 and 3650 then
+    insert into gunny_770_legacy_extensions values(entry.id,entry.at,parsed_key,parsed_user,parsed_days);
+   end if;
+  exception when invalid_text_representation or numeric_value_out_of_range then
+   continue;
+  end;
+ end loop;
+end;
+$legacy_receipts$;
+do $receipts$
+begin
+ if exists(select request_key from gunny_770_legacy_extensions
+  where request_key is not null and user_id is not null and days between 1 and 3650
+  group by request_key having count(distinct (user_id,days))>1) then
+  raise exception 'Conflicting historical extend-offline request_key; review audit before upgrading';
+ end if;
+ if exists(select 1 from gunny_770_legacy_extensions old join public.gunny_offline_extensions receipt using(request_key)
+  where old.user_id is not null and old.days between 1 and 3650
+   and (old.user_id<>receipt.user_id or old.days<>receipt.days)) then
+  raise exception 'Historical extend-offline request_key disagrees with stored receipt';
+ end if;
+end;
+$receipts$;
+insert into public.gunny_offline_extensions(request_key,user_id,days,created_at)
+ select distinct on(request_key) request_key,user_id,days,at from gunny_770_legacy_extensions
+ where request_key is not null and user_id is not null and days between 1 and 3650
+ order by request_key,id on conflict(request_key) do nothing;
 
 -- Convert login policy in place. Never replace UUIDs, passwords, emails or profile rows.
 -- This is executed only when the owner runs this migration manually.
@@ -534,7 +587,7 @@ update auth.users set raw_app_meta_data=coalesce(raw_app_meta_data,'{}'::jsonb)|
 create or replace function public.gunny_inactive_deadline(p_user uuid) returns timestamptz
 language sql stable security definer set search_path='' as $$
  select case when policy.enabled then greatest(
-  greatest(coalesce(a.last_seen_at,a.last_login_at,u.created_at),a.retention_since)
+  greatest(a.last_seen_at,a.last_login_at,u.created_at,a.retention_since)
     + make_interval(days=>coalesce(a.offline_days,policy.offline_days)),
   coalesce(a.protected_until,'-infinity'::timestamptz)) else null end
  from public.gunny_account_admin a join auth.users u on u.id=a.user_id
@@ -545,24 +598,57 @@ grant execute on function public.gunny_inactive_deadline(uuid) to service_role;
 
 create or replace function public.gunny_admin(p_op text,p_data jsonb default '{}') returns jsonb
 language plpgsql security definer set search_path='' as $$
-declare uid uuid; a public.gunny_account_admin%rowtype; result jsonb; notices jsonb:='[]';
+declare uid uuid; a public.gunny_account_admin%rowtype; policy public.gunny_retention_policy%rowtype; receipt public.gunny_offline_extensions%rowtype; result jsonb; notices jsonb:='[]';
  t timestamptz:=clock_timestamp(); start_t timestamptz;end_t timestamptz; n integer; item jsonb; grant_row public.gunny_wallet_grants%rowtype;add_coins integer;add_money integer;request_id uuid;balance jsonb;
 begin
  if p_op='retention-policy' then
   return (select to_jsonb(p) from public.gunny_retention_policy p where singleton);
  elsif p_op='retention-save' then
   n:=(p_data->>'days')::integer;if n is null or n<1 or n>3650 then raise exception 'Days must be 1..3650';end if;
-  if coalesce((p_data->>'enabled')::boolean,true) and exists(select 1 from public.gunny_retention_policy where singleton and not enabled) then
-   update public.gunny_account_admin set retention_since=t;
-  end if;
+  -- Same lock order as extend-offline: policy, then account rows.
+  select * into strict policy from public.gunny_retention_policy where singleton for update;
+  t:=clock_timestamp();
   update public.gunny_retention_policy set offline_days=n,enabled=coalesce((p_data->>'enabled')::boolean,true),updated_at=t where singleton;
+  if coalesce((p_data->>'enabled')::boolean,true) and not policy.enabled then
+   update public.gunny_account_admin set retention_since=greatest(retention_since,t);
+   -- A disabled policy has no running deadline: apply queued days to the newly granted window.
+   -- greatest() also preserves any longer absolute protection already granted previously.
+   update public.gunny_account_admin account set
+    protected_until=greatest(coalesce(public.gunny_inactive_deadline(account.user_id),t),t)+make_interval(days=>account.pending_extension_days),
+    pending_extension_days=0
+   where account.pending_extension_days>0;
+  end if;
   insert into public.gunny_admin_audit(action,target,detail) values(p_op,'all',p_data);
   return (select to_jsonb(p) from public.gunny_retention_policy p where singleton);
+ elsif p_op='extend-offline' then
+  uid:=(p_data->>'id')::uuid;request_id:=(p_data->>'request_key')::uuid;
+  n:=case when jsonb_typeof(p_data->'days')='number' and p_data->>'days' ~ '^[1-9][0-9]{0,3}$' then (p_data->>'days')::integer end;
+  if uid is null or request_id is null or n is null or n<1 or n>3650 then raise exception 'Invalid extension request';end if;
+  -- Serializes enable/disable against extension, and a PK serializes duplicate request IDs.
+  select * into strict policy from public.gunny_retention_policy where singleton for update;
+  t:=clock_timestamp();
+  insert into public.gunny_offline_extensions(request_key,user_id,days) values(request_id,uid,n) on conflict do nothing;
+  if not found then
+   select * into strict receipt from public.gunny_offline_extensions where request_key=request_id;
+   if receipt.user_id<>uid or receipt.days<>n then raise exception 'Invalid request key: extension payload changed';end if;
+   return '{}';
+  end if;
+  perform 1 from auth.users where id=uid;if not found then raise exception 'Account not found';end if;
+  insert into public.gunny_account_admin(user_id) values(uid) on conflict do nothing;
+  select * into strict a from public.gunny_account_admin where user_id=uid for update;
+  if policy.enabled then
+   update public.gunny_account_admin set protected_until=greatest(coalesce(public.gunny_inactive_deadline(uid),t),t)+make_interval(days=>n) where user_id=uid;
+  else
+   update public.gunny_account_admin set pending_extension_days=pending_extension_days+n where user_id=uid;
+  end if;
+  insert into public.gunny_admin_audit(action,target,detail)
+   values(p_op,uid::text,p_data||jsonb_build_object('request_key',request_id::text,'days',n,'queued',not policy.enabled));
+  return '{}';
  elsif p_op='accounts' then
   select coalesce(jsonb_agg(r),'[]') into result from (
    select u.id,u.email,coalesce(p.display_name,'Chưa tạo nhân vật') display_name,p.public_id,
     u.created_at,ac.last_login_at,ac.last_seen_at,ac.max_offline_seconds,ac.delete_at,ac.delete_reason,ac.appeal,ac.cancel_on_login,
-    public.gunny_inactive_deadline(u.id) inactive_delete_at,ac.offline_days,ac.protected_until,'virtual'::text account_type,
+    public.gunny_inactive_deadline(u.id) inactive_delete_at,ac.offline_days,ac.protected_until,ac.pending_extension_days,'virtual'::text account_type,
     coalesce(p.coins,0) coins,coalesce(p.shopping_money,0) shopping_money
    from auth.users u left join public.profiles p on p.id=u.id left join public.gunny_account_admin ac on ac.user_id=u.id
    where coalesce(p.display_name,'') ilike '%'||left(coalesce(p_data->>'search',''),100)||'%'
@@ -625,12 +711,6 @@ begin
   n:=(p_data->>'days')::integer;
   if n is not null and (n<1 or n>3650) then raise exception 'Days must be 1..3650';end if;
   update public.gunny_account_admin set offline_days=n where user_id=uid;
- elsif p_op='extend-offline' then
-  perform (p_data->>'request_key')::uuid;
-  if exists(select 1 from public.gunny_admin_audit where action=p_op and target=uid::text and detail->>'request_key'=p_data->>'request_key') then return '{}';end if;
-  n:=(p_data->>'days')::integer;
-  if n is null or n<1 or n>3650 then raise exception 'Days must be 1..3650';end if;
-  update public.gunny_account_admin set protected_until=greatest(coalesce(public.gunny_inactive_deadline(uid),t),t)+make_interval(days=>n) where user_id=uid;
  elsif p_op='schedule' then
   start_t:=(p_data->>'delete_at')::timestamptz;if start_t is null or start_t<=t then raise exception 'Choose a future date';end if;
   if char_length(coalesce(p_data->>'appeal',''))>250 or char_length(coalesce(p_data->>'reason',''))>300 then raise exception 'Text too long';end if;
@@ -639,7 +719,7 @@ begin
   update public.gunny_account_admin set delete_at=null where user_id=uid;
  elsif p_op='login' then
   if a.delete_at<=t or public.gunny_inactive_deadline(uid)<=t then
-   insert into public.gunny_admin_audit(action,target,detail) values('scheduled-delete',uid::text,to_jsonb(a));
+   insert into public.gunny_admin_audit(action,target,detail) values(case when a.delete_at<=t then 'scheduled-delete' else 'inactive-delete' end,uid::text,to_jsonb(a));
    delete from auth.users where id=uid;return jsonb_build_object('blocked',true,'notices','[]'::jsonb);
   end if;
   if a.delete_at is not null then
@@ -667,7 +747,304 @@ begin
    or to_jsonb(p) is distinct from old.profile) then
   raise exception 'Upgrade cancelled: existing login credentials or game profile changed';
  end if;
+ if exists(select 1 from gunny_770_schedules old left join public.gunny_account_admin account using(user_id)
+  where account.user_id is null or account.delete_at is distinct from old.delete_at
+   or account.delete_reason is distinct from old.delete_reason or account.appeal is distinct from old.appeal
+   or account.cancel_on_login is distinct from old.cancel_on_login) then
+  raise exception 'Upgrade cancelled: existing manual deletion schedules changed';
+ end if;
 end;
 $preserve$;
 commit;
 notify pgrst,'reload schema';
+
+-- Gunny 7.8.0: forge and cooperative Ant Cave
+-- Gunny 7.8.0: additive economy and dungeon progression. Run MANUALLY after review.
+-- No account reset/deletion, no change to authentication, retention or existing rewards.
+begin;
+lock table public.profiles in share row exclusive mode;
+create temporary table gunny780_preserve on commit drop as
+ select id,to_jsonb(p)-'stones'-'forge_levels'-'dungeon_normal_clear' as value from public.profiles p;
+alter table public.profiles add column if not exists stones integer not null default 0;
+alter table public.profiles add column if not exists forge_levels smallint[] not null default array_fill(0::smallint,array[130]);
+alter table public.profiles add column if not exists dungeon_normal_clear boolean not null default false;
+do $$begin
+ if not exists(select 1 from pg_constraint where conrelid='public.profiles'::regclass and conname='gunny780_stones') then
+  alter table public.profiles add constraint gunny780_stones check(stones between 0 and 999999);
+ end if;
+ if not exists(select 1 from pg_constraint where conrelid='public.profiles'::regclass and conname='gunny780_forge_levels') then
+  alter table public.profiles add constraint gunny780_forge_levels check(array_ndims(forge_levels)=1 and array_lower(forge_levels,1)=1 and cardinality(forge_levels)=130 and 0<=all(forge_levels) and 99>=all(forge_levels) and array_position(forge_levels,null) is null);
+ end if;
+end$$;
+create table if not exists public.gunny780_requests(
+ request_key text primary key,user_id uuid not null,operation text not null,payload jsonb not null,created_at timestamptz not null default now()
+);
+alter table public.gunny780_requests enable row level security;
+revoke all on public.gunny780_requests from public,anon,authenticated;
+grant all on public.gunny780_requests to service_role;
+-- Receipts deliberately survive account deletion: a key cannot later be reused for another account.
+create table if not exists public.gunny780_card_rewards(
+ match_id uuid not null references public.match_results(id),user_id uuid not null references public.profiles(id) on delete cascade,
+ pick smallint not null check(pick between 0 and 1),card smallint not null check(card between 0 and 17),
+ coins integer not null default 0 check(coins between 0 and 2000),stones integer not null default 0 check(stones between 0 and 100),
+ primary key(match_id,user_id,pick),unique(match_id,card),claimed_at timestamptz not null default now(),
+ check((coins>0 and stones=0) or (stones>0 and coins=0))
+);
+alter table public.gunny780_card_rewards enable row level security;
+revoke all on public.gunny780_card_rewards from public,anon,authenticated;
+grant all on public.gunny780_card_rewards to service_role;
+-- Existing room kinds and historical match/card rows are preserved.
+alter table public.match_results add column if not exists dungeon_difficulty smallint;
+alter table public.match_results drop constraint if exists match_results_room_kind_check;
+do $$begin
+ if not exists(select 1 from pg_constraint where conrelid='public.match_results'::regclass and conname='gunny780_room_kind') then
+  alter table public.match_results add constraint gunny780_room_kind check(room_kind between 0 and 3);
+ end if;
+end$$;
+create or replace function public.gunny_economy780(p_user uuid,p_operation text,p_payload jsonb,p_key text)
+returns void language plpgsql security definer set search_path='' as $$
+declare receipt public.gunny780_requests%rowtype; p public.profiles%rowtype;qty integer;sex integer;kind integer;item integer;rank integer;idx integer;cost integer;
+begin
+ if p_user is null or p_key is null or p_key !~ '^[A-Za-z0-9_-]{1,64}$' or p_payload is null or jsonb_typeof(p_payload)<>'object' or p_operation not in('buy','forge') or p_operation is null then raise exception 'Invalid economy request';end if;
+ perform pg_advisory_xact_lock(hashtextextended(p_key,780));
+ select * into receipt from public.gunny780_requests where request_key=p_key;
+ if found then
+  if receipt.user_id<>p_user or receipt.operation<>p_operation or receipt.payload<>p_payload then raise exception 'Request key payload mismatch';end if;
+  return;
+ end if;
+ select * into strict p from public.profiles where id=p_user for update;
+ if p_operation='buy' then
+  qty:=(p_payload->>'quantity')::integer;
+  if qty is null or qty not between 1 and 999 or p_payload<>jsonb_build_object('quantity',qty) then raise exception 'Invalid quantity';end if;
+  cost:=qty*80;
+  if p.shopping_money<cost or p.stones>999999-qty then raise exception 'Insufficient shopping money or stone limit';end if;
+  update public.profiles set shopping_money=shopping_money-cost,stones=stones+qty where id=p_user;
+ else
+  sex:=(p_payload->>'sex')::integer;kind:=(p_payload->>'kind')::integer;item:=(p_payload->>'item')::integer;rank:=(p_payload->>'rank')::integer;
+  if sex is null or kind is null or item is null or rank is null or sex<>p.gender or kind not in(0,2,3,6) or item not between 0 and 9 or rank not between 0 and 98 or p_payload<>jsonb_build_object('sex',sex,'kind',kind,'item',item,'rank',rank) then raise exception 'Invalid forge request';end if;
+  if kind=0 then
+   if item not in(0,1,2,3,4,5,7,9) or (p.owned&(1<<item))=0 then raise exception 'Item not owned';end if;
+   idx:=item+1;
+  else
+   if (p.wardrobe[sex*6+kind]&(1<<item))=0 then raise exception 'Item not owned';end if;
+   idx:=11+sex*60+(kind-1)*10+item;
+  end if;
+  if p.forge_levels[idx]<>rank then raise exception 'Forge level changed';end if;
+  cost:=4*(rank+1);
+  if p.stones<cost then raise exception 'Insufficient stones';end if;
+  update public.profiles set stones=stones-cost,forge_levels[idx]=(rank+1)::smallint where id=p_user;
+ end if;
+ insert into public.gunny780_requests(request_key,user_id,operation,payload) values(p_key,p_user,p_operation,p_payload);
+end;$$;
+create or replace function public.gunny_finish_dungeon780(p_match uuid,p_winner integer,p_players jsonb,p_difficulty integer)
+returns void language plpgsql security definer set search_path='' as $$
+declare old public.match_results%rowtype;member jsonb;n integer;
+begin
+ if p_match is null or p_winner is null or p_winner not between 0 and 2 or p_difficulty is null or p_difficulty not in(0,1) or p_players is null or jsonb_typeof(p_players)<>'array' or jsonb_array_length(p_players) not between 1 and 3 then raise exception 'Invalid dungeon match';end if;
+ if (select count(distinct value->>'id') from jsonb_array_elements(p_players))<>jsonb_array_length(p_players) then raise exception 'Duplicate participant';end if;
+ perform pg_advisory_xact_lock(hashtextextended(p_match::text,780));
+ select * into old from public.match_results where id=p_match;
+ if found then
+  if old.winner<>p_winner or old.players<>p_players or old.room_kind<>3 or old.dungeon_difficulty is distinct from p_difficulty then raise exception 'Match payload mismatch';end if;
+  return;
+ end if;
+ -- Lock profiles in a consistent order, including opposite party payload ordering.
+ perform 1 from public.profiles where id in(select (value->>'id')::uuid from jsonb_array_elements(p_players)) order by id for update;
+ for member in select value from jsonb_array_elements(p_players) loop
+  if (member->>'team')::integer is distinct from 0 then raise exception 'Invalid dungeon team';end if;
+  perform 1 from public.profiles where id=(member->>'id')::uuid and experience>=5250 and (p_difficulty=0 or dungeon_normal_clear);
+  if not found then raise exception 'Dungeon level or difficulty locked';end if;
+ end loop;
+ insert into public.match_results(id,winner,players,room_kind,dungeon_difficulty) values(p_match,p_winner,p_players,3,p_difficulty);
+ for member in select value from jsonb_array_elements(p_players) loop
+  update public.profiles set experience=least(2147483647::bigint,experience::bigint+case when p_winner=0 then 300 else 100 end),wins=wins+case when p_winner=0 then 1 else 0 end,dungeon_normal_clear=dungeon_normal_clear or (p_winner=0 and p_difficulty=0) where id=(member->>'id')::uuid;
+ end loop;
+end;$$;
+create or replace function public.gunny_claim780(p_match uuid,p_user uuid,p_pick integer,p_card integer)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare result public.match_results%rowtype;prior public.gunny780_card_rewards%rowtype;eligible boolean;coin integer:=0;stone integer:=0;
+begin
+ if p_match is null or p_user is null or p_pick is null or p_pick not between 0 and 1 or p_card is null or p_card not between 0 and 17 then raise exception 'Invalid reward request';end if;
+ select * into strict result from public.match_results where id=p_match for update;
+ if result.room_kind not in(2,3) then raise exception 'Invalid reward mode';end if;
+ select * into prior from public.gunny780_card_rewards where match_id=p_match and user_id=p_user and pick=p_pick;
+ if found then
+  if prior.card<>p_card then raise exception 'Reward payload mismatch';end if;
+  return jsonb_build_object('card',prior.card,'pick',prior.pick,'coins',prior.coins,'stones',prior.stones);
+ end if;
+ eligible:=exists(select 1 from jsonb_array_elements(result.players) x where x->>'id'=p_user::text and result.winner<2 and ((x->>'team')::integer=result.winner or result.room_kind=2 and coalesce((x->>'damage')::integer,0)>0));
+ if not eligible then raise exception 'Not eligible for card';end if;
+ if p_pick=1 and not exists(select 1 from public.gunny780_card_rewards where match_id=p_match and user_id=p_user and pick=0) then raise exception 'Missing first pick';end if;
+ if exists(select 1 from public.gunny780_card_rewards where match_id=p_match and card=p_card) then raise exception 'Card already taken';end if;
+ if result.room_kind=3 then stone:=10+floor(random()*91)::integer;
+ elsif random()<0.5 then stone:=1+floor(random()*10)::integer;
+ else coin:=500+floor(random()*1501)::integer;end if;
+ perform 1 from public.profiles where id=p_user for update;
+ insert into public.gunny780_card_rewards(match_id,user_id,pick,card,coins,stones) values(p_match,p_user,p_pick,p_card,coin,stone);
+ update public.profiles set coins=least(999999,coins+coin),stones=least(999999,stones+stone) where id=p_user;
+ return jsonb_build_object('card',p_card,'pick',p_pick,'coins',coin,'stones',stone);
+end;$$;
+revoke all on function public.gunny_economy780(uuid,text,jsonb,text),public.gunny_finish_dungeon780(uuid,integer,jsonb,integer),public.gunny_claim780(uuid,uuid,integer,integer) from public,anon,authenticated;
+grant execute on function public.gunny_economy780(uuid,text,jsonb,text),public.gunny_finish_dungeon780(uuid,integer,jsonb,integer),public.gunny_claim780(uuid,uuid,integer,integer) to service_role;
+do $$begin
+ if exists(select 1 from gunny780_preserve b full join public.profiles p on p.id=b.id where b.id is null or p.id is null or b.value is distinct from (to_jsonb(p)-'stones'-'forge_levels'-'dungeon_normal_clear')) then raise exception 'Migration changed existing profiles';end if;
+end$$;
+notify pgrst,'reload schema';
+commit;
+
+
+-- 7.8.1: forge +15, accumulated stones and six shop bundles.
+begin;
+
+alter table public.profiles
+  add column if not exists forge_progress integer[] not null default array_fill(0,array[130]);
+
+update public.profiles
+set forge_levels=(select array_agg(least(v,15)::smallint order by n)
+                  from unnest(forge_levels) with ordinality as x(v,n));
+
+alter table public.profiles drop constraint if exists gunny780_forge_levels;
+alter table public.profiles drop constraint if exists gunny781_forge_levels;
+alter table public.profiles drop constraint if exists gunny781_forge_progress;
+alter table public.profiles add constraint gunny781_forge_levels
+ check(array_ndims(forge_levels)=1 and array_lower(forge_levels,1)=1 and cardinality(forge_levels)=130
+       and 0<=all(forge_levels) and 15>=all(forge_levels) and array_position(forge_levels,null) is null);
+alter table public.profiles add constraint gunny781_forge_progress
+ check(array_ndims(forge_progress)=1 and array_lower(forge_progress,1)=1 and cardinality(forge_progress)=130
+       and 0<=all(forge_progress) and 3750>all(forge_progress) and array_position(forge_progress,null) is null);
+
+create or replace function public.gunny_economy780(p_user uuid,p_operation text,p_payload jsonb,p_key text)
+returns void language plpgsql security definer set search_path='' as $$
+declare receipt public.gunny780_requests%rowtype;p public.profiles%rowtype;qty integer;sex integer;kind integer;item integer;rank integer;progress integer;idx integer;cost integer;spend integer;
+begin
+ if p_user is null or p_key is null or p_key !~ '^[A-Za-z0-9_-]{1,64}$' or p_payload is null or jsonb_typeof(p_payload)<>'object' or p_operation not in('buy','forge') then raise exception 'Invalid economy request';end if;
+ perform pg_advisory_xact_lock(hashtextextended(p_key,780));
+ select * into receipt from public.gunny780_requests where request_key=p_key;
+ if found then
+  if receipt.user_id<>p_user or receipt.operation<>p_operation or receipt.payload<>p_payload then raise exception 'Request key payload mismatch';end if;
+  return;
+ end if;
+ select * into strict p from public.profiles where id=p_user for update;
+ if p_operation='buy' then
+  qty:=(p_payload->>'quantity')::integer;
+  if qty is null or qty not between 1 and 1000 or p_payload<>jsonb_build_object('quantity',qty) then raise exception 'Invalid quantity';end if;
+  cost:=qty*80;
+  if p.shopping_money<cost or p.stones>999999-qty then raise exception 'Insufficient shopping money or stone limit';end if;
+  update public.profiles set shopping_money=shopping_money-cost,stones=stones+qty where id=p_user;
+ else
+  sex:=(p_payload->>'sex')::integer;kind:=(p_payload->>'kind')::integer;item:=(p_payload->>'item')::integer;rank:=(p_payload->>'rank')::integer;progress:=(p_payload->>'progress')::integer;
+  if sex is null or kind is null or item is null or rank is null or progress is null or sex<>p.gender or kind not in(0,2,3,6) or item not between 0 and 9 or rank not between 0 and 14 or progress not between 0 and 3749 or p_payload<>jsonb_build_object('sex',sex,'kind',kind,'item',item,'rank',rank,'progress',progress) then raise exception 'Invalid forge request';end if;
+  if kind=0 then
+   if item not in(0,1,2,3,4,5,7,9) or (p.owned&(1<<item))=0 then raise exception 'Item not owned';end if;idx:=item+1;
+  else
+   if (p.wardrobe[sex*6+kind]&(1<<item))=0 then raise exception 'Item not owned';end if;idx:=11+sex*60+(kind-1)*10+item;
+  end if;
+  if p.forge_levels[idx]<>rank or p.forge_progress[idx]<>progress then raise exception 'Forge level changed';end if;
+  if p.stones<=0 then raise exception 'Insufficient stones';end if;
+  cost:=250*(rank+1);spend:=least(p.stones,cost-progress);
+  if progress+spend>=cost then
+   update public.profiles set stones=stones-spend,forge_levels[idx]=(rank+1)::smallint,forge_progress[idx]=0 where id=p_user;
+  else
+   update public.profiles set stones=stones-spend,forge_progress[idx]=progress+spend where id=p_user;
+  end if;
+ end if;
+ insert into public.gunny780_requests(request_key,user_id,operation,payload) values(p_key,p_user,p_operation,p_payload);
+end;$$;
+
+revoke all on function public.gunny_economy780(uuid,text,jsonb,text) from public,anon,authenticated;
+grant execute on function public.gunny_economy780(uuid,text,jsonb,text) to service_role;
+commit;
+
+
+-- 7.8.3: Easy, Normal and Hard dungeon difficulties.
+begin;
+
+create or replace function public.gunny_finish_dungeon780(p_match uuid,p_winner integer,p_players jsonb,p_difficulty integer)
+returns void language plpgsql security definer set search_path='' as $$
+declare old public.match_results%rowtype;member jsonb;
+begin
+ if p_match is null or p_winner is null or p_winner not between 0 and 2 or p_difficulty is null or p_difficulty not in(0,1,2) or p_players is null or jsonb_typeof(p_players)<>'array' or jsonb_array_length(p_players) not between 1 and 3 then raise exception 'Invalid dungeon match';end if;
+ if (select count(distinct value->>'id') from jsonb_array_elements(p_players))<>jsonb_array_length(p_players) then raise exception 'Duplicate participant';end if;
+ perform pg_advisory_xact_lock(hashtextextended(p_match::text,780));
+ select * into old from public.match_results where id=p_match;
+ if found then
+  if old.winner<>p_winner or old.players<>p_players or old.room_kind<>3 or old.dungeon_difficulty is distinct from p_difficulty then raise exception 'Match payload mismatch';end if;
+  return;
+ end if;
+ perform 1 from public.profiles where id in(select (value->>'id')::uuid from jsonb_array_elements(p_players)) order by id for update;
+ for member in select value from jsonb_array_elements(p_players) loop
+  if (member->>'team')::integer is distinct from 0 then raise exception 'Invalid dungeon team';end if;
+  perform 1 from public.profiles where id=(member->>'id')::uuid and experience>=5250 and (p_difficulty<>2 or dungeon_normal_clear);
+  if not found then raise exception 'Dungeon level or difficulty locked';end if;
+ end loop;
+ insert into public.match_results(id,winner,players,room_kind,dungeon_difficulty) values(p_match,p_winner,p_players,3,p_difficulty);
+ for member in select value from jsonb_array_elements(p_players) loop
+  update public.profiles set experience=least(2147483647::bigint,experience::bigint+case when p_winner=0 then 300 else 100 end),wins=wins+case when p_winner=0 then 1 else 0 end,dungeon_normal_clear=dungeon_normal_clear or (p_winner=0 and p_difficulty=1) where id=(member->>'id')::uuid;
+ end loop;
+end;$$;
+
+revoke all on function public.gunny_finish_dungeon780(uuid,integer,jsonb,integer) from public,anon,authenticated;
+grant execute on function public.gunny_finish_dungeon780(uuid,integer,jsonb,integer) to service_role;
+notify pgrst,'reload schema';
+commit;
+
+
+-- Ant Cave separate stage results and rewards.
+begin;
+alter table public.match_results drop constraint if exists gunny780_room_kind;
+alter table public.match_results add constraint gunny780_room_kind check(room_kind between 0 and 4);
+
+create or replace function public.gunny_finish_ant_stage(p_match uuid,p_winner integer,p_players jsonb,p_difficulty integer)
+returns void language plpgsql security definer set search_path='' as $$
+declare old public.match_results%rowtype;member jsonb;
+begin
+ if p_match is null or p_winner is null or p_winner not between 0 and 2 or p_difficulty is null or p_difficulty not in(0,1,2) or p_players is null or jsonb_typeof(p_players)<>'array' or jsonb_array_length(p_players) not between 1 and 3 then raise exception 'Invalid dungeon match';end if;
+ if (select count(distinct value->>'id') from jsonb_array_elements(p_players))<>jsonb_array_length(p_players) then raise exception 'Duplicate participant';end if;
+ perform pg_advisory_xact_lock(hashtextextended(p_match::text,780));
+ select * into old from public.match_results where id=p_match;
+ if found then
+  if old.winner<>p_winner or old.players<>p_players or old.room_kind<>4 or old.dungeon_difficulty is distinct from p_difficulty then raise exception 'Match payload mismatch';end if;
+  return;
+ end if;
+ perform 1 from public.profiles where id in(select (value->>'id')::uuid from jsonb_array_elements(p_players)) order by id for update;
+ for member in select value from jsonb_array_elements(p_players) loop
+  if (member->>'team')::integer is distinct from 0 then raise exception 'Invalid dungeon team';end if;
+  perform 1 from public.profiles where id=(member->>'id')::uuid and experience>=5250 and (p_difficulty<>2 or dungeon_normal_clear);
+  if not found then raise exception 'Dungeon level or difficulty locked';end if;
+ end loop;
+ insert into public.match_results(id,winner,players,room_kind,dungeon_difficulty) values(p_match,p_winner,p_players,4,p_difficulty);
+ for member in select value from jsonb_array_elements(p_players) loop
+  update public.profiles set experience=least(2147483647::bigint,experience::bigint+case when p_winner=0 then 300 else 100 end),wins=wins+case when p_winner=0 then 1 else 0 end where id=(member->>'id')::uuid;
+ end loop;
+end;$$;
+
+create or replace function public.gunny_claim780(p_match uuid,p_user uuid,p_pick integer,p_card integer)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare result public.match_results%rowtype;prior public.gunny780_card_rewards%rowtype;eligible boolean;coin integer:=0;stone integer:=0;
+begin
+ if p_match is null or p_user is null or p_pick is null or p_pick not between 0 and 1 or p_card is null or p_card not between 0 and 17 then raise exception 'Invalid reward request';end if;
+ select * into strict result from public.match_results where id=p_match for update;
+ if result.room_kind not in(2,3,4) or (result.room_kind=4 and (p_pick<>0 or p_card>8)) then raise exception 'Invalid reward mode';end if;
+ select * into prior from public.gunny780_card_rewards where match_id=p_match and user_id=p_user and pick=p_pick;
+ if found then
+  if prior.card<>p_card then raise exception 'Reward payload mismatch';end if;
+  return jsonb_build_object('card',prior.card,'pick',prior.pick,'coins',prior.coins,'stones',prior.stones);
+ end if;
+ eligible:=exists(select 1 from jsonb_array_elements(result.players) x where x->>'id'=p_user::text and result.winner<2 and ((x->>'team')::integer=result.winner or result.room_kind=2 and coalesce((x->>'damage')::integer,0)>0));
+ if not eligible then raise exception 'Not eligible for card';end if;
+ if p_pick=1 and not exists(select 1 from public.gunny780_card_rewards where match_id=p_match and user_id=p_user and pick=0) then raise exception 'Missing first pick';end if;
+ if exists(select 1 from public.gunny780_card_rewards where match_id=p_match and card=p_card) then raise exception 'Card already taken';end if;
+ if result.room_kind in(3,4) then stone:=10+floor(random()*91)::integer;
+ elsif random()<0.5 then stone:=1+floor(random()*10)::integer;
+ else coin:=500+floor(random()*1501)::integer;end if;
+ perform 1 from public.profiles where id=p_user for update;
+ insert into public.gunny780_card_rewards(match_id,user_id,pick,card,coins,stones) values(p_match,p_user,p_pick,p_card,coin,stone);
+ update public.profiles set coins=least(999999,coins+coin),stones=least(999999,stones+stone) where id=p_user;
+ return jsonb_build_object('card',p_card,'pick',p_pick,'coins',coin,'stones',stone);
+end;$$;
+revoke all on function public.gunny_finish_ant_stage(uuid,integer,jsonb,integer) from public,anon,authenticated;
+grant execute on function public.gunny_finish_ant_stage(uuid,integer,jsonb,integer) to service_role;
+revoke all on function public.gunny_claim780(uuid,uuid,integer,integer) from public,anon,authenticated;
+grant execute on function public.gunny_claim780(uuid,uuid,integer,integer) to service_role;
+notify pgrst,'reload schema';
+commit;

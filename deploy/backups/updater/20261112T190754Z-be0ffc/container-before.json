@@ -1,0 +1,263 @@
+{
+  "Id": "feda4ae9ca82843854c2f8a2e48d506a53bf9379f8502da1d5fc3395834d734c",
+  "Created": "2026-11-12T05:19:48.014491385Z",
+  "Path": "/__cacert_entrypoint.sh",
+  "Args": [
+    "java",
+    "-Xms32m",
+    "-Xmx256m",
+    "-Djava.awt.headless=true",
+    "-cp",
+    "classes",
+    "GunnyServer"
+  ],
+  "State": {
+    "Status": "running",
+    "Running": true,
+    "Paused": false,
+    "Restarting": false,
+    "OOMKilled": false,
+    "Dead": false,
+    "Pid": 6804,
+    "ExitCode": 0,
+    "Error": "",
+    "StartedAt": "2026-11-12T05:19:48.084405497Z",
+    "FinishedAt": "0001-01-01T00:00:00Z"
+  },
+  "Image": "sha256:2da015fe40b2660793857668cc408cf72f3c2a395f86d156855ed6b5da74b026",
+  "ResolvConfPath": "/var/lib/docker/containers/feda4ae9ca82843854c2f8a2e48d506a53bf9379f8502da1d5fc3395834d734c/resolv.conf",
+  "HostnamePath": "/var/lib/docker/containers/feda4ae9ca82843854c2f8a2e48d506a53bf9379f8502da1d5fc3395834d734c/hostname",
+  "HostsPath": "/var/lib/docker/containers/feda4ae9ca82843854c2f8a2e48d506a53bf9379f8502da1d5fc3395834d734c/hosts",
+  "LogPath": "/var/lib/docker/containers/feda4ae9ca82843854c2f8a2e48d506a53bf9379f8502da1d5fc3395834d734c/feda4ae9ca82843854c2f8a2e48d506a53bf9379f8502da1d5fc3395834d734c-json.log",
+  "Name": "/gunny-online",
+  "RestartCount": 0,
+  "Driver": "overlayfs",
+  "Platform": "linux",
+  "MountLabel": "",
+  "ProcessLabel": "",
+  "AppArmorProfile": "docker-default",
+  "ExecIDs": null,
+  "HostConfig": {
+    "Binds": null,
+    "ContainerIDFile": "",
+    "LogConfig": {
+      "Type": "json-file",
+      "Config": {}
+    },
+    "NetworkMode": "bridge",
+    "PortBindings": {
+      "22122/tcp": [
+        {
+          "HostIp": "",
+          "HostPort": "22122"
+        }
+      ],
+      "8080/tcp": [
+        {
+          "HostIp": "",
+          "HostPort": "8080"
+        }
+      ]
+    },
+    "RestartPolicy": {
+      "Name": "unless-stopped",
+      "MaximumRetryCount": 0
+    },
+    "AutoRemove": false,
+    "VolumeDriver": "",
+    "VolumesFrom": null,
+    "ConsoleSize": [
+      63,
+      237
+    ],
+    "CapAdd": null,
+    "CapDrop": null,
+    "CgroupnsMode": "private",
+    "Dns": null,
+    "DnsOptions": [],
+    "DnsSearch": [],
+    "ExtraHosts": null,
+    "GroupAdd": null,
+    "IpcMode": "private",
+    "Cgroup": "",
+    "Links": null,
+    "OomScoreAdj": 0,
+    "PidMode": "",
+    "Privileged": false,
+    "PublishAllPorts": false,
+    "ReadonlyRootfs": false,
+    "SecurityOpt": null,
+    "UTSMode": "",
+    "UsernsMode": "",
+    "ShmSize": 67108864,
+    "Runtime": "runc",
+    "Isolation": "",
+    "CpuShares": 0,
+    "Memory": 0,
+    "NanoCpus": 0,
+    "CgroupParent": "",
+    "BlkioWeight": 0,
+    "BlkioWeightDevice": [],
+    "BlkioDeviceReadBps": [],
+    "BlkioDeviceWriteBps": [],
+    "BlkioDeviceReadIOps": [],
+    "BlkioDeviceWriteIOps": [],
+    "CpuPeriod": 0,
+    "CpuQuota": 0,
+    "CpuRealtimePeriod": 0,
+    "CpuRealtimeRuntime": 0,
+    "CpusetCpus": "",
+    "CpusetMems": "",
+    "Devices": [],
+    "DeviceCgroupRules": null,
+    "DeviceRequests": null,
+    "MemoryReservation": 0,
+    "MemorySwap": 0,
+    "MemorySwappiness": null,
+    "OomKillDisable": null,
+    "PidsLimit": null,
+    "Ulimits": [],
+    "CpuCount": 0,
+    "CpuPercent": 0,
+    "IOMaximumIOps": 0,
+    "IOMaximumBandwidth": 0,
+    "MaskedPaths": [
+      "/proc/acpi",
+      "/proc/asound",
+      "/proc/interrupts",
+      "/proc/kcore",
+      "/proc/keys",
+      "/proc/latency_stats",
+      "/proc/sched_debug",
+      "/proc/scsi",
+      "/proc/timer_list",
+      "/proc/timer_stats",
+      "/sys/devices/virtual/powercap",
+      "/sys/firmware"
+    ],
+    "ReadonlyPaths": [
+      "/proc/bus",
+      "/proc/fs",
+      "/proc/irq",
+      "/proc/sys",
+      "/proc/sysrq-trigger"
+    ]
+  },
+  "Storage": {
+    "RootFS": {
+      "Snapshot": {
+        "Name": "overlayfs"
+      }
+    }
+  },
+  "Mounts": [],
+  "Config": {
+    "Hostname": "feda4ae9ca82",
+    "Domainname": "",
+    "User": "gunny",
+    "AttachStdin": false,
+    "AttachStdout": false,
+    "AttachStderr": false,
+    "ExposedPorts": {
+      "22122/tcp": {},
+      "8080/tcp": {}
+    },
+    "Tty": false,
+    "OpenStdin": false,
+    "StdinOnce": false,
+    "Env": [
+      "SUPABASE_URL=https://mnquwasxacifkktmckdv.supabase.co",
+      "SUPABASE_PUBLISHABLE_KEY=sb_publishable__QLAy5er3ADTGCtKMkQQNw_7uMg59Sd",
+      "SUPABASE_SECRET_KEY=sb_secret_Vf_-N7LmGfh5XgvNPJJREQ_cWHu7pjA",
+      "GUNNY_ADMIN_PASSWORD=Khang24200001108",
+      "GUNNY_PUBLIC_URL=https://gunnyjava.xubi.org",
+      "GUNNY_ASSETS=/opt/gunny/assets1",
+      "PORT=8080",
+      "TCP_PORT=22122",
+      "MAX_TCP_CLIENTS=128",
+      "MAX_ROOMS=8",
+      "GUNNY_ASSETS=/app/assets1",
+      "PATH=/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "JAVA_HOME=/opt/java/openjdk",
+      "LANG=en_US.UTF-8",
+      "LANGUAGE=en_US:en",
+      "LC_ALL=en_US.UTF-8",
+      "JAVA_VERSION=jdk-21.0.13+9"
+    ],
+    "Cmd": [
+      "java",
+      "-Xms32m",
+      "-Xmx256m",
+      "-Djava.awt.headless=true",
+      "-cp",
+      "classes",
+      "GunnyServer"
+    ],
+    "Image": "gunny-online:7.6.9",
+    "Volumes": null,
+    "WorkingDir": "/app",
+    "Entrypoint": [
+      "/__cacert_entrypoint.sh"
+    ],
+    "Labels": {
+      "org.opencontainers.image.created": "2026-11-06T10:31:00.336187+00:00",
+      "org.opencontainers.image.description": "The Ubuntu container image maintained by Canonical\n\nUbuntu is a Debian-based Linux operating system that runs from the desktop to the cloud, to all your internet connected things.\nIt is the world's most popular operating system across public clouds and OpenStack clouds.\nIt is the number one platform for containers; from Docker to Kubernetes to LXD, Ubuntu can run your containers at scale.\nFast, secure and simple, Ubuntu powers millions of PCs worldwide.\n",
+      "org.opencontainers.image.title": "ubuntu",
+      "org.opencontainers.image.version": "26.04"
+    }
+  },
+  "NetworkSettings": {
+    "SandboxID": "ae54bef867d9e3bc4a78beb2381ad323925667b8063df52c6954b799df8bb5f5",
+    "SandboxKey": "/var/run/docker/netns/ae54bef867d9",
+    "Ports": {
+      "22122/tcp": [
+        {
+          "HostIp": "0.0.0.0",
+          "HostPort": "22122"
+        },
+        {
+          "HostIp": "::",
+          "HostPort": "22122"
+        }
+      ],
+      "8080/tcp": [
+        {
+          "HostIp": "0.0.0.0",
+          "HostPort": "8080"
+        },
+        {
+          "HostIp": "::",
+          "HostPort": "8080"
+        }
+      ]
+    },
+    "Networks": {
+      "bridge": {
+        "IPAMConfig": null,
+        "Links": null,
+        "Aliases": null,
+        "DriverOpts": null,
+        "GwPriority": 0,
+        "NetworkID": "a23b1cdd7f41e4bbc4c0d84f514f156029e82eb4506a01078e478410cbb81f59",
+        "EndpointID": "93815085885a5a760bd2a710506c8848a9ac78130140fa4d07a64d2ec9423802",
+        "Gateway": "172.17.0.1",
+        "IPAddress": "172.17.0.3",
+        "MacAddress": "0a:fc:d2:2a:2e:bc",
+        "IPPrefixLen": 16,
+        "IPv6Gateway": "",
+        "GlobalIPv6Address": "",
+        "GlobalIPv6PrefixLen": 0,
+        "DNSNames": null
+      }
+    }
+  },
+  "ImageManifestDescriptor": {
+    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+    "digest": "sha256:2da015fe40b2660793857668cc408cf72f3c2a395f86d156855ed6b5da74b026",
+    "size": 2712,
+    "platform": {
+      "architecture": "arm64",
+      "os": "linux"
+    }
+  }
+}

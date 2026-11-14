@@ -4,7 +4,9 @@ begin;
 -- Transaction guard: only login policy/admin metadata may change in this upgrade.
 create temporary table gunny_770_preserve on commit drop as
  select u.id,u.email,u.encrypted_password,to_jsonb(p) profile
- from auth.users u join public.profiles p on p.id=u.id;
+ from auth.users u left join public.profiles p on p.id=u.id;
+create temporary table gunny_770_schedules on commit drop as
+ select user_id,delete_at,delete_reason,appeal,cancel_on_login from public.gunny_account_admin;
 create table if not exists public.gunny_retention_policy(
  singleton boolean primary key default true check(singleton),
  offline_days integer not null default 90 check(offline_days between 1 and 3650),
@@ -18,6 +20,57 @@ alter table public.gunny_account_admin add column if not exists offline_days int
 alter table public.gunny_account_admin add column if not exists protected_until timestamptz;
 alter table public.gunny_account_admin add column if not exists retention_since timestamptz not null default now();
 insert into public.gunny_account_admin(user_id) select id from auth.users on conflict do nothing;
+alter table public.gunny_account_admin add column if not exists pending_extension_days integer not null default 0 check(pending_extension_days>=0);
+comment on column public.gunny_account_admin.pending_extension_days is 'Additive extension credit while retention is disabled; consumed on enabling.';
+
+-- A durable UUID key prevents retries from adding days twice, even after audit cleanup/account deletion.
+create table if not exists public.gunny_offline_extensions(
+ request_key uuid primary key,user_id uuid not null,
+ days integer not null check(days between 1 and 3650),created_at timestamptz not null default now()
+);
+alter table public.gunny_offline_extensions enable row level security;
+revoke all on public.gunny_offline_extensions from public,anon,authenticated;
+grant all on public.gunny_offline_extensions to service_role;
+
+-- Import valid receipts if an earlier 7.7.0 draft was used. Never reapply their days.
+create temporary table gunny_770_legacy_extensions(
+ id bigint,at timestamptz,request_key uuid,user_id uuid,days integer
+) on commit drop;
+do $legacy_receipts$
+declare entry record; parsed_key uuid; parsed_user uuid; parsed_days integer;
+begin
+ for entry in select id,at,target,detail from public.gunny_admin_audit where action='extend-offline' loop
+  begin
+   -- Cast exactly as the old handler did: UUID case/braces/compact notation and integer text normalize.
+   parsed_key:=(entry.detail->>'request_key')::uuid;parsed_user:=entry.target::uuid;
+   parsed_days:=(entry.detail->>'days')::integer;
+   if parsed_key is not null and parsed_user is not null and parsed_days between 1 and 3650 then
+    insert into gunny_770_legacy_extensions values(entry.id,entry.at,parsed_key,parsed_user,parsed_days);
+   end if;
+  exception when invalid_text_representation or numeric_value_out_of_range then
+   continue;
+  end;
+ end loop;
+end;
+$legacy_receipts$;
+do $receipts$
+begin
+ if exists(select request_key from gunny_770_legacy_extensions
+  where request_key is not null and user_id is not null and days between 1 and 3650
+  group by request_key having count(distinct (user_id,days))>1) then
+  raise exception 'Conflicting historical extend-offline request_key; review audit before upgrading';
+ end if;
+ if exists(select 1 from gunny_770_legacy_extensions old join public.gunny_offline_extensions receipt using(request_key)
+  where old.user_id is not null and old.days between 1 and 3650
+   and (old.user_id<>receipt.user_id or old.days<>receipt.days)) then
+  raise exception 'Historical extend-offline request_key disagrees with stored receipt';
+ end if;
+end;
+$receipts$;
+insert into public.gunny_offline_extensions(request_key,user_id,days,created_at)
+ select distinct on(request_key) request_key,user_id,days,at from gunny_770_legacy_extensions
+ where request_key is not null and user_id is not null and days between 1 and 3650
+ order by request_key,id on conflict(request_key) do nothing;
 
 -- Convert login policy in place. Never replace UUIDs, passwords, emails or profile rows.
 -- This is executed only when the owner runs this migration manually.
@@ -29,7 +82,7 @@ update auth.users set raw_app_meta_data=coalesce(raw_app_meta_data,'{}'::jsonb)|
 create or replace function public.gunny_inactive_deadline(p_user uuid) returns timestamptz
 language sql stable security definer set search_path='' as $$
  select case when policy.enabled then greatest(
-  greatest(coalesce(a.last_seen_at,a.last_login_at,u.created_at),a.retention_since)
+  greatest(a.last_seen_at,a.last_login_at,u.created_at,a.retention_since)
     + make_interval(days=>coalesce(a.offline_days,policy.offline_days)),
   coalesce(a.protected_until,'-infinity'::timestamptz)) else null end
  from public.gunny_account_admin a join auth.users u on u.id=a.user_id
@@ -40,24 +93,57 @@ grant execute on function public.gunny_inactive_deadline(uuid) to service_role;
 
 create or replace function public.gunny_admin(p_op text,p_data jsonb default '{}') returns jsonb
 language plpgsql security definer set search_path='' as $$
-declare uid uuid; a public.gunny_account_admin%rowtype; result jsonb; notices jsonb:='[]';
+declare uid uuid; a public.gunny_account_admin%rowtype; policy public.gunny_retention_policy%rowtype; receipt public.gunny_offline_extensions%rowtype; result jsonb; notices jsonb:='[]';
  t timestamptz:=clock_timestamp(); start_t timestamptz;end_t timestamptz; n integer; item jsonb; grant_row public.gunny_wallet_grants%rowtype;add_coins integer;add_money integer;request_id uuid;balance jsonb;
 begin
  if p_op='retention-policy' then
   return (select to_jsonb(p) from public.gunny_retention_policy p where singleton);
  elsif p_op='retention-save' then
   n:=(p_data->>'days')::integer;if n is null or n<1 or n>3650 then raise exception 'Days must be 1..3650';end if;
-  if coalesce((p_data->>'enabled')::boolean,true) and exists(select 1 from public.gunny_retention_policy where singleton and not enabled) then
-   update public.gunny_account_admin set retention_since=t;
-  end if;
+  -- Same lock order as extend-offline: policy, then account rows.
+  select * into strict policy from public.gunny_retention_policy where singleton for update;
+  t:=clock_timestamp();
   update public.gunny_retention_policy set offline_days=n,enabled=coalesce((p_data->>'enabled')::boolean,true),updated_at=t where singleton;
+  if coalesce((p_data->>'enabled')::boolean,true) and not policy.enabled then
+   update public.gunny_account_admin set retention_since=greatest(retention_since,t);
+   -- A disabled policy has no running deadline: apply queued days to the newly granted window.
+   -- greatest() also preserves any longer absolute protection already granted previously.
+   update public.gunny_account_admin account set
+    protected_until=greatest(coalesce(public.gunny_inactive_deadline(account.user_id),t),t)+make_interval(days=>account.pending_extension_days),
+    pending_extension_days=0
+   where account.pending_extension_days>0;
+  end if;
   insert into public.gunny_admin_audit(action,target,detail) values(p_op,'all',p_data);
   return (select to_jsonb(p) from public.gunny_retention_policy p where singleton);
+ elsif p_op='extend-offline' then
+  uid:=(p_data->>'id')::uuid;request_id:=(p_data->>'request_key')::uuid;
+  n:=case when jsonb_typeof(p_data->'days')='number' and p_data->>'days' ~ '^[1-9][0-9]{0,3}$' then (p_data->>'days')::integer end;
+  if uid is null or request_id is null or n is null or n<1 or n>3650 then raise exception 'Invalid extension request';end if;
+  -- Serializes enable/disable against extension, and a PK serializes duplicate request IDs.
+  select * into strict policy from public.gunny_retention_policy where singleton for update;
+  t:=clock_timestamp();
+  insert into public.gunny_offline_extensions(request_key,user_id,days) values(request_id,uid,n) on conflict do nothing;
+  if not found then
+   select * into strict receipt from public.gunny_offline_extensions where request_key=request_id;
+   if receipt.user_id<>uid or receipt.days<>n then raise exception 'Invalid request key: extension payload changed';end if;
+   return '{}';
+  end if;
+  perform 1 from auth.users where id=uid;if not found then raise exception 'Account not found';end if;
+  insert into public.gunny_account_admin(user_id) values(uid) on conflict do nothing;
+  select * into strict a from public.gunny_account_admin where user_id=uid for update;
+  if policy.enabled then
+   update public.gunny_account_admin set protected_until=greatest(coalesce(public.gunny_inactive_deadline(uid),t),t)+make_interval(days=>n) where user_id=uid;
+  else
+   update public.gunny_account_admin set pending_extension_days=pending_extension_days+n where user_id=uid;
+  end if;
+  insert into public.gunny_admin_audit(action,target,detail)
+   values(p_op,uid::text,p_data||jsonb_build_object('request_key',request_id::text,'days',n,'queued',not policy.enabled));
+  return '{}';
  elsif p_op='accounts' then
   select coalesce(jsonb_agg(r),'[]') into result from (
    select u.id,u.email,coalesce(p.display_name,'Chưa tạo nhân vật') display_name,p.public_id,
     u.created_at,ac.last_login_at,ac.last_seen_at,ac.max_offline_seconds,ac.delete_at,ac.delete_reason,ac.appeal,ac.cancel_on_login,
-    public.gunny_inactive_deadline(u.id) inactive_delete_at,ac.offline_days,ac.protected_until,'virtual'::text account_type,
+    public.gunny_inactive_deadline(u.id) inactive_delete_at,ac.offline_days,ac.protected_until,ac.pending_extension_days,'virtual'::text account_type,
     coalesce(p.coins,0) coins,coalesce(p.shopping_money,0) shopping_money
    from auth.users u left join public.profiles p on p.id=u.id left join public.gunny_account_admin ac on ac.user_id=u.id
    where coalesce(p.display_name,'') ilike '%'||left(coalesce(p_data->>'search',''),100)||'%'
@@ -120,12 +206,6 @@ begin
   n:=(p_data->>'days')::integer;
   if n is not null and (n<1 or n>3650) then raise exception 'Days must be 1..3650';end if;
   update public.gunny_account_admin set offline_days=n where user_id=uid;
- elsif p_op='extend-offline' then
-  perform (p_data->>'request_key')::uuid;
-  if exists(select 1 from public.gunny_admin_audit where action=p_op and target=uid::text and detail->>'request_key'=p_data->>'request_key') then return '{}';end if;
-  n:=(p_data->>'days')::integer;
-  if n is null or n<1 or n>3650 then raise exception 'Days must be 1..3650';end if;
-  update public.gunny_account_admin set protected_until=greatest(coalesce(public.gunny_inactive_deadline(uid),t),t)+make_interval(days=>n) where user_id=uid;
  elsif p_op='schedule' then
   start_t:=(p_data->>'delete_at')::timestamptz;if start_t is null or start_t<=t then raise exception 'Choose a future date';end if;
   if char_length(coalesce(p_data->>'appeal',''))>250 or char_length(coalesce(p_data->>'reason',''))>300 then raise exception 'Text too long';end if;
@@ -134,7 +214,7 @@ begin
   update public.gunny_account_admin set delete_at=null where user_id=uid;
  elsif p_op='login' then
   if a.delete_at<=t or public.gunny_inactive_deadline(uid)<=t then
-   insert into public.gunny_admin_audit(action,target,detail) values('scheduled-delete',uid::text,to_jsonb(a));
+   insert into public.gunny_admin_audit(action,target,detail) values(case when a.delete_at<=t then 'scheduled-delete' else 'inactive-delete' end,uid::text,to_jsonb(a));
    delete from auth.users where id=uid;return jsonb_build_object('blocked',true,'notices','[]'::jsonb);
   end if;
   if a.delete_at is not null then
@@ -161,6 +241,12 @@ begin
    or u.encrypted_password is distinct from old.encrypted_password
    or to_jsonb(p) is distinct from old.profile) then
   raise exception 'Upgrade cancelled: existing login credentials or game profile changed';
+ end if;
+ if exists(select 1 from gunny_770_schedules old left join public.gunny_account_admin account using(user_id)
+  where account.user_id is null or account.delete_at is distinct from old.delete_at
+   or account.delete_reason is distinct from old.delete_reason or account.appeal is distinct from old.appeal
+   or account.cancel_on_login is distinct from old.cancel_on_login) then
+  raise exception 'Upgrade cancelled: existing manual deletion schedules changed';
  end if;
 end;
 $preserve$;

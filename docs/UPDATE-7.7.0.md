@@ -48,6 +48,10 @@ Admin có chính sách không hoạt động: mặc định 90 ngày, chỉnh đ
 hạn riêng từng tài khoản và gia hạn thêm ngày. Gửi lại cùng yêu cầu gia hạn không
 cộng ngày hai lần. Đăng nhập/chơi làm mới mốc hoạt động.
 
+Khi policy tắt, gia hạn được giữ thành ngày chờ và chỉ cộng vào hạn khi bật lại.
+Không rút ngắn mốc bảo vệ đã có; retry dùng cùng UUID không cộng trùng. Lịch xóa
+thủ công vẫn độc lập. Xem [rà soát SQL 13/11/2026](REVIEW-SQL-7.7.0-2026-11-13.md).
+
 Tự xoá do không hoạt động **tắt mặc định**. Khi admin bật, mọi tài khoản cũ được
 cấp một chu kỳ đầy đủ từ thời điểm bật. Các lịch xoá thủ công đã có vẫn độc lập.
 Chỉ khi tính năng được bật và hạn đã đến, maintenance mới xoá tài khoản theo chính sách.

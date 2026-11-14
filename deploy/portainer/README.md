@@ -1,5 +1,9 @@
 # Docker / Portainer và TCP online
 
+Container `gunny-online` đang chạy độc lập có thể dùng
+[tool cập nhật có menu](../CAP-NHAT-DOCKER.md):
+`sudo bash deploy/cap-nhat-gunny.sh` từ thư mục gốc repo.
+
 Mẫu `compose.yaml` dành cho Caddy chạy trực tiếp trên host, reverse proxy về
 `127.0.0.1:8080`, giống cấu hình hiện có. TCP game publish riêng `22122:22122/tcp`.
 Nếu Caddy chạy trong container, cần dùng network chung và upstream `gunny:8080`.
@@ -9,7 +13,7 @@ Nếu Caddy chạy trong container, cần dùng network chung và upstream `gunn
 Tại thư mục gốc repo, build image trên Docker endpoint sẽ chạy game:
 
 ```sh
-docker build -t gunny-online:7.7.0 .
+docker build -t gunny-online:7.8.0 .
 ```
 
 Trong Portainer, chọn đúng Environment → stack game hiện có. Đối chiếu và cập nhật
@@ -60,4 +64,8 @@ nhưng tên miền không vào được trong Wi-Fi nhà, kiểm tra NAT loopbac
 DNS nội bộ trỏ tên miền về IP LAN. Một lần timeout từ LAN qua IP công cộng chưa đủ
 để kết luận cổng Internet bị đóng.
 
-Trước khi cập nhật lên 7.7.0, chủ máy tự chạy migration 7.7.0 theo docs/UPDATE-7.7.0.md và xác nhận đã hoàn tất. Container không tự chạy SQL.
+Trước khi cập nhật lên 7.8.0, chủ máy tự rà soát và chạy migration tài khoản 7.7.0
+(nếu chưa chạy), rồi migration rèn/phó bản 7.8.0 theo
+[docs/UPDATE-7.8.0.md](../../docs/UPDATE-7.8.0.md). Container không tự chạy SQL.
+Cập nhật cả server và hai bộ cài 780. Image chuẩn bị sẵn không đồng nghĩa container
+đang chạy đã được cập nhật.

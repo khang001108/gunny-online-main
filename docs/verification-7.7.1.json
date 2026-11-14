@@ -1,0 +1,31 @@
+{
+  "version": "7.7.1",
+  "date": "2026-11-13",
+  "production_deployed": false,
+  "production_container_updated": false,
+  "supabase_sql_executed": false,
+  "project": "mnquwasxacifkktmckdv",
+  "docker_image_built": false,
+  "target_image": "gunny-online:7.7.1",
+  "backend_checks_passed": 656,
+  "new_gameplay_checks_passed": 519,
+  "updater_tests_passed": 13,
+  "native_tcp_checks_per_resolution": 28,
+  "native_ui_checks_per_resolution": 15,
+  "native_controls_regression_checks_per_resolution": 12,
+  "native_resolutions": [
+    "320x240",
+    "640x480"
+  ],
+  "loopback_release_to_guest_projectile_ms": {
+    "320": 164,
+    "640": 125
+  },
+  "real_main_readiness_passed": true,
+  "physical_handsets_tested": false,
+  "internet_4g_gameplay_tested": false,
+  "migration_changed": false,
+  "migration_sha256": "274110436b25eae327c6c811efb4ee535fb4978c33759515a04b10f347da2f9f",
+  "previous_postgresql_review_tests": 39,
+  "logs": "docs/gameplay-771-verification.log"
+}

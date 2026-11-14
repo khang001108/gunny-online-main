@@ -21,8 +21,9 @@ def receive(sock, size):
 
 
 def frame(sock, kind, body=b""):
+    # Advertise the current rules bits; older servers ignore unknown feature bits.
     # magic, kind, flags, empty Java UTF token, three kit bytes, body length
-    sock.sendall(struct.pack(">IBIH3BI", 0x474E5954, kind, 65536, 0, 0, 1, 2, len(body)) + body)
+    sock.sendall(struct.pack(">IBIH3BI", 0x474E5954, kind, 0x70000, 0, 0, 1, 2, len(body)) + body)
     status, size = struct.unpack(">II", receive(sock, 8))
     if status != 200 or size > 131072:
         raise ValueError(f"Invalid TCP reply: status={status}, size={size}")

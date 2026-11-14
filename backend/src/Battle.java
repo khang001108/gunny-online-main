@@ -13,15 +13,18 @@ final class Battle {
     final Ground ground;
     interface ShotObserver {void beforeShot();}
     ShotObserver shotObserver;
-    final Unit[] units={new Unit(),new Unit(),new Unit(),new Unit(),new Unit(),new Unit()};int unitCount=2;boolean teams;
+    static final int MAX_UNITS=13;
+    final Unit[] units=new Unit[MAX_UNITS];int unitCount=2;boolean teams;
     boolean explicitHumans;boolean humanTurn(){return explicitHumans?units[active].human:teams?units[active].human:hotseat||active==0;}
     int enemyOf(int actor){int best=actor==0?1:0,distance=99999;for(int i=0;i<unitCount;i++)if(i!=actor&&units[i].hp>0&&(!teams||units[i].team!=units[actor].team)){int d=Math.abs(units[i].x-units[actor].x);if(d<distance){distance=d;best=i;}}return best;}
+    static int targetY(Unit u){return u.y-(u.npc==3?42:u.npc>0?16:12);}
+    static boolean hitsUnit(Unit u,int x,int y){int dx=x-u.x,dy=y-targetY(u);if(u.npc==0)return dx*dx+dy*dy<70;int rx=u.npc==3?25:16,ry=u.npc==3?43:15;if(Math.abs(dx)>rx||Math.abs(dy)>ry)return false;return dx*dx*ry*ry+dy*dy*rx*rx<=rx*rx*ry*ry;}
     static int gravity(Ball b){return b.fly||b.freeze?11:b.weapon==4?14:b.weapon==2?10:b.weapon==7?12:11;}
-    static int windStep(int wind,Ball b){return wind/(b.fly||b.freeze?7:b.weapon==4?11:b.weapon==2?5:b.weapon==7?8:b.weapon==1?9:7);}
+    static int windStep(int wind,Ball b){return b.weapon==AntCaveRules.QUEEN_ARROW?0:wind/(b.fly||b.freeze?7:b.weapon==4?11:b.weapon==2?5:b.weapon==7?8:b.weapon==1?9:7);}
     static int baseDamage(int weapon){return weapon==0?290:weapon==1?390:weapon==2?300:weapon==4?370:weapon==7?315:330;}
     static int baseRadius(int weapon){return weapon==0?15:weapon==1?10:weapon==2?10:weapon==4?17:weapon==7?14:12;}
-    void configureTeam(int ally){teams=true;unitCount=4;hotseat=false;int roster=rand(4);for(int i=0;i<4;i++){Unit u=units[i];u.team=i%2;u.human=i==0||i==2&&ally==2;u.maxHp=MAXHP;u.maxEnergy=240;u.attackBonus=0;u.statsEnabled=false;u.hp=MAXHP;u.energy=240;u.rage=0;u.heals=5;u.dead=false;u.vy=u.walk=u.attackTicks=u.slope=u.flashTicks=u.landingTicks=u.deathX=u.deathY=u.lastBuff=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.x=i==0?70:i==2?140:i==1?400:330;u.y=ground.surface(u.x,35);u.face=u.team==0?1:-1;u.botStyle=(roster+i)%4;u.weapon=new int[]{0,3,5,9}[(roster+i)%4];refreshAim(u);}}
-    void configureOnlineTeam(){configureTeam(1);unitCount=6;for(int i=0;i<6;i++){Unit u=units[i];u.team=i%2;u.human=true;u.maxHp=MAXHP;u.maxEnergy=240;u.attackBonus=0;u.statsEnabled=false;u.hp=MAXHP;u.energy=240;u.rage=0;u.heals=5;u.dead=false;u.vy=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.x=i%2==0?60+i/2*55:420-i/2*55;u.y=ground.surface(u.x,35);u.face=i%2==0?1:-1;refreshAim(u);}}
+    void configureTeam(int ally){teams=true;unitCount=4;hotseat=false;int roster=rand(4);for(int i=0;i<4;i++){Unit u=units[i];for(int k=0;k<10;k++)u.weaponForge[k]=0;u.forgeWeaponBonus=0;u.npc=0;u.team=i%2;u.human=i==0||i==2&&ally==2;u.maxHp=MAXHP;u.maxEnergy=240;u.attackBonus=u.defense=u.luck=u.experience=u.forgeAttack=u.forgeDefense=u.forgeLuck=0;u.statsEnabled=false;u.hp=MAXHP;u.energy=240;u.rage=0;u.heals=5;u.dead=false;u.vy=u.walk=u.attackTicks=u.slope=u.flashTicks=u.landingTicks=u.deathX=u.deathY=u.lastBuff=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.x=i==0?70:i==2?140:i==1?400:330;u.y=ground.surface(u.x,35);u.face=u.team==0?1:-1;u.botStyle=(roster+i)%4;u.weapon=new int[]{0,3,5,9}[(roster+i)%4];refreshAim(u);}}
+    void configureOnlineTeam(){configureTeam(1);unitCount=6;for(int i=0;i<6;i++){Unit u=units[i];for(int k=0;k<10;k++)u.weaponForge[k]=0;u.forgeWeaponBonus=0;u.npc=0;u.team=i%2;u.human=true;u.maxHp=MAXHP;u.maxEnergy=240;u.attackBonus=u.defense=u.luck=u.experience=u.forgeAttack=u.forgeDefense=u.forgeLuck=0;u.statsEnabled=false;u.hp=MAXHP;u.energy=240;u.rage=0;u.heals=5;u.dead=false;u.vy=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.x=i%2==0?60+i/2*55:420-i/2*55;u.y=ground.surface(u.x,35);u.face=i%2==0?1:-1;refreshAim(u);}}
     void completeTurn(){pendingNext=false;boolean deferred=deferNext;deferNext=false;next();deferNext=deferred;}
     final Ball[] balls=new Ball[20];
     final Blast[] blasts=new Blast[16];
@@ -34,8 +37,8 @@ final class Battle {
     int trailCount;
     int windLimit=30;
     int ballCount,blastCount,active,turn,wind,lastWind,countdown,bursts,burstDelay,settle,botWait;
-    int turnLimit=600;boolean deferNext,pendingNext;
-    final int[] damage=new int[6],kills=new int[6];int extra,boost,weapon,shotSerial,hitSerial,winSerial;
+    int turnLimit=600,dungeonDifficulty,dungeonStage,queenShots,lastDungeonAlly;boolean deferNext,pendingNext;
+    final int[] damage=new int[MAX_UNITS],kills=new int[MAX_UNITS];int extra,boost,weapon,shotSerial,hitSerial,winSerial;
     int selectedWeapon,usedProps,usedPropCount;
     final int[] usedPropHistory=new int[16];
     int viewX=-25,viewY=-10000,viewWidth=W+50,viewHeight=H+10035;
@@ -51,21 +54,24 @@ final class Battle {
     static final int[] ITEM_COST={50,150,170,150,120,120};
     static final String[] ITEM_NAMES={"Tàng hình","Đạn băng","Hồi máu nhóm","Tàng hình nhóm","Dẫn đường","Kích nộ"};
     static boolean validKit(int[] kit){return kit!=null&&kit.length==3&&kit[0]>=0&&kit[0]<6&&kit[1]>=0&&kit[1]<6&&kit[2]>=0&&kit[2]<6&&kit[0]!=kit[1]&&kit[0]!=kit[2]&&kit[1]!=kit[2];}
-    static final class Unit {int maxHp=MAXHP,maxEnergy=240,attackBonus,wornMask=3;boolean statsEnabled;final int[] kit={0,1,2};int itemUsed,frozen,freezeTurns,invisible,flyCooldown;boolean assist,flightAim;int team,botStyle=-1;boolean human;int x,y,vy,hp=MAXHP,energy=240,rage,angle=45,power=60,face=1,walk,weapon,attackTicks,slope,heals=5,deathX,deathY,lastPower=-1,pendingPower=-1,flashTicks,landingTicks,lastBuff;boolean dead;}
+    static final class Unit {final int[] weaponForge=new int[10];int forgeWeaponBonus;int npc;int maxHp=MAXHP,maxEnergy=240,attackBonus,defense,luck,experience,forgeAttack,forgeDefense,forgeLuck,wornMask=3;boolean statsEnabled;final int[] kit={0,1,2};int itemUsed,frozen,freezeTurns,invisible,flyCooldown;boolean assist,flightAim;int team,botStyle=-1;boolean human;int x,y,vy,hp=MAXHP,energy=240,rage,angle=45,power=60,face=1,walk,weapon,attackTicks,slope,heals=5,deathX,deathY,lastPower=-1,pendingPower=-1,flashTicks,landingTicks,lastBuff;boolean dead;}
     static final class Ball {int x,y,vx,vy,owner,age,damage,radius,weapon;boolean guided,freeze,fly,homing,powered;}
     static final class Blast {boolean freeze;int x,y,radius,time,damage,owner,weapon;}
-    Battle(Ground ground){this.ground=ground;}
+    Battle(Ground ground){this.ground=ground;for(int i=0;i<units.length;i++)units[i]=new Unit();}
     int rand(int n){seed=seed*1103515245+12345;return (seed>>>1)%n;}
     int rollWind(){int cap=clamp(windLimit,0,30);return rand(cap*2+1)-cap;}
     void start(boolean two){
         explicitHumans=false;deferNext=pendingNext=false;teams=false;unitCount=2;active=0;turn=1;over=false;hotseat=two;winner=-1;ballCount=blastCount=bursts=settle=trailCount=0;
-        for(int i=0;i<6;i++){damage[i]=kills[i]=0;Unit u=units[i];u.itemUsed=u.frozen=u.freezeTurns=u.invisible=u.flyCooldown=0;u.assist=false;u.kit[0]=0;u.kit[1]=1;u.kit[2]=2;}damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rollWind();lastWind=0;countdown=turnLimit;botWait=0;selectedWeapon=0;
-        for(int i=0;i<unitCount;i++){Unit u=units[i];u.botStyle=-1;u.x=i==0?100:350;u.y=ground.surface(u.x,35);u.vy=0;u.maxHp=MAXHP;u.maxEnergy=240;u.attackBonus=0;u.statsEnabled=false;u.hp=MAXHP;u.energy=240;u.rage=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.face=i==0?1:-1;u.walk=0;u.attackTicks=0;u.slope=0;u.heals=5;u.flashTicks=u.landingTicks=0;u.dead=false;u.deathX=u.deathY=0;refreshAim(u);}
+        dungeonStage=queenShots=0;lastDungeonAlly=4;
+        for(int i=0;i<units.length;i++){damage[i]=kills[i]=0;Unit u=units[i];u.itemUsed=u.frozen=u.freezeTurns=u.invisible=u.flyCooldown=u.hp=u.npc=0;u.dead=false;u.assist=false;u.kit[0]=0;u.kit[1]=1;u.kit[2]=2;}damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rollWind();lastWind=0;countdown=turnLimit;botWait=0;selectedWeapon=0;
+        for(int i=0;i<unitCount;i++){Unit u=units[i];for(int k=0;k<10;k++)u.weaponForge[k]=0;u.forgeWeaponBonus=0;u.npc=0;u.botStyle=-1;u.x=i==0?100:350;u.y=ground.surface(u.x,35);u.vy=0;u.maxHp=MAXHP;u.maxEnergy=240;u.attackBonus=u.defense=u.luck=u.experience=u.forgeAttack=u.forgeDefense=u.forgeLuck=0;u.statsEnabled=false;u.hp=MAXHP;u.energy=240;u.rage=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.face=i==0?1:-1;u.walk=0;u.attackTicks=0;u.slope=0;u.heals=5;u.flashTicks=u.landingTicks=0;u.dead=false;u.deathX=u.deathY=0;refreshAim(u);}
         clear();
     }
     void clear(){for(int i=0;i<6;i++)units[i].flightAim=false;freezeShot=false;botPhase=0;botPowQueued=false;sequentialAttack=false;usedProps=usedPropCount=0;extra=boost=0;triple=pow=fly=charging=false;}
     boolean busy(){return ballCount>0||bursts>0||settle>0;}
-    boolean input(){return units[active].frozen!=2&&!over&&!pendingNext&&!busy()&&(humanTurn()||botActing);}
+    boolean input(){return units[active].frozen!=2&&!over&&!pendingNext&&!busy()
+            &&!AntCaveRules.dying(this)&&!AntCaveRules.introducing(this)&&!AntCaveRules.summoning(this)
+            &&(humanTurn()||botActing);}
     static int clamp(int value,int low,int high){return Math.max(low,Math.min(high,value));}
     static int sin(int angle){angle%=360;if(angle<0)angle+=360;return angle<=90?SIN[angle]:angle<=180?SIN[180-angle]:angle<=270?-SIN[angle-180]:-SIN[360-angle];}
     static int cos(int angle){return sin(90+angle);}
@@ -77,7 +83,7 @@ final class Battle {
     static int aimAngle(Unit u){return aimAngle(u,u.angle);}
     static int aimCos(Unit u){return cos(aimAngle(u))*u.face;}
     static int aimSin(Unit u){return sin(aimAngle(u));}
-    static int launchBaseY(Unit u){return u.y-(isThrown(u.weapon)?(u.weapon==3?11:6):14);}
+    static int launchBaseY(Unit u){return u.y-(u.npc==3?59:isThrown(u.weapon)?(u.weapon==3?11:6):14);}
     // Face-local anchor: recompute from the unit, never from screen coordinates.
     static int guideOriginX(Unit u){return u.x+u.face*6;}
     static int guideOriginY(Unit u){return u.y-16;}
@@ -157,7 +163,14 @@ final class Battle {
         ageTrails();
         tickVisuals();
         if(over||pendingNext)return;
-        if(units[active].frozen==2){if(--countdown<=0)next();return;}
+        if(AntCaveRules.antOpening(this)){if(++botPhase>=AntCaveRules.ANT_INTRO_END)botPhase=0;return;}
+        if(AntCaveRules.introducing(this)){AntCaveRules.tickQueenIntro(this);return;}
+        if(AntCaveRules.summoning(this)){AntCaveRules.tickReinforcements(this);return;}
+        if(AntCaveRules.dying(this)){
+            if(++botPhase>=AntCaveRules.DEATH_END){finishPower();over=true;winner=AntCaveRules.firstAlly(this)>=0?0:2;winSerial++;}
+            return;
+        }
+        if(units[active].frozen==2&&!(dungeonStage>0&&units[active].npc>0&&units[active].npc<3)){if(--countdown<=0)next();return;}
         for(int n=0;n<unitCount;n++){
             Unit u=units[n];if(u.hp<=0)continue;
             if(!ground.solid(u.x-2,u.y+1)&&!ground.solid(u.x+2,u.y+1)){
@@ -169,15 +182,21 @@ final class Battle {
         boolean wasBusy=busy();
         if(bursts>0&&ballCount==0&&--burstDelay<=0){check();if(over){bursts=0;return;}emit();bursts--;burstDelay=isThrown(units[active].weapon)?THROW_WINDUP:2;}
         for(int sub=0;sub<4;sub++)for(int i=ballCount-1;i>=0;i--){
-            Ball b=balls[i];if(sub==0&&!b.fly&&!b.freeze)stampTrail(b);b.age++;if(b.homing){Unit target=units[enemyOf(b.owner)];int dx=target.x*256-b.x,dy=(target.y-12)*256-b.y;int len=Math.max(1,(int)Math.sqrt((double)dx*dx+(double)dy*dy));b.vx=dx*1800/len;b.vy=dy*1800/len;}else{b.vx+=windStep(wind,b);b.vy+=gravity(b);if(b.guided)guide(b);}b.x+=b.vx/4;b.y+=b.vy/4;
+            Ball b=balls[i];if(sub==0&&!b.fly&&!b.freeze)stampTrail(b);b.age++;if(b.homing){Unit target=units[enemyOf(b.owner)];int dx=target.x*256-b.x,dy=targetY(target)*256-b.y;int len=Math.max(1,(int)Math.sqrt((double)dx*dx+(double)dy*dy));b.vx=dx*1800/len;b.vy=dy*1800/len;}else{b.vx+=windStep(wind,b);b.vy+=gravity(b);if(b.guided)guide(b);}b.x+=b.vx/4;b.y+=b.vy/4;
             int x=b.x/256,y=b.y/256;boolean hit=!b.homing&&ground.solid(x,y);
-            if(!b.fly)for(int n=0;n<unitCount;n++){Unit u=units[n];int dx=x-u.x,dy=y-(u.y-12);if(u.hp>0&&(n!=b.owner||b.age>24)&&dx*dx+dy*dy<70)hit=true;}
+            if(!b.fly)for(int n=0;n<unitCount;n++){Unit u=units[n];if(u.hp>0&&(n!=b.owner||b.age>24)&&hitsUnit(u,x,y))hit=true;}
             if(hit){impact(b);removeBall(i);}
-            else if((sequentialAttack&&(x<viewX||x>=viewX+viewWidth||y<viewY||y>=viewY+viewHeight))||x< -25||x>W+25||y>H+35||b.age>1600)removeBall(i);
+            else if((sequentialAttack&&b.weapon!=AntCaveRules.QUEEN_ARROW&&(x<viewX||x>=viewX+viewWidth||y<viewY||y>=viewY+viewHeight))||x< -25||x>W+25||y>H+35||b.age>1600)removeBall(i);
         }
         if(wasBusy&&ballCount==0&&bursts==0&&settle<=0)settle=24;
+        if(dungeonStage==2&&units[1].hp<=0){check();return;}
         if(settle>0){if(--settle==0){check();if(!over)next();}return;}
         if(busy())return;check();if(over)return;
+        if(dungeonStage>0&&units[active].hp<=0&&units[active].npc>0){
+            int peer=AntCaveRules.firstAnt(this,units[active].npc);
+            if(peer<0){next();return;}
+            active=peer;
+        }
         if(!humanTurn()){botTurn();return;}
         if(charging){Unit u=units[active];u.power+=chargeDir;if(u.power>=100){u.power=100;chargeDir=-1;}else if(u.power<=0){u.power=0;charging=false;next();}return;}
         if(--countdown<=0)next();
@@ -186,11 +205,11 @@ final class Battle {
         if(b.weapon!=6&&b.weapon!=9)return b.age/8%8;
         int ax=Math.abs(b.vx),ay=Math.abs(b.vy);if(ax>ay*2)return b.vx>0?0:4;if(ay>ax*2)return b.vy<0?2:6;return b.vx>0?(b.vy<0?1:7):(b.vy<0?3:5);
     }
-    void guide(Ball b){int best=-1;long distance=100L*100*256*256;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&!ally(b.owner,i)){long dx=units[i].x*256L-b.x,dy=(units[i].y-12)*256L-b.y,d=dx*dx+dy*dy;if(d<distance){distance=d;best=i;}}if(best<0)return;Unit t=units[best];int dx=t.x*256-b.x,dy=(t.y-12)*256-b.y,len=Math.max(1,(int)Math.sqrt((double)dx*dx+(double)dy*dy));int speed=Math.max(500,(int)Math.sqrt((double)b.vx*b.vx+(double)b.vy*b.vy));b.vx+=(dx*speed/len-b.vx)/12;b.vy+=(dy*speed/len-b.vy)/12;}
+    void guide(Ball b){int best=-1;long distance=100L*100*256*256;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&!ally(b.owner,i)){long dx=units[i].x*256L-b.x,dy=targetY(units[i])*256L-b.y,d=dx*dx+dy*dy;if(d<distance){distance=d;best=i;}}if(best<0)return;Unit t=units[best];int dx=t.x*256-b.x,dy=targetY(t)*256-b.y,len=Math.max(1,(int)Math.sqrt((double)dx*dx+(double)dy*dy));int speed=Math.max(500,(int)Math.sqrt((double)b.vx*b.vx+(double)b.vy*b.vy));b.vx+=(dx*speed/len-b.vx)/12;b.vy+=(dy*speed/len-b.vy)/12;}
     void stampTrail(Ball b){
         if(b.fly||b.freeze)return;
         if(trailCount==TRAIL_CAPACITY)return;
-        int i=trailCount++;trailX[i]=b.x;trailY[i]=b.y;trailWeapon[i]=b.weapon;trailFrame[i]=ballFrame(b);trailAge[i]=0;
+        int i=trailCount++;trailX[i]=b.x;trailY[i]=b.y;trailWeapon[i]=b.weapon;trailFrame[i]=b.weapon==AntCaveRules.QUEEN_ARROW?0:ballFrame(b);trailAge[i]=0;
         // Original particle lifetimes: brick 0.2s, dart/electric/grenade 0.5s.
         // Sample once per 30Hz game tick; retained positions follow the real arc.
         trailLife[i]=b.weapon==3?6:15;
@@ -208,7 +227,13 @@ final class Battle {
         Ball b=new Ball();b.x=u.x*256+cs*4;b.y=launchBaseY(u)*256-sn*4;
         if(freezeShot||isThrown(u.weapon)){b.x=u.x*256;b.y=launchBaseY(u)*256;}
         int speed=(25+power*2)*256/24;b.vx=cs*speed/1024;b.vy=-sn*speed/1024;b.owner=active;b.fly=fly;b.homing=cheatAim&&active==0&&!fly&&!freezeShot;b.guided=u.assist&&!fly&&!freezeShot;
-        b.freeze=freezeShot;b.powered=pow;b.weapon=u.weapon;b.radius=pow?Math.max(20,baseRadius(u.weapon)+5):baseRadius(u.weapon);
+        b.freeze=freezeShot;b.powered=pow;b.weapon=u.npc==3?AntCaveRules.QUEEN_ARROW:u.weapon;b.radius=pow?Math.max(20,baseRadius(u.weapon)+5):baseRadius(u.weapon);
+        if(b.weapon==AntCaveRules.QUEEN_ARROW){
+            Unit target=units[enemyOf(active)];
+            int steps=420;
+            b.vx=(target.x*256-b.x)*4/steps;
+            b.vy=(targetY(target)*256-b.y)*4/steps-gravity(b)*(steps+1)/2;
+        }
         int base=baseDamage(u.weapon)+u.attackBonus;
         b.damage=base*(100+boost)/100;if(triple)b.damage=b.damage*60/100;if(extra>0)b.damage=b.damage*82/100;if(pow)b.damage=b.damage*170/100;
         if(b.guided)b.damage=b.damage/2;
@@ -221,31 +246,65 @@ final class Battle {
     void impact(Ball b){
         int x=b.x/256,y=b.y/256;
         if(b.fly){int surface=ground.surface(x,Math.max(0,y-18));if(surface<H&&x>12&&x<W-12){units[b.owner].x=x;units[b.owner].y=surface;units[b.owner].vy=0;units[b.owner].landingTicks=32;}return;}
-        if(b.freeze){Blast ice=new Blast();ice.freeze=true;ice.x=x;ice.y=y;ice.weapon=b.weapon;if(blastCount<blasts.length)blasts[blastCount++]=ice;for(int i=0;i<unitCount;i++){Unit u=units[i];int dx=x-u.x,dy=y-u.y+12;if(u.hp>0&&!ally(b.owner,i)&&dx*dx+dy*dy<31*31){u.freezeTurns=2;u.frozen=1;}}hitSerial++;return;}
-        Blast fx=new Blast();fx.x=x;fx.y=y;fx.radius=b.radius;fx.owner=b.owner;fx.weapon=b.weapon;
+        if(b.freeze){Blast ice=new Blast();ice.freeze=true;ice.x=x;ice.y=y;ice.weapon=b.weapon;if(blastCount<blasts.length)blasts[blastCount++]=ice;for(int i=0;i<unitCount;i++){Unit u=units[i];int dx=x-u.x,dy=y-targetY(u);if(u.hp>0&&!ally(b.owner,i)&&dx*dx+dy*dy<31*31){u.freezeTurns=2;u.frozen=1;}}hitSerial++;return;}
+        Blast fx=new Blast();fx.x=x;fx.y=y;fx.radius=b.radius;fx.owner=b.owner;fx.weapon=b.weapon==AntCaveRules.QUEEN_ARROW?9:b.weapon;
         if(blastCount<blasts.length)blasts[blastCount++]=fx;
         for(int i=0;i<unitCount;i++){
-            Unit u=units[i];int dx=x-u.x,dy=y-u.y+12,dist=dx*dx+dy*dy,r=b.radius+23;
-            if(u.hp>0&&dist<r*r){int damage=b.damage*(100-(int)Math.sqrt(dist)*65/r)/100;if(u.freezeTurns>0){u.freezeTurns=u.frozen=0;damage=damage/2;}int received=Math.min(u.hp,damage);u.hp=Math.max(0,u.hp-damage);if(i!=b.owner&&(!teams||u.team!=units[b.owner].team)){this.damage[b.owner]+=received;if(u.hp==0)kills[b.owner]++;}u.rage=Math.min(100,u.rage+(received*100+u.maxHp-1)/u.maxHp);fx.damage=damage;showDamage(u,damage,b.powered);}
+            Unit u=units[i];int dx=x-u.x,dy=y-targetY(u),dist=dx*dx+dy*dy,r=b.radius+(u.npc==3?45:23);
+            if(u.hp>0&&dist<r*r){
+                int damage=b.damage*(100-(int)Math.sqrt(dist)*65/r)/100;
+                if(lightBotDamage(b.owner,i))damage=Math.min(60,Math.max(1,damage/10));
+                if(u.freezeTurns>0){u.freezeTurns=u.frozen=0;damage=damage/2;}
+                int received=Math.min(u.hp,damage);u.hp=Math.max(0,u.hp-damage);
+                if(u.hp>0&&u.npc==3){botPhase=AntCaveRules.QUEEN_HIT;u.flashTicks=24;}
+                if(!ally(b.owner,i)){this.damage[b.owner]+=received;if(u.hp==0)kills[b.owner]++;}
+                u.rage=Math.min(100,u.rage+(received*100+u.maxHp-1)/u.maxHp);fx.damage=damage;showDamage(u,damage,b.powered);
+            }
+
         }
-        ground.crater(x,y,b.radius);hitSerial++;
+        if(b.weapon==AntCaveRules.QUEEN_ARROW&&fx.damage>0)botPhase=AntCaveRules.QUEEN_SUCCESS;
+        if(!unsafeBotLanding(b,x,y))ground.crater(x,y,b.radius);hitSerial++;
     }
-    void check(){boolean left=false,right=false;for(int i=0;i<unitCount;i++){Unit u=units[i];if(u.hp<=0&&!u.dead){u.dead=true;u.deathX=clamp(u.x,12,W-12);u.deathY=clamp(u.y,40,H-4);}if(u.hp>0){if((teams?u.team:i)==0)left=true;else right=true;}}if(!left||!right){finishPower();over=true;winner=!left?(!right?2:1):0;charging=false;winSerial++;}}
+    boolean lightBotDamage(int owner,int target){
+        Unit bot=units[owner];
+        return dungeonStage>0&&!bot.human&&bot.team==0&&units[target].team==0;
+    }
+    boolean unsafeBotLanding(Ball b,int x,int y){
+        for(int i=0;i<6;i+=2){
+            Unit u=units[i];
+            if(u.hp>0&&lightBotDamage(b.owner,i)&&Math.abs(x-u.x)<b.radius+10
+                    &&Math.abs(y-u.y)<b.radius+20)return true;
+        }
+        return false;
+    }
+    void check(){boolean left=false,right=false;for(int i=0;i<unitCount;i++){Unit u=units[i];if(u.hp<=0&&!u.dead&&(dungeonStage==0||u.maxHp>0)){u.dead=true;u.deathX=clamp(u.x,12,W-12);u.deathY=clamp(u.y,40,H-4);}if(u.hp>0){if((teams?u.team:i)==0)left=true;else right=true;}}if(dungeonStage==2&&units[1].hp<=0){if(!AntCaveRules.dying(this)&&!over){ballCount=bursts=settle=0;charging=pendingNext=false;botPhase=AntCaveRules.QUEEN_DEATH;}return;}if(!left||!right){finishPower();over=true;winner=!left?(!right?2:1):0;charging=false;winSerial++;}}
     void finishPower(){Unit u=units[active];if(u.pendingPower>=0){u.lastPower=u.pendingPower;u.pendingPower=-1;}}
-    void next(){finishPower();check();if(over)return;if(deferNext){pendingNext=true;charging=false;return;}Unit previous=units[active];if(previous.invisible>0)previous.invisible--;if(previous.frozen==2){previous.freezeTurns=Math.max(0,previous.freezeTurns-1);previous.frozen=previous.freezeTurns>0?1:0;}do{active=(active+1)%unitCount;}while(units[active].hp<=0);turn++;units[active].energy=units[active].maxEnergy;if(units[active].flyCooldown>0)units[active].flyCooldown--;units[active].assist=false;if(units[active].frozen==1)units[active].frozen=2;countdown=units[active].frozen==2?30:turnLimit;botWait=settle=0;lastWind=wind;wind=rollWind();clear();}
+    void next(){finishPower();check();if(over)return;if(deferNext){pendingNext=true;charging=false;return;}Unit previous=units[active];if(previous.invisible>0)previous.invisible--;if(previous.frozen==2){previous.freezeTurns=Math.max(0,previous.freezeTurns-1);previous.frozen=previous.freezeTurns>0?1:0;}int next=active;if(dungeonStage>0)next=AntCaveRules.nextActor(this,active);else do{next=(next+1)%unitCount;}while(units[next].hp<=0);beginTurn(next);}
+    void beginTurn(int actor){
+        active=actor;turn++;
+        Unit u=units[active];
+        u.energy=u.maxEnergy;
+        if(u.flyCooldown>0)u.flyCooldown--;
+        u.assist=false;
+        if(u.frozen==1)u.frozen=2;
+        countdown=u.frozen==2?30:turnLimit;
+        botWait=settle=0;
+        lastWind=wind;wind=rollWind();
+        clear();
+    }
     int error(int angle,int power){
         Ball b=make(angle,power);Unit t=units[enemyOf(active)];int best=999999;
         // One coarse sample per frame is enough for AI; gameplay uses four swept substeps.
         for(int n=0;n<360;n++){
-            b.vx+=windStep(wind,b)*4;b.vy+=gravity(b)*4;b.x+=b.vx;b.y+=b.vy;int x=b.x/256,y=b.y/256,dx=x-t.x,dy=y-t.y+12;
+            b.vx+=windStep(wind,b)*4;b.vy+=gravity(b)*4;b.x+=b.vx;b.y+=b.vy;int x=b.x/256,y=b.y/256,dx=x-t.x,dy=y-targetY(t);
             int distance=dx*dx+dy*dy;if(distance<best)best=distance;
-            if(ground.solid(x,y)||x<0||x>=W||y>H+20)break;
+            if(ground.solid(x,y)){if(unsafeBotLanding(b,x,y))return 999999;break;}if(x<0||x>=W||y>H+20)break;
         }return best;
     }
     void aim(){
         Unit u=units[active];u.face=units[enemyOf(active)].x<u.x?-1:1;refreshAim(u);int best=999999,ba=u.angle,bp=65;
         for(int a=minLocalAngle(u);a<=maxLocalAngle(u);a+=4)for(int p=28;p<=100;p+=4){int score=error(a,p);if(score<best){best=score;ba=a;bp=p;}}
-        u.angle=clamp(ba+rand(3)-1,minLocalAngle(u),maxLocalAngle(u));u.power=Math.max(1,Math.min(100,bp+rand(3)-1));
+        u.angle=clamp(ba+(dungeonStage>0?0:rand(3)-1),minLocalAngle(u),maxLocalAngle(u));u.power=Math.max(1,Math.min(100,bp+(dungeonStage>0?0:rand(3)-1)));
     }
     int botPositionScore(int x,int y){Unit enemy=units[enemyOf(active)];int distance=Math.abs(x-enemy.x);return Math.abs(distance-(units[active].botStyle>=0?(units[active].botStyle==0?220:units[active].botStyle==1?125:units[active].botStyle==2?185:205):170))+Math.max(0,y-enemy.y)*2+(distance<65?400:0)+(x<30||x>W-30?120:0);}
     boolean botFlight(){
@@ -259,7 +318,73 @@ final class Battle {
         }
         fly=oldFly;u.face=face;if(!found)return false;if(!prop(4))return false;u.angle=angle;u.power=power;return true;
     }
-    void botTurn(){
+    void npcTurn(){Unit u=units[active],enemy=units[enemyOf(active)];botWait++;botActing=true;try{
+        if(u.npc==3&&dungeonStage==2&&botWait==1&&queenShots>=2){
+            queenShots=0;botPhase=AntCaveRules.REINFORCEMENTS;return;
+        }
+        if(u.npc==3)botPhase=botWait>=24&&botWait<65?AntCaveRules.QUEEN_THREAT:0;
+        else if(botWait<44)
+            botPhase=dungeonStage==2?AntCaveRules.GUARD_LINES[(turn+active)%3]
+                    :dungeonStage==1&&turn==1&&botWait<=30?AntCaveRules.QUEEN_WARNING
+                    :AntCaveRules.ANT_LINES[(turn+active/2)%3];
+        else botPhase=0;
+        if(u.npc<3&&dungeonStage>0){antGroupTurn(u.npc);return;}
+        if(u.npc<3&&botWait<45&&Math.abs(u.x-enemy.x)>28)move(enemy.x<u.x?-1:1);
+        if (botWait==46 && u.npc<3) {
+            u.face=enemy.x<u.x?-1:1;
+            if (Math.abs(u.x-enemy.x)<40 && Math.abs(u.y-enemy.y)<24)
+                u.attackTicks=18;
+            else next();
+        } else if (u.npc<3 && botWait==56 && u.attackTicks>0) {
+            if (Math.abs(u.x-enemy.x)<40 && Math.abs(u.y-enemy.y)<24) {
+                int hit=Math.max(1,baseDamage(u.weapon)+u.attackBonus);
+                enemy.hp=Math.max(0,enemy.hp-hit);
+                showDamage(enemy,hit,false);
+                damage[active]+=hit;
+                if(enemy.hp==0)kills[active]++;
+            }
+        } else if (u.npc<3 && botWait>=64) {
+            next();
+        } else if (botWait==46) {
+            if(u.npc==3){u.angle=maxLocalAngle(u);u.power=85;u.face=enemy.x<u.x?-1:1;}
+            else aim();
+            charging=true;
+        }
+        if(botWait>=65&&charging){charging=false;queenShots++;fire();}
+    }finally{botActing=false;}}
+    void antGroupTurn(int color){
+        if(botWait>=64){next();return;}
+        for(int i=0;i<unitCount;i++){
+            Unit ant=units[i];
+            if(ant.npc!=color||ant.hp<=0)continue;
+            if(ant.frozen>0){
+                if(botWait==63){ant.freezeTurns=Math.max(0,ant.freezeTurns-1);ant.frozen=ant.freezeTurns>0?1:0;}
+                continue;
+            }
+            int target=enemyOf(i);
+            Unit enemy=units[target];
+            if(enemy.hp<=0||ally(i,target))continue;
+            int dx=enemy.x-ant.x;
+            ant.face=dx<0?-1:1;
+            if(botWait<45&&Math.abs(dx)>35)stepAnt(i);
+            if(botWait==46&&antInRange(ant,enemy))ant.attackTicks=18;
+            if(botWait==56&&ant.attackTicks>0&&antInRange(ant,enemy)){
+                int hit=Math.min(enemy.hp,Math.max(1,baseDamage(ant.weapon)+ant.attackBonus));
+                enemy.hp-=hit;showDamage(enemy,hit,false);damage[i]+=hit;
+                if(enemy.hp==0)kills[i]++;
+            }
+        }
+    }
+    boolean antInRange(Unit ant,Unit enemy){return Math.abs(ant.x-enemy.x)<40&&Math.abs(ant.y-enemy.y)<24;}
+    void stepAnt(int actor){
+        Unit ant=units[actor];
+        int x=ant.x+ant.face;
+        if(x<12||x>=W-12||blockedStep(ant.x,x,actor,23))return;
+        int y=ground.surface(x,Math.max(0,ant.y-5));
+        if(y>=H||y-ant.y>8)return;
+        ant.x=x;ant.y=y;ant.walk++;refreshAim(ant);
+    }
+    void botTurn(){if(units[active].npc>0){npcTurn();return;}
         if(botPowQueued)return;
         botActing=true;
         try{
@@ -271,12 +396,12 @@ final class Battle {
                 if(direction!=0){int before=u.x,nx=u.x+direction,floor=ground.surface(nx,Math.max(0,u.y-18));if(nx>=12&&nx<W-12&&floor<H&&floor<=u.y+6)move(direction);if(u.x==before)botBlocked++;}
             }
             if(botWait==14){
-                int oldAngle=u.angle;aim();boolean badPosition=Math.abs(u.x-enemy.x)<85||u.y-enemy.y>35||botBlocked>=6||error(u.angle,u.power)>1600;
-                if(badPosition)botFlight();
+                int oldAngle=u.angle;aim();if(dungeonStage>0&&error(u.angle,u.power)>3600){next();return;}boolean badPosition=Math.abs(u.x-enemy.x)<85||u.y-enemy.y>35||botBlocked>=6||error(u.angle,u.power)>1600;
+                if(badPosition&&dungeonStage==0)botFlight();
                 botTargetAngle=u.angle;botTargetPower=u.power;u.angle=clamp(oldAngle,minLocalAngle(u),maxLocalAngle(u));u.power=0;
-                if(!fly){botTargetAngle=clamp(botTargetAngle+(u.botStyle==0?rand(7)-3:rand(11)-5),minLocalAngle(u),maxLocalAngle(u));botTargetPower=clamp(botTargetPower+(u.botStyle==0?rand(11)-5:rand(17)-8),18,100);if(rand(5)==0)botTargetPower=clamp(botTargetPower+rand(15)-7,18,100);}
+                if(!fly&&dungeonStage==0){botTargetAngle=clamp(botTargetAngle+(u.botStyle==0?rand(7)-3:rand(11)-5),minLocalAngle(u),maxLocalAngle(u));botTargetPower=clamp(botTargetPower+(u.botStyle==0?rand(11)-5:rand(17)-8),18,100);if(rand(5)==0)botTargetPower=clamp(botTargetPower+rand(15)-7,18,100);}
             }
-            if(botWait==21&&!fly){
+            if(botWait==21&&!fly&&dungeonStage==0){
                 if(u.rage>=100)prop(5);
                 if(enemy.hp<450){prop(2);if(u.energy>=90)prop(2);}
                 else{prop(u.botStyle>=0?(u.botStyle==0||u.botStyle==3?2:u.botStyle==1?1:0):Math.abs(u.x-enemy.x)<150?1:0);if(u.energy>=90)prop(2);}
