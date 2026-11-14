@@ -3,7 +3,7 @@ import java.io.*;import java.util.*;
 final class Expansion780 {
  static void write(DataOutputStream out,CloudStore.Profile p)throws IOException{out.writeInt(p.stones);out.writeBoolean(p.dungeonClear);for(int rank:p.forgeLevels)out.writeByte(rank);for(int progress:p.forgeProgress)out.writeShort(progress);}
  static int[] bonuses(CloudStore.Profile p){return ForgeRules.equipped(p.forgeLevels,p.gender,p.wornMask,p.equipped,p.skin,p.look);}
- static boolean handles(String op){return Set.of("economy","buystones","forge","claim780","dungeonrooms","dungeoncreate","dungeonquick","dungeonsettings","dungeoncontinue").contains(op);}
+ static boolean handles(String op){return Set.of("economy","buystones","forge","claim780","dungeonrooms","dungeoncreate","dungeonquick","dungeonteam","dungeonsettings","dungeoncontinue").contains(op);}
  static void handle(GunnyServer server,String op,GunnyServer.Session s,DataInputStream in,DataOutputStream out)throws Exception{
   if(!s.expansion)throw new IllegalArgumentException("Cập nhật game 7.8.0");
   if(op.equals("economy")){s.profile=server.store.profile(s.id);write(out,s.profile);return;}
