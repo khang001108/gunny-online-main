@@ -13,7 +13,7 @@ final class TcpTransport {
   }catch(IOException e){close();throw e;}
  }
  void ensure(String endpoint)throws IOException{
-  if(connection!=null&&address.equals(endpoint))return;close();connection=(StreamConnection)Connector.open(endpoint,Connector.READ_WRITE,true);address=endpoint;in=connection.openDataInputStream();out=connection.openDataOutputStream();
+  if(connection!=null&&address.equals(endpoint))return;close();connection=(StreamConnection)Connector.open(endpoint,Connector.READ_WRITE,true);address=endpoint;if(connection instanceof SocketConnection)try{((SocketConnection)connection).setSocketOption(SocketConnection.DELAY,0);}catch(Exception ignored){}in=connection.openDataInputStream();out=connection.openDataOutputStream();
  }
  void close(){StreamConnection c=connection;DataInputStream input=in;DataOutputStream output=out;connection=null;in=null;out=null;address="";if(c!=null)try{c.close();}catch(Exception ignored){}if(input!=null)try{input.close();}catch(Exception ignored){}if(output!=null)try{output.close();}catch(Exception ignored){}}
 }

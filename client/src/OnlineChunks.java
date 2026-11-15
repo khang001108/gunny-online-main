@@ -9,6 +9,8 @@ final class OnlineChunks {
   if(turn!=serverTurn){reset();turn=serverTurn;}
   int stage=in.readUnsignedByte();if(stage==0||stage==5&&net.liveCap){net.acceptSnapshot(in,done,serverTurn);return;}if(stage==3)return;if(stage!=4)throw new IOException("Sai đoạn hành động.");
   int next=in.readInt(),size=in.readInt();if(size<4||size>1048576)throw new IOException("Đoạn quá lớn.");byte[] data=new byte[size];in.readFully(data);
+  // Initialize before keeping the frame stream: prepareBattle resets chunks.
+  if(!net.inBattle){net.prepareBattle();turn=serverTurn;}
   if(next<=completed||frames!=null||ownPending)return;if(next!=completed+1)throw new IOException("Thiếu đoạn hành động.");
   id=next;resolved=done;DataInputStream block=new DataInputStream(new ByteArrayInputStream(data));kind=block.readUnsignedByte();terminal=block.readBoolean();remaining=block.readUnsignedShort();if(remaining<1||remaining>2000)throw new IOException("Sai số khung hình.");
   boolean own=net.predicting&&net.predictedTurn==serverTurn&&net.localTurn();
