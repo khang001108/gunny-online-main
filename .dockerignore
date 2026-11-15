@@ -27,3 +27,7 @@ public/downloads/Gunny-*-Online-*.jar
 public/downloads/Gunny-*-Online-*.jad
 !public/downloads/Gunny-*-Online-783.jar
 !public/downloads/Gunny-*-Online-783.jad
+
+public/downloads/Gunny-*-CaiDat-*.zip
+!public/downloads/Gunny-*-CaiDat-7.8.3.zip
+public/review-*.png
