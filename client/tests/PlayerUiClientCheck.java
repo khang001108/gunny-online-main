@@ -21,7 +21,7 @@ public final class PlayerUiClientCheck {
   int[] solo=c.loadingSlot(0);check(solo[0]==75&&solo[1]==76,"Solo portrait grows and centers in the left half");save(c,"solo");
   c.game.units[2].hp=c.game.units[4].hp=1000;save(c,"dungeon");
   net.loadingMask=63;net.phase=1;c.tickLoading();check(c.mode==1,"All players ready allows entering battle");
-  c.mode=16;net.inBattle=false;net.roomId=0;
+  c.mode=16;net.inBattle=false;net.roomId=0;c.owned=c.wornMask=1;c.equipped=0;
   var bytes=new java.io.ByteArrayOutputStream();var out=new java.io.DataOutputStream(bytes);
   out.writeInt(77);out.writeUTF("Inviter");out.writeBoolean(true);out.writeUTF("Gunner Friend");out.writeByte(0);out.writeByte(0);out.writeByte(3);for(int i=0;i<5;i++)out.writeByte(0);out.writeInt(Progression.experienceForLevel(25));
   net.social.pulse(new java.io.DataInputStream(new java.io.ByteArrayInputStream(bytes.toByteArray())));

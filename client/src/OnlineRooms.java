@@ -73,7 +73,7 @@ final class OnlineRooms implements CommandListener {
         if(screen==channelList){Display.getDisplay(c.app).setCurrent(c);channelList=null;}
     }
     void joinCode(){try{int id=Integer.parseInt(roomCode);if(id<=0)throw new NumberFormatException();join(id);}catch(NumberFormatException e){c.message("Nhập mã phòng hợp lệ.");net.status="Nhập mã phòng hợp lệ.";}}
-    void join(int id){if(net.pending.length()>0||net.operation.equals("join")||net.operation.startsWith("create"))return;net.joinId=id;net.joinTeam=net.modernRooms?2:1;for(int i=0;i<net.roomCount;i++)if(net.roomIds[i]==id&&(net.roomCapacities[i]>2||net.asyncTurns)){net.joinForm();return;}net.request("join");}
+    void join(int id){if(c.requireWeapon())return;if(net.pending.length()>0||net.operation.equals("join")||net.operation.startsWith("create"))return;net.joinId=id;net.joinTeam=net.modernRooms?2:1;for(int i=0;i<net.roomCount;i++)if(net.roomIds[i]==id&&(net.roomCapacities[i]>2||net.asyncTurns)){net.joinForm();return;}net.request("join");}
     void activateTool(int selected){
         if(selected==41)c.openShop();
         else if(selected==42)c.openBag();

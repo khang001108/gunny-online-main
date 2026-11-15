@@ -3,6 +3,7 @@ import java.io.*;import java.util.*;
 final class Dungeon780 {
  static boolean space(GunnyServer.Room room){for(int i=2;i<6;i+=2)if(room.members[i]==null&&room.selectedBots[i]<0&&(room.closedSlots&(1<<i))==0)return true;return false;}
  static void eligible(GunnyServer.Session s,int difficulty){
+  GunnyServer.requireWeapon(s);
   int level=Progression.level(s.profile.experience);
   if(level<15)throw new IllegalArgumentException("Huyệt Ma Kiến yêu cầu Lv 15. Tài khoản hiện ở Lv "+level+".");
   if(difficulty<0||difficulty>2||difficulty==2&&!s.profile.dungeonClear)

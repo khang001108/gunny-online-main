@@ -285,9 +285,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             img(loadingHeroes[i],center-width/2,145-height);
             img(weapons[game.units[i].weapon],center+width/3-8,127);
             if(loadingReady(i)){
-                javax.microedition.lcdui.Font old=g.getFont();
-                g.setFont(javax.microedition.lcdui.Font.getFont(javax.microedition.lcdui.Font.FACE_SYSTEM,javax.microedition.lcdui.Font.STYLE_BOLD,s>1?javax.microedition.lcdui.Font.SIZE_LARGE:javax.microedition.lcdui.Font.SIZE_MEDIUM));
-                g.setColor(0x38d268);g.drawString("OK",ox+center*s,oy+149*s,Graphics.TOP|Graphics.HCENTER);g.setFont(old);
+                img(versusOK,center-versusOK.getWidth()/(2*s),149);
             }else pcCenter((onlineBattle()&&!net.controls[i]?"Đang tải":Math.min(100,loadTicks*100/60)+"%"),center,151);
             pcCenter(pcShort(actorName(i),width+8),center,165);
         }

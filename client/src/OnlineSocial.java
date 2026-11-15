@@ -795,7 +795,7 @@ final class OnlineSocial implements CommandListener {
         c.popup.playerNotice("Mời vào đội",(portrait==null?from+" mời bạn vào phòng #":"Mời bạn vào phòng #")+room,portrait,name,level,new String[]{"Vào đội","Từ chối"},NativePopup.INVITE_TEAM);
     }
 
-    boolean respond(boolean acceptInvite){answer=acceptInvite;return net.request("inviteanswer");}
+    boolean respond(boolean acceptInvite){if(acceptInvite&&c.requireWeapon())return false;answer=acceptInvite;return net.request("inviteanswer");}
     void invited(String message){
         String heading=net.operation.equals("friend")?"Bạn bè":"Mời bạn bè";
         for(int i=0;i<count;i++)if(ids[i]==target){

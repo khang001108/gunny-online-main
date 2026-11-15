@@ -172,6 +172,7 @@ final class DungeonScreen {
    n.create.openDungeon();return;
   }
   if(focus==TEAM){
+   if(c.requireWeapon())return;
    if(!n.operation.equals("dungeonteam"))n.request("dungeonteam");
    return;
   }
