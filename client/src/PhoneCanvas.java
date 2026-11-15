@@ -143,11 +143,34 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             appearance(i == 0 ? gender : 1 - gender, anim, x, y, flip);
     }
 
+    final Image[] loadingHeroes=new Image[6];
+    final int[] loadingWidths=new int[6];
+    boolean loadingParticipant(int index){return index<6&&index<game.unitCount&&game.units[index].npc==0&&game.units[index].hp>0;}
+    int loadingTeam(int index){return game.teams?game.units[index].team:index;}
+    int[] loadingSlot(int actor){
+        int team=loadingTeam(actor),count=0,leader=-1,rank=0;
+        for(int i=0;i<game.unitCount&&i<6;i++)if(loadingParticipant(i)&&loadingTeam(i)==team){if(leader<0)leader=i;count++;}
+        if(onlineBattle()&&net.hostActor>=0&&loadingParticipant(net.hostActor)&&loadingTeam(net.hostActor)==team)leader=net.hostActor;
+        if(onlineBattle())for(int i=0;i<6;i++)if(loadingParticipant(i)&&loadingTeam(i)==team&&(net.loadingLeaders&(1<<i))!=0){leader=i;break;}
+        int center=team==0?75:244;
+        if(count<=1)return new int[]{center,76,92};
+        if(count==2)return actor==leader?new int[]{center-24,58,80}:new int[]{center+30,36,52};
+        if(actor==leader)return new int[]{center,50,72};
+        for(int i=0;i<actor;i++)if(i!=leader&&loadingParticipant(i)&&loadingTeam(i)==team)rank++;
+        return new int[]{center+(rank==0?-48:48),32,48};
+    }
+    boolean loadingReady(int actor){
+        if(!onlineBattle())return actor!=0||loadTicks>=60;
+        if(net.controls[actor])return loadTicks>=60;
+        if(net.bots[actor])return true;
+        return net.playerUiCap?(net.loadingMask&(1<<actor))!=0:net.phase==1;
+    }
+    boolean allLoadingReady(){for(int i=0;i<game.unitCount&&i<6;i++)if(loadingParticipant(i)&&!loadingReady(i))return false;return true;}
+    boolean canFinishLoading(){return loadTicks>=60&&(!onlineBattle()||net.phase==1);}
     void tickLoading() {
         if (mode == 14) {
             loadTicks++;
-            int readyTicks = onlineBattle() && net.roomKind == 3 && net.dungeonStage == 2 ? 60 : 90;
-            if (loadTicks >= readyTicks && (!onlineBattle() || net.phase == 1)) {
+            if (canFinishLoading()) {
                 mode = 1;
                 if (game.dungeonStage > 0) {
                     Battle.Unit player=game.units[0];
@@ -249,40 +272,29 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 dungeonLoadingCovers[stageIndex] = combatRoomArt("dungeon-loading-stage-" + (stageIndex + 1));
             img(dungeonLoadingCovers[stageIndex], 220, 48);
         }
-        for (int i = 0; i < game.unitCount; i++) {
-            if (dungeonStage > 0 && (i >= 6 || game.units[i].npc != 0 || game.units[i].hp <= 0 && offlineDungeon.active
-                    || onlineBattle() && !net.present[i])) continue;
-            if(offlineDungeon.active&&game.units[i].npc>0&&versusPortrait[i]==null)versusPortrait[i]=NativeUi.fit(combatRoomArt("npc780-"+game.units[i].npc),36*s,54*s,0);
-            int team = game.teams ? game.units[i].team : i,
-                    x = game.teams
-                            ? (team == 0 ? 10 + (i / 2) * (game.unitCount == 6 ? 39 : 57)
-                                    : 192 + (i / 2) * (game.unitCount == 6 ? 39 : 57))
-                            : (team == 0 ? 45 : 225);
-            if (versusPortrait[i] == null)
-                try {
-                    versusPortrait[i] = standingPreview(i == 0 ? gender : actorSex[i], i == 0 ? skin : actorSkin[i],
-                            i == 0, 54, 68);
-                } catch (IOException ignored) {
-                }
-            if(dungeonStage>0){
-                x=5+i/2*40;
-                if(dungeonLoadActors[i/2]!=versusPortrait[i]){
-                    dungeonLoadActors[i/2]=versusPortrait[i];
-                    dungeonLoadCompact[i/2]=versusPortrait[i]==null?null:NativeUi.fit(versusPortrait[i],33*s,49*s,0);
-                }
-                img(dungeonLoadCompact[i/2],x,94);
-            }else img(versusPortrait[i], x, 86);
-            img(weapons[game.units[i].weapon], x + (dungeonStage>0?19:28), 123);
-            if (loadTicks >= 60)
-                img(versusOK, x + 15, 149);
-            else
-                pcCenter(Math.min(100, loadTicks * 100 / (60 - i * 3)) + "%", x + 27, 151);
-            pcCenter(pcShort(actorName(i), game.unitCount == 6 ? 36 : 54), x + (game.unitCount == 6 ? 18 : 27), 163);
+        for(int i=0;i<game.unitCount&&i<6;i++){
+            if(!loadingParticipant(i))continue;
+            int[] slot=loadingSlot(i);int center=slot[0],width=slot[1],height=slot[2];
+            if(loadingHeroes[i]==null||loadingWidths[i]!=width){
+                try{
+                    loadingHeroes[i]=onlineBattle()?net.buildStanding(i,width,height):
+                        standingPreview(i==0?gender:actorSex[i],i==0?skin:actorSkin[i],i==0,width,height);
+                    loadingWidths[i]=width;
+                }catch(IOException ignored){}
+            }
+            img(loadingHeroes[i],center-width/2,145-height);
+            img(weapons[game.units[i].weapon],center+width/3-8,127);
+            if(loadingReady(i)){
+                javax.microedition.lcdui.Font old=g.getFont();
+                g.setFont(javax.microedition.lcdui.Font.getFont(javax.microedition.lcdui.Font.FACE_SYSTEM,javax.microedition.lcdui.Font.STYLE_BOLD,s>1?javax.microedition.lcdui.Font.SIZE_LARGE:javax.microedition.lcdui.Font.SIZE_MEDIUM));
+                g.setColor(0x38d268);g.drawString("OK",ox+center*s,oy+149*s,Graphics.TOP|Graphics.HCENTER);g.setFont(old);
+            }else pcCenter((onlineBattle()&&!net.controls[i]?"Đang tải":Math.min(100,loadTicks*100/60)+"%"),center,151);
+            pcCenter(pcShort(actorName(i),width+8),center,165);
         }
         pcText(offlineDungeon.active?"Huyệt Ma Kiến • Ải "+offlineDungeon.stage:onlineBattle()&&net.roomKind==3?"Huyệt Ma Kiến • Ải "+net.dungeonStage:game.unitCount == 6 ? "Tổ đội • 3 đấu 3"
                 : game.teams ? "Phòng riêng • 2 đấu 2" : "Phòng riêng • 1 đấu 1", 8, 179);
         pcText("Chuẩn bị nhân vật và vũ khí", 8, 190);
-        pcText(loadTicks >= 60 ? "Đã tải xong. Vào trận!" : "Đang tải tài nguyên...", 8, 201);
+        pcText(loadTicks<60?"Đang tải tài nguyên...":allLoadingReady()?"Đã tải xong. Đang vào trận!":"Chờ người chơi khác tải xong...",8,201);
         if (roomMaps[map] == null)
             roomMaps[map] = combatRoomArt("room-map" + map);
         img(roomMaps[map], 166, 189);
@@ -290,7 +302,6 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
 
     }
 
-    final Image[] dungeonLoadActors=new Image[3], dungeonLoadCompact=new Image[3];
     final Image[] dungeonLoadingCovers = new Image[2];
     Image roomLayout, roomWaiting, roomClosed, roomCheckOn, roomCheckOff, roomRandom, botListFrame;
     final Image[] roomControl = new Image[3], botPortrait = new Image[8];
@@ -1366,7 +1377,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             impactArt[i] = null;
         for (int i = 0; i < 6; i++) {
             slopeBody[i] = null;
-            actors[i] = actorStand[i] = versusPortrait[i] = null;
+            actors[i] = actorStand[i] = versusPortrait[i] = null;loadingHeroes[i]=null;loadingWidths[i]=0;
         }
         miniTerrain = null;
         miniDirty = true;
@@ -1508,7 +1519,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             impactArt[i] = null;
         for (int i = 0; i < 6; i++) {
             slopeBody[i] = null;
-            actors[i] = actorStand[i] = versusPortrait[i] = null;
+            actors[i] = actorStand[i] = versusPortrait[i] = null;loadingHeroes[i]=null;loadingWidths[i]=0;
         }
         slopePixels = slopeRotated = slopeLayer = null;
         miniTerrain = null;
@@ -2187,7 +2198,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     part(iceDirections, flightDirection(b.vx, b.vy) * 32, 0, 32, 32, x - 16, y - 16, false);
                 } else if (b.weapon == AntCaveRules.QUEEN_ARROW) {
                     if (queenArrow == null) queenArrow = combatRoomArt("npc780-queen-arrow");
-                    part(queenArrow,flightDirection(b.vx,b.vy)*32,0,32,32,x-16,y-16,false);
+                    img(queenArrowImage(b.vx,b.vy),x-16,y-16);
                 } else if (b.fly) {
                     drawFlight(b.vx, b.vy, b.age / 8 % 2, x, y);
                 } else
@@ -2290,6 +2301,34 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         part(flightProjectile, direction * 32, pose * 32, 32, 32, x - 16, y - 16, vx < 0);
     }
 
+    final Image[] queenArrowRotations=new Image[8];
+    final int[] queenArrowAngles=new int[8];
+    int queenArrowSlot;
+    int queenArrowDirection(int vx,int vy){
+        int best=0;long score=Long.MIN_VALUE;
+        for(int i=0;i<72;i++){
+            long dot=(long)vx*Battle.cos(i*5)+(long)vy*Battle.sin(i*5);
+            if(dot>score){score=dot;best=i;}
+        }
+        return best;
+    }
+    Image queenArrowImage(int vx,int vy){
+        int direction=queenArrowDirection(vx,vy);
+        for(int i=0;i<queenArrowRotations.length;i++)if(queenArrowRotations[i]!=null&&queenArrowAngles[i]==direction)return queenArrowRotations[i];
+        if(queenArrow==null)queenArrow=combatRoomArt("npc780-queen-arrow");
+        int size=32*s,cos=Battle.cos(direction*5),sin=Battle.sin(direction*5);
+        int[] source=new int[size*size],pixels=new int[size*size];
+        queenArrow.getRGB(source,0,size,0,0,size,size);
+        for(int y=0;y<size;y++)for(int x=0;x<size;x++){
+            int dx=x*2-size+1,dy=y*2-size+1;
+            int sx=((dx*cos+dy*sin)/1024+size-1)/2;
+            int sy=((-dx*sin+dy*cos)/1024+size-1)/2;
+            if(sx>=0&&sx<size&&sy>=0&&sy<size)pixels[y*size+x]=source[sy*size+sx];
+        }
+        int slot=queenArrowSlot;queenArrowSlot=(queenArrowSlot+1)%queenArrowRotations.length;
+        queenArrowAngles[slot]=direction;
+        return queenArrowRotations[slot]=Image.createRGBImage(pixels,size,size,true);
+    }
     int flightDirection(int vx, int vy) {
         int best = 0;
         long score = Long.MIN_VALUE;
@@ -3612,7 +3651,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             return;
         }
         if (mode == 14) {
-            if (ok && loadTicks >= 60) {
+            if (ok && canFinishLoading()) {
                 mode = 1;
                 toast = "Đến lượt bạn!";
                 toastTicks = 55;
@@ -4011,7 +4050,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             return;
         }
         if (mode == 14) {
-            if (loadTicks >= 60)
+            if (canFinishLoading())
                 mode = 1;
             return;
         }

@@ -43,3 +43,9 @@ kiểm tra giao thức game thật mà không đăng nhập hay ghi dữ liệu.
 Trang tải game có mã QR ủng hộ tự nguyện. Trong admin, mở **Thắp sáng** để thay ảnh QR, tìm tài khoản, ghi số tiền và bình luận công khai, rồi gửi quà riêng tư bằng đá cường hóa, xu hoặc tiền mua sắm. Lịch sử quà chỉ hiển thị cho admin. Gửi lại cùng yêu cầu không cộng trùng.
 
 Máy chủ đang có schema 7.8.0 cần chạy một lần [migration Thắp sáng](supabase/migrations/202611160001_support.sql) trong Supabase SQL Editor, rồi cập nhật backend và thư mục `public`. Bản cài mới dùng `supabase/GUNNY-ALL.sql` đã bao gồm phần này. Ảnh QR thay trong admin và lịch sử ủng hộ được lưu ở Supabase.
+
+## Tên online duy nhất và màn hình tải
+
+Chạy [migration tên duy nhất](supabase/migrations/202611160002_unique_names.sql) trước khi cập nhật backend. Tên được so sánh không phân biệt hoa/thường, bỏ khoảng trắng đầu cuối và chuẩn hóa Unicode. Với tên cũ bị trùng, tài khoản có ID nhỏ nhất giữ tên; các tài khoản còn lại được thêm hậu tố, lưu lại tên cũ/mới trong lịch sử admin. Nhân vật và vật phẩm vẫn thuộc UUID cũ.
+
+Cập nhật cả server và bộ cài để có OK tải riêng từng người, popup mời có nhân vật và bố cục loading mới. Trận chờ tất cả thành viên còn kết nối báo tải xong.

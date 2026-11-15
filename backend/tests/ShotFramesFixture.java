@@ -10,7 +10,7 @@ public final class ShotFramesFixture {
             var host = ReturnRoomCheck.player("shooter");
             var guest = ReturnRoomCheck.player("observer");
             for (var player : new GunnyServer.Session[]{host, guest}) {
-                for (String field : new String[]{"expansion", "campaign", "flock", "actors", "equipment", "items", "itemFx", "modern", "async", "events", "social", "matchmaking", "roomFix", "waitBot", "chunks", "replay"}) {
+                for (String field : new String[]{"playerUi", "expansion", "campaign", "flock", "actors", "equipment", "items", "itemFx", "modern", "async", "events", "social", "matchmaking", "roomFix", "waitBot", "chunks", "replay"}) {
                     var property = GunnyServer.Session.class.getDeclaredField(field);
                     property.setBoolean(player, true);
                 }

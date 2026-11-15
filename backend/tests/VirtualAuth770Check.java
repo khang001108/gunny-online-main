@@ -9,6 +9,7 @@ public final class VirtualAuth770Check {
   var created=new AtomicInteger();String id="12345678-1234-1234-1234-123456789abc";
   var fake=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
   fake.createContext("/",x->{try{
+   if(x.getRequestURI().getPath().equals("/rest/v1/rpc/gunny_name_available")){byte[] reply="true".getBytes(StandardCharsets.UTF_8);x.sendResponseHeaders(200,reply.length);x.getResponseBody().write(reply);return;}
    if(!x.getRequestURI().getPath().equals("/auth/v1/admin/users"))throw new AssertionError("Signup must never use email-delivery endpoints");
    if(!"sb_secret_test".equals(x.getRequestHeaders().getFirst("apikey")))throw new AssertionError("Only server credentials create virtual accounts");
    Map<String,Object> body=Json.obj(Json.parse(new String(x.getRequestBody().readAllBytes(),StandardCharsets.UTF_8)));

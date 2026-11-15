@@ -786,12 +786,24 @@ final class OnlineSocial implements CommandListener {
         if (room == inviteSeen)
             return;
         inviteSeen = room;
-        Alert a = new Alert("Mời vào đội", from + " mời bạn làm đồng minh trong phòng #" + room, null, AlertType.INFO);
-        a.addCommand(accept);
-        a.addCommand(decline);
-        a.setCommandListener(this);
-        a.setTimeout(Alert.FOREVER);
-        Display.getDisplay(c.app).setCurrent(a, c);
+        Image portrait=null;String name=from;int level=1;
+        if(net.playerUiCap&&in.readBoolean()){
+            name=in.readUTF();int sex=in.readUnsignedByte(),skin=in.readUnsignedByte(),mask=in.readUnsignedByte();int[] look=new int[5];
+            for(int i=0;i<5;i++)look[i]=in.readUnsignedByte();level=Progression.level(in.readInt());
+            portrait=c.equipmentPreview(sex,skin,(mask&2)==0,look,mask,48,60);
+        }
+        c.popup.playerNotice("Mời vào đội",(portrait==null?from+" mời bạn vào phòng #":"Mời bạn vào phòng #")+room,portrait,name,level,new String[]{"Vào đội","Từ chối"},NativePopup.INVITE_TEAM);
+    }
+
+    boolean respond(boolean acceptInvite){answer=acceptInvite;return net.request("inviteanswer");}
+    void invited(String message){
+        String heading=net.operation.equals("friend")?"Bạn bè":"Mời bạn bè";
+        for(int i=0;i<count;i++)if(ids[i]==target){
+            try{Image hero=c.equipmentPreview(sex[i],skin[i],custom[i],looks[i],custom[i]?125:3,48,60);
+                c.popup.playerNotice(heading,message,hero,names[i],Progression.level(experience[i]),new String[]{"Đóng"},0);return;
+            }catch(IOException ignored){}
+        }
+        c.popup.notice(heading,message);
     }
 
     void id() {
