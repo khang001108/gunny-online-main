@@ -17,8 +17,10 @@ final class AdminServer implements AutoCloseable {
  static byte[] digest(String text){try{return MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));}catch(Exception e){throw new IllegalStateException(e);}}
  void start(){if(enabled)tasks.scheduleWithFixedDelay(this::maintenance,5,30,TimeUnit.SECONDS);}
  void maintenance(){try{
-  List<Map<String,Object>> active=new ArrayList<>();long now=System.currentTimeMillis();Set<String> ids=new HashSet<>();
-  for(var u:s.sessions.values())if(u.expiry>now&&ids.add(u.id))active.add(Map.of("id",u.id,"at",Instant.ofEpochMilli(u.lastSeen).toString()));
+  List<Map<String,Object>> active=new ArrayList<>();long now=System.currentTimeMillis();Map<String,Long> seen=new HashMap<>();
+  for(var u:s.sessions.values())if(u.expiry>now)seen.merge(u.id,u.lastSeen,Math::max);
+  Set<String> ids=seen.keySet();
+  for(var entry:seen.entrySet())active.add(Map.of("id",entry.getKey(),"at",Instant.ofEpochMilli(entry.getValue()).toString()));
   if(!active.isEmpty()){Set<String> existing=new HashSet<>();for(Object id:(List<?>)data.call("presence",Map.of("users",active)))existing.add(String.valueOf(id));for(String id:ids)if(!existing.contains(id))revoke(id);}
   data.call("maintenance",Map.of());
   tokens.entrySet().removeIf(e->e.getValue()<now);
@@ -59,18 +61,57 @@ final class AdminServer implements AutoCloseable {
   if(Set.of("retention-save","offline-days","extend-offline").contains(op)){
    Object days=input.get("days");boolean inherit=op.equals("offline-days")&&days==null;
    if(!inherit&&(!(days instanceof Number)||((Number)days).doubleValue()!=((Number)days).intValue()||((Number)days).intValue()<1||((Number)days).intValue()>3650))throw new IllegalArgumentException("Số ngày phải là số nguyên từ 1 đến 3650");
+   if(!inherit)input.put("days",((Number)days).intValue());
    if(!op.equals("retention-save"))UUID.fromString(Json.str(input,"id"));if(op.equals("extend-offline"))UUID.fromString(Json.str(input,"request_key"));
   }
-  Object result=op.startsWith("support-")?support.operation(op,input):data.call(op,input);
+  Object result=op.equals("accounts")?accounts(input):op.startsWith("support-")?support.operation(op,input):data.call(op,input);
   if(op.equals("support-add")){
    // The durable transaction has committed. Refresh failures must not make it look rejected.
    try{refreshProfile(Json.str(input,"id"));}catch(Exception refreshError){System.err.println("Support gift committed; profile refresh deferred");}
   }else if(op.equals("wallet-add"))refreshProfile(Json.str(input,"id"));
   if(op.equals("delete-now"))revoke(Json.str(input,"id"));
-  if(op.equals("accounts")){Map<String,Object> records=Json.obj(result);Set<String> online=new HashSet<>();long now=System.currentTimeMillis();for(var u:s.sessions.values())if(u.expiry>now&&now-u.lastSeen<60000)online.add(u.id);records.put("online",online.stream().toList());}
   json(x,200,result);
  }catch(IllegalArgumentException e){json(x,400,Map.of("error",e.getMessage()==null?"Dữ liệu không hợp lệ":e.getMessage()));}
  catch(Exception e){System.err.println("Admin request failed: "+e.getClass().getSimpleName());json(x,503,Map.of("error",x.getRequestURI().getPath().contains("/support-")?"Chưa xử lý được. Kiểm tra migration 202611160001_support.sql và kết nối Supabase.":"Chưa xử lý được. Kiểm tra dữ liệu nhập, migration quản trị 7.5.0 và kết nối Supabase."));}finally{x.close();}}
  void refreshProfile(String id)throws Exception{CloudStore.Profile fresh=s.store.profile(id);for(var user:s.sessions.values())if(user.id.equals(id))synchronized(user){user.profile=fresh;}}
+ Map<String,Object> accounts(Map<String,Object> input)throws Exception{
+  int offset=Integer.parseInt(input.getOrDefault("offset","0").toString());
+  if(offset<0||offset>1000000)throw new IllegalArgumentException("Trang tài khoản không hợp lệ");
+  Map<String,Object> query=new HashMap<>(input),result=new HashMap<>();
+  Map<String,Map<String,Object>> unique=new LinkedHashMap<>();
+  // The existing RPC paginates by registration date. Collect before activity sorting.
+  for(int page=0;page<=1000000;page+=100){
+   query.put("offset",page);
+   Map<String,Object> response=Json.obj(data.call("accounts",query));
+   if(page==0)result.putAll(response);
+   List<?> rows=(List<?>)response.get("accounts");int previousSize=unique.size();
+   for(Object value:rows){Map<String,Object> row=new HashMap<>(Json.obj(value));unique.put(Json.str(row,"id"),row);}
+   if(rows.size()<100||unique.size()==previousSize||page+rows.size()>=Json.num(response,"total",Integer.MAX_VALUE))break;
+  }
+  long now=System.currentTimeMillis();Map<String,Instant> activity=new HashMap<>();
+  for(var session:s.sessions.values())if(session.expiry>now)
+   activity.merge(session.id,Instant.ofEpochMilli(session.lastSeen),(first,last)->first.isAfter(last)?first:last);
+  Set<String> online=new HashSet<>();
+  for(var entry:activity.entrySet()){
+   if(now-entry.getValue().toEpochMilli()<60000)online.add(entry.getKey());
+   Map<String,Object> row=unique.get(entry.getKey());
+   if(row!=null&&entry.getValue().isAfter(accountTime(row,"last_seen_at")))row.put("last_seen_at",entry.getValue().toString());
+  }
+  List<Map<String,Object>> rows=new ArrayList<>(unique.values());
+  for(var row:rows){Instant last=lastActivity(row);row.put("last_activity_at",last.equals(Instant.MIN)?null:last.toString());}
+  rows.sort(Comparator.<Map<String,Object>,Boolean>comparing(row->online.contains(Json.str(row,"id"))).reversed()
+   .thenComparing(row->accountTime(row,"last_activity_at"),Comparator.reverseOrder())
+   .thenComparing(row->accountTime(row,"created_at"),Comparator.reverseOrder())
+   .thenComparing(row->Json.str(row,"id")));
+  int start=Math.min(offset,rows.size()),end=Math.min(start+100,rows.size());
+  result.put("accounts",new ArrayList<>(rows.subList(start,end)));result.put("online",new ArrayList<>(online));
+  result.put("matched",rows.size());result.put("now",Instant.ofEpochMilli(now).toString());return result;
+ }
+ static Instant accountTime(Map<String,Object> row,String field){
+  String value=Json.str(row,field);return value.isEmpty()?Instant.MIN:OffsetDateTime.parse(value).toInstant();
+ }
+ static Instant lastActivity(Map<String,Object> row){
+  return Collections.max(List.of(accountTime(row,"last_seen_at"),accountTime(row,"last_login_at")));
+ }
  public void close(){tasks.shutdownNow();tokens.clear();}
 }
