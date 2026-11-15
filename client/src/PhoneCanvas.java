@@ -2652,15 +2652,21 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     drawQueenPose(queenDeath,pose,u.x-cameraX,u.y-cameraY+7,u.face>0);
                     return;
                 }
-                if (u.npc < 3 && u.dead) {
+                // HP can reach zero before the next snapshot marks the death.
+                // Unspawned reinforcement slots have zero max HP and stay hidden.
+                if (u.npc < 3 && (u.dead || u.maxHp > 0)) {
                     if (!antWasDead[index]) antDeathFrame[index] = frame;
                     antWasDead[index] = true;
                     int age = frame-antDeathFrame[index];
                     if (age < 36) {
-                        Image carcass = antPose(u.npc, age < 7 ? 3 : 4, null);
+                        if (npc780[u.npc] == null)
+                            npc780[u.npc] = combatRoomArt("npc780-"+u.npc);
+                        Image carcass = antPose(u.npc, age < 7 ? 3 : 4, npc780[u.npc]);
                         if (carcass != null) {
                             int w = carcass.getWidth()/s, h = carcass.getHeight()/s;
-                            part(carcass,0,0,w,h,u.deathX-cameraX-w/2,u.deathY-cameraY-h,u.face>0);
+                            int deathX = u.dead ? u.deathX : u.x;
+                            int deathY = u.dead ? u.deathY : u.y;
+                            part(carcass,0,0,w,h,deathX-cameraX-w/2,deathY-cameraY-h,u.face>0);
                         }
                     }
                     return;

@@ -9,11 +9,11 @@ import java.util.*;
 import java.util.concurrent.*;
 /** Same-origin password-protected management app. No service key reaches the browser. */
 final class AdminServer implements AutoCloseable {
- final GunnyServer s;final AdminData data;final byte[] passwordHash;final boolean enabled,test;
+ final GunnyServer s;final AdminData data;final SupportPage support;final byte[] passwordHash;final boolean enabled,test;
  final Map<String,Long> tokens=new ConcurrentHashMap<>();final SecureRandom random=new SecureRandom();
  final ScheduledExecutorService tasks=Executors.newSingleThreadScheduledExecutor();
  AdminServer(GunnyServer server){this(server,new AdminData(server.store),CloudStore.env("GUNNY_ADMIN_PASSWORD"),false);}
- AdminServer(GunnyServer server,AdminData records,String password,boolean testing){s=server;data=records;test=testing;enabled=!password.isEmpty();if(enabled&&password.length()<16)throw new IllegalArgumentException("GUNNY_ADMIN_PASSWORD requires at least 16 characters");passwordHash=digest(password);}
+ AdminServer(GunnyServer server,AdminData records,String password,boolean testing){s=server;data=records;support=new SupportPage(records);test=testing;enabled=!password.isEmpty();if(enabled&&password.length()<16)throw new IllegalArgumentException("GUNNY_ADMIN_PASSWORD requires at least 16 characters");passwordHash=digest(password);}
  static byte[] digest(String text){try{return MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));}catch(Exception e){throw new IllegalStateException(e);}}
  void start(){if(enabled)tasks.scheduleWithFixedDelay(this::maintenance,5,30,TimeUnit.SECONDS);}
  void maintenance(){try{
@@ -27,7 +27,7 @@ final class AdminServer implements AutoCloseable {
  List<?> login(String id)throws Exception{if(!enabled)return List.of();Map<String,Object> r=data.login(id);if(Boolean.TRUE.equals(r.get("blocked")))throw new SecurityException("Tài khoản đã bị xoá theo lịch.");Object a=r.get("notices");return a instanceof List?(List<?>)a:List.of();}
  void writeNotices(DataOutputStream out,List<?> notices)throws IOException{out.writeByte(Math.min(21,notices.size()));for(int i=0;i<notices.size()&&i<21;i++){Map<String,Object> n=Json.obj(notices.get(i));out.writeUTF(Json.str(n,"title"));out.writeUTF(Json.str(n,"body"));out.writeUTF(Json.str(n,"appeal"));}}
  void json(HttpExchange x,int status,Object body)throws IOException{byte[] b=Json.write(body).getBytes(StandardCharsets.UTF_8);x.getResponseHeaders().set("Content-Type","application/json; charset=utf-8");x.sendResponseHeaders(status,b.length);x.getResponseBody().write(b);}
- Map<String,Object> body(HttpExchange x)throws IOException{byte[] b=x.getRequestBody().readNBytes(16385);if(b.length>16384)throw new IllegalArgumentException("Dữ liệu quá dài");return Json.obj(Json.parse(new String(b,StandardCharsets.UTF_8)));}
+ Map<String,Object> body(HttpExchange x)throws IOException{int limit=x.getRequestURI().getPath().equals("/admin/api/support-qr")?2100000:16384;byte[] b=x.getRequestBody().readNBytes(limit+1);if(b.length>limit)throw new IllegalArgumentException("Dữ liệu quá dài");return Json.obj(Json.parse(new String(b,StandardCharsets.UTF_8)));}
  String cookie(HttpExchange x){String value=x.getRequestHeaders().getFirst("Cookie");if(value!=null)for(String part:value.split(";")){String[] p=part.trim().split("=",2);if(p.length==2&&p[0].equals("gunny_admin"))return p[1];}return "";}
  boolean sameOrigin(HttpExchange x){String origin=x.getRequestHeaders().getFirst("Origin"),host=x.getRequestHeaders().getFirst("Host");if(origin==null||host==null)return false;try{URI u=URI.create(origin);return (u.getScheme().equals("https")||test&&u.getScheme().equals("http"))&&u.getRawAuthority().equalsIgnoreCase(host);}catch(Exception e){return false;}}
  void handle(HttpExchange x)throws IOException{try{
@@ -35,7 +35,7 @@ final class AdminServer implements AutoCloseable {
   if(!enabled){json(x,503,Map.of("error","Trang quản trị chưa được bật. Cấu hình GUNNY_ADMIN_PASSWORD trên máy chủ."));return;}
   String path=x.getRequestURI().getPath(),method=x.getRequestMethod();
   if(!path.startsWith("/admin/api/")){
-   String file=path.equals("/admin")||path.equals("/admin/")?"index.html":path.equals("/admin/app.js")?"app.js":path.equals("/admin/style.css")?"style.css":"";
+   String file=path.equals("/admin")||path.equals("/admin/")?"index.html":path.equals("/admin/app.js")?"app.js":path.equals("/admin/support.js")?"support.js":path.equals("/admin/style.css")?"style.css":"";
    if(file.isEmpty()||!method.equals("GET")){json(x,404,Map.of("error","Không tìm thấy"));return;}
    byte[] b=Files.readAllBytes(Path.of("public/admin",file));h.set("Content-Type",file.endsWith("js")?"text/javascript; charset=utf-8":file.endsWith("css")?"text/css; charset=utf-8":"text/html; charset=utf-8");x.sendResponseHeaders(200,b.length);x.getResponseBody().write(b);return;
   }
@@ -50,8 +50,8 @@ final class AdminServer implements AutoCloseable {
   if(path.equals("/admin/api/session")&&method.equals("GET")){json(x,200,Map.of("ok",true));return;}
   if(path.equals("/admin/api/logout")&&method.equals("POST")){tokens.remove(token);h.add("Set-Cookie","gunny_admin=; HttpOnly; SameSite=Strict; Path=/admin; Max-Age=0"+(test?"":"; Secure"));json(x,200,Map.of("ok",true));return;}
   String op=path.substring("/admin/api/".length());Map<String,Object> input;
-  if(method.equals("GET")&&(op.equals("accounts")||op.equals("announcements")||op.equals("retention-policy"))){input=new HashMap<>();String query=x.getRequestURI().getRawQuery();if(query!=null)for(String p:query.split("&")){String[] parts=p.split("=",2);if(parts.length==2)input.put(URLDecoder.decode(parts[0],StandardCharsets.UTF_8),URLDecoder.decode(parts[1],StandardCharsets.UTF_8));}}
-  else if(method.equals("POST")&&Set.of("schedule","cancel-delete","delete-now","announcement-save","announcement-delete","wallet-add","retention-save","offline-days","extend-offline").contains(op))input=body(x);
+  if(method.equals("GET")&&(op.equals("accounts")||op.equals("announcements")||op.equals("retention-policy")||op.equals("support-list"))){input=new HashMap<>();String query=x.getRequestURI().getRawQuery();if(query!=null)for(String p:query.split("&")){String[] parts=p.split("=",2);if(parts.length==2)input.put(URLDecoder.decode(parts[0],StandardCharsets.UTF_8),URLDecoder.decode(parts[1],StandardCharsets.UTF_8));}}
+  else if(method.equals("POST")&&Set.of("schedule","cancel-delete","delete-now","announcement-save","announcement-delete","wallet-add","retention-save","offline-days","extend-offline","support-qr","support-add","support-comment").contains(op))input=body(x);
   else{json(x,404,Map.of("error","Không tìm thấy"));return;}
   if(op.equals("delete-now")&&!Json.str(input,"confirm").equals("XOA"))throw new IllegalArgumentException("Nhập XOA để xác nhận xoá vĩnh viễn");
   if(op.equals("announcement-save")){String title=Json.str(input,"title").trim(),message=Json.str(input,"body").trim();if(title.isEmpty()||title.length()>80||message.isEmpty()||message.length()>1000)throw new IllegalArgumentException("Tiêu đề tối đa 80, nội dung tối đa 1.000 ký tự");Instant start=Instant.parse(Json.str(input,"starts_at")),end=Instant.parse(Json.str(input,"ends_at"));if(!end.isAfter(start))throw new IllegalArgumentException("Ngày kết thúc phải sau ngày bắt đầu");}
@@ -61,10 +61,16 @@ final class AdminServer implements AutoCloseable {
    if(!inherit&&(!(days instanceof Number)||((Number)days).doubleValue()!=((Number)days).intValue()||((Number)days).intValue()<1||((Number)days).intValue()>3650))throw new IllegalArgumentException("Số ngày phải là số nguyên từ 1 đến 3650");
    if(!op.equals("retention-save"))UUID.fromString(Json.str(input,"id"));if(op.equals("extend-offline"))UUID.fromString(Json.str(input,"request_key"));
   }
-  Object result=data.call(op,input);if(op.equals("wallet-add")){String id=Json.str(input,"id");CloudStore.Profile fresh=s.store.profile(id);for(var user:s.sessions.values())if(user.id.equals(id))synchronized(user){user.profile=fresh;}}if(op.equals("delete-now"))revoke(Json.str(input,"id"));
+  Object result=op.startsWith("support-")?support.operation(op,input):data.call(op,input);
+  if(op.equals("support-add")){
+   // The durable transaction has committed. Refresh failures must not make it look rejected.
+   try{refreshProfile(Json.str(input,"id"));}catch(Exception refreshError){System.err.println("Support gift committed; profile refresh deferred");}
+  }else if(op.equals("wallet-add"))refreshProfile(Json.str(input,"id"));
+  if(op.equals("delete-now"))revoke(Json.str(input,"id"));
   if(op.equals("accounts")){Map<String,Object> records=Json.obj(result);Set<String> online=new HashSet<>();long now=System.currentTimeMillis();for(var u:s.sessions.values())if(u.expiry>now&&now-u.lastSeen<60000)online.add(u.id);records.put("online",online.stream().toList());}
   json(x,200,result);
  }catch(IllegalArgumentException e){json(x,400,Map.of("error",e.getMessage()==null?"Dữ liệu không hợp lệ":e.getMessage()));}
- catch(Exception e){System.err.println("Admin request failed: "+e.getClass().getSimpleName());json(x,503,Map.of("error","Chưa xử lý được. Kiểm tra dữ liệu nhập, migration quản trị 7.5.0 và kết nối Supabase."));}finally{x.close();}}
+ catch(Exception e){System.err.println("Admin request failed: "+e.getClass().getSimpleName());json(x,503,Map.of("error",x.getRequestURI().getPath().contains("/support-")?"Chưa xử lý được. Kiểm tra migration 202611160001_support.sql và kết nối Supabase.":"Chưa xử lý được. Kiểm tra dữ liệu nhập, migration quản trị 7.5.0 và kết nối Supabase."));}finally{x.close();}}
+ void refreshProfile(String id)throws Exception{CloudStore.Profile fresh=s.store.profile(id);for(var user:s.sessions.values())if(user.id.equals(id))synchronized(user){user.profile=fresh;}}
  public void close(){tasks.shutdownNow();tokens.clear();}
 }

@@ -37,3 +37,9 @@ Kiểm thử: JDK 17+ và `bash verify.sh` trên Linux. Công cụ
 `python3 deploy/check-network.py --tcp-host gunnyjava.xubi.org --web-url https://gunnyjava.xubi.org`
 kiểm tra giao thức game thật mà không đăng nhập hay ghi dữ liệu.
 
+
+## Thắp sáng
+
+Trang tải game có mã QR ủng hộ tự nguyện. Trong admin, mở **Thắp sáng** để thay ảnh QR, tìm tài khoản, ghi số tiền và bình luận công khai, rồi gửi quà riêng tư bằng đá cường hóa, xu hoặc tiền mua sắm. Lịch sử quà chỉ hiển thị cho admin. Gửi lại cùng yêu cầu không cộng trùng.
+
+Máy chủ đang có schema 7.8.0 cần chạy một lần [migration Thắp sáng](supabase/migrations/202611160001_support.sql) trong Supabase SQL Editor, rồi cập nhật backend và thư mục `public`. Bản cài mới dùng `supabase/GUNNY-ALL.sql` đã bao gồm phần này. Ảnh QR thay trong admin và lịch sử ủng hộ được lưu ở Supabase.

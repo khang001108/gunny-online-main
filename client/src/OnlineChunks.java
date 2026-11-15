@@ -1,23 +1,123 @@
 import java.io.*;
+import java.util.Vector;
 
-/** Ordered authoritative animation frames, buffered per movement/POW/volley. */
+/** Bounded receive-ahead queue; receipt and completed playback are separate. */
 final class OnlineChunks {
- final OnlineClient net;int turn=-1,completed=-1,id,remaining,kind;boolean terminal,resolved,ownPending;boolean resetTerrain;DataInputStream frames;byte[] finalFrame;
- OnlineChunks(OnlineClient n){net=n;}
- void reset(){turn=completed=-1;frames=null;finalFrame=null;remaining=0;ownPending=false;}
- void read(DataInputStream in,boolean done,int serverTurn)throws IOException{
-  if(turn!=serverTurn){reset();turn=serverTurn;}
-  int stage=in.readUnsignedByte();if(stage==0||stage==5&&net.liveCap){net.acceptSnapshot(in,done,serverTurn);return;}if(stage==3)return;if(stage!=4)throw new IOException("Sai đoạn hành động.");
-  int next=in.readInt(),size=in.readInt();if(size<4||size>1048576)throw new IOException("Đoạn quá lớn.");byte[] data=new byte[size];in.readFully(data);
-  // Initialize before keeping the frame stream: prepareBattle resets chunks.
-  if(!net.inBattle){net.prepareBattle();turn=serverTurn;}
-  if(next<=completed||frames!=null||ownPending)return;if(next!=completed+1)throw new IOException("Thiếu đoạn hành động.");
-  id=next;resolved=done;DataInputStream block=new DataInputStream(new ByteArrayInputStream(data));kind=block.readUnsignedByte();terminal=block.readBoolean();remaining=block.readUnsignedShort();if(remaining<1||remaining>2000)throw new IOException("Sai số khung hình.");
-  boolean own=net.predicting&&net.predictedTurn==serverTurn&&net.localTurn();
-  if(own){while(remaining-->0)finalFrame=frame(block);if(terminal){ownPending=true;finish();}else{completed=id;finalFrame=null;}return;}
-  frames=block;resetTerrain=true;net.resolutionSeen=false;net.c.held=net.c.fireKey=0;
- }
- byte[] frame(DataInputStream in)throws IOException{int size=in.readUnsignedShort();byte[] data=new byte[size];in.readFully(data);return data;}
- boolean animate(){if(frames==null)return false;try{if(resetTerrain||terminal&&remaining==1){net.c.resetOnlineTerrain();resetTerrain=false;}net.c.game.ageTrails();net.readSnapshot(new DataInputStream(new ByteArrayInputStream(frame(frames))));for(int i=0;i<net.c.game.ballCount;i++)net.c.game.stampTrail(net.c.game.balls[i]);if(--remaining==0){frames=null;completed=id;net.c.game.pendingNext=terminal&&resolved;net.resolutionSeen=terminal&&(resolved||net.c.game.over);net.lastPoll=0;}return true;}catch(IOException e){net.disconnect("Không đọc được đoạn hành động.");return true;}}
- void finish(){if(!ownPending||(!net.c.game.pendingNext&&!net.c.game.over)||net.c.powShotPending)return;try{net.c.resetOnlineTerrain();net.readSnapshot(new DataInputStream(new ByteArrayInputStream(finalFrame)));net.c.game.pendingNext=resolved;net.predicting=false;net.resolutionSeen=resolved||net.c.game.over;completed=id;ownPending=false;finalFrame=null;net.lastPoll=0;}catch(IOException e){net.disconnect("Không đọc được kết quả.");}}
+    static final int BUFFER_FRAMES=15, BUFFER_MS=500, MAX_SEGMENTS=4;
+    final OnlineClient net;
+    final Vector queued=new Vector();
+    int turn=-1, completed=-1, received=-1, id, remaining, kind;
+    boolean terminal, resolved, ownPending, resetTerrain, playing;
+    DataInputStream frames;
+    byte[] finalFrame;
+    long waitingSince;
+
+    static final class Segment {
+        int id, kind, count;
+        boolean terminal, resolved;
+        byte[] data;
+    }
+    OnlineChunks(OnlineClient owner) { net=owner; }
+    void reset() {
+        turn=completed=received=-1;queued.removeAllElements();
+        frames=null;finalFrame=null;remaining=0;id=-1;kind=0;terminal=resolved=resetTerrain=false;ownPending=false;playing=false;waitingSince=0;
+    }
+    int requestTurn(int displayedTurn) {
+        return net.prefetchCap&&turn>=0 ? turn : displayedTurn;
+    }
+    int cached() {
+        if (!net.prefetchCap) return frames!=null||ownPending ? id : completed;
+        // Values below -1 advertise a full receive window.
+        return queued.size()+(frames!=null||ownPending?1:0)>=MAX_SEGMENTS ? -received-2 : received;
+    }
+    void read(DataInputStream in, boolean done, int serverTurn) throws IOException {
+        if (turn!=serverTurn) { reset();turn=serverTurn; }
+        int stage=in.readUnsignedByte();
+        if (stage==0 || stage==5&&net.liveCap) { net.acceptSnapshot(in,done,serverTurn);return; }
+        if (stage==3) return;
+        if (stage!=4) throw new IOException("Sai đoạn hành động.");
+        int next=in.readInt(), size=in.readInt();
+        if (size<4 || size>65536) throw new IOException("Đoạn quá lớn.");
+        byte[] data=new byte[size];in.readFully(data);
+        // prepareBattle resets this object, so initialize before retaining data.
+        if (!net.inBattle) { net.prepareBattle();turn=serverTurn; }
+        if (next<=received) return;
+        if (next!=received+1) throw new IOException("Thiếu đoạn hành động.");
+        if (queued.size()+(frames!=null||ownPending?1:0)>=MAX_SEGMENTS) return;
+        DataInputStream block=new DataInputStream(new ByteArrayInputStream(data));
+        Segment segment=new Segment();
+        segment.id=next;segment.kind=block.readUnsignedByte();segment.terminal=block.readBoolean();
+        segment.count=block.readUnsignedShort();segment.resolved=done;segment.data=data;
+        if (segment.count<1 || segment.count>2000) throw new IOException("Sai số khung hình.");
+        for (int i=0;i<segment.count;i++) {
+            int length=block.readUnsignedShort();
+            if (length==0||length>block.available()) throw new IOException("Khung hình không đầy đủ.");
+            block.skipBytes(length);
+        }
+        if (block.available()!=0) throw new IOException("Dữ liệu hành động dư.");
+        boolean own=net.predicting&&net.predictedTurn==serverTurn&&net.localTurn();
+        if (own) {
+            block=new DataInputStream(new ByteArrayInputStream(data));block.skipBytes(4);
+            id=next;resolved=done;terminal=segment.terminal;kind=segment.kind;
+            for (int i=0;i<segment.count;i++) finalFrame=frame(block);
+            received=next;
+            if (terminal) { ownPending=true;finish(); }
+            else { completed=id;finalFrame=null; }
+            return;
+        }
+        queued.addElement(segment);received=next;
+        if (waitingSince==0) waitingSince=System.currentTimeMillis();
+        if (frames==null) advance();
+        net.resolutionSeen=false;net.c.held=net.c.fireKey=0;
+    }
+    byte[] frame(DataInputStream in) throws IOException {
+        int size=in.readUnsignedShort();
+        if (size==0 || size>in.available()) throw new IOException("Khung hình không đầy đủ.");
+        byte[] bytes=new byte[size];in.readFully(bytes);return bytes;
+    }
+    void advance() throws IOException {
+        if (queued.isEmpty()) return;
+        Segment segment=(Segment)queued.elementAt(0);queued.removeElementAt(0);
+        id=segment.id;kind=segment.kind;terminal=segment.terminal;resolved=segment.resolved;
+        remaining=segment.count;
+        frames=new DataInputStream(new ByteArrayInputStream(segment.data));frames.skipBytes(4);resetTerrain=true;
+    }
+    boolean ready(long now) {
+        int buffered=remaining;boolean hasTerminal=terminal;
+        for (int i=0;i<queued.size();i++) {
+            Segment segment=(Segment)queued.elementAt(i);buffered+=segment.count;hasTerminal|=segment.terminal;
+        }
+        return !net.prefetchCap||buffered>=BUFFER_FRAMES||hasTerminal||now-waitingSince>=BUFFER_MS;
+    }
+    boolean animate() {
+        if (frames==null) return false;
+        if (!playing) {
+            if (!ready(System.currentTimeMillis())) return true;
+            playing=true;
+        }
+        try {
+            if (resetTerrain||terminal&&remaining==1) { net.c.resetOnlineTerrain();resetTerrain=false; }
+            net.c.game.ageTrails();
+            net.readSnapshot(new DataInputStream(new ByteArrayInputStream(frame(frames))));
+            for (int i=0;i<net.c.game.ballCount;i++) net.c.game.stampTrail(net.c.game.balls[i]);
+            net.resolutionSeen=false;
+            if (--remaining==0) {
+                frames=null;completed=id;
+                net.c.game.pendingNext=terminal&&resolved;
+                net.resolutionSeen=terminal&&(resolved||net.c.game.over);
+                if (queued.isEmpty()) { playing=false;waitingSince=0; }
+                else advance();
+                net.lastPoll=0;
+            }
+            return true;
+        } catch (IOException error) { net.disconnect("Không đọc được đoạn hành động.");return true; }
+    }
+    void finish() {
+        if (!ownPending||(!net.c.game.pendingNext&&!net.c.game.over)||net.c.powShotPending) return;
+        try {
+            net.c.resetOnlineTerrain();net.readSnapshot(new DataInputStream(new ByteArrayInputStream(finalFrame)));
+            net.c.game.pendingNext=resolved;net.predicting=false;net.resolutionSeen=resolved||net.c.game.over;
+            completed=id;ownPending=false;finalFrame=null;net.lastPoll=0;
+        } catch (IOException error) { net.disconnect("Không đọc được kết quả."); }
+    }
 }

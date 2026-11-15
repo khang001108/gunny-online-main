@@ -11,10 +11,14 @@ public final class ShotFramesClientCheck {
    net.capabilities(input.readUTF());check(net.shotFrames&&!net.liveCap&&(net.tcpFlags()&4194304)!=0,"Client negotiates ordered authoritative shot frames over TCP");
    byte[] lobby=new byte[input.readInt()];input.readFully(lobby);net.readLobby(new java.io.DataInputStream(new java.io.ByteArrayInputStream(lobby)));
    int turn=input.readInt(),count=input.readInt(),visible=0,explosions=0;
-   for(int chunk=0;chunk<count;chunk++){
-    byte[] packet=new byte[input.readInt()];input.readFully(packet);
-    net.chunks.read(new java.io.DataInputStream(new java.io.ByteArrayInputStream(packet)),true,turn);
-    while(net.chunks.frames!=null){net.animate();if(c.game.ballCount>0)visible++;if(c.game.blastCount>0)explosions++;
+   byte[][] packets=new byte[count][];
+   for(int chunk=0;chunk<count;chunk++){packets[chunk]=new byte[input.readInt()];input.readFully(packets[chunk]);}
+   int next=0;
+   while(next<count||net.chunks.frames!=null){
+    if(next<count&&net.chunks.cached()>=-1){
+     net.chunks.read(new java.io.DataInputStream(new java.io.ByteArrayInputStream(packets[next++])),true,turn);
+    }
+    if(net.chunks.frames!=null){net.animate();if(c.game.ballCount>0)visible++;if(c.game.blastCount>0)explosions++;
      for(int i=0;i<c.game.ballCount;i++){
       Battle.Ball ball=c.game.balls[i];if(c.game.ground.solid(ball.x/256,ball.y/256))throw new AssertionError("Projectile crossed solid terrain during playback");
      }}

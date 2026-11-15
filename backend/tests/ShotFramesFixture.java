@@ -21,17 +21,22 @@ public final class ShotFramesFixture {
             host.room = guest.room = room.id;
             room.start();
             room.phase = 1;
+            host.prefetch = true;
             room.battle.units[0].weapon = 3;
-            room.battle.units[0].angle = 55;
-            room.battle.charge();
-            room.battle.units[0].power = 35;
-            room.battle.fire();
-            for (int tick = 0; tick < 1500 && !room.battle.pendingNext && !room.battle.over; tick++) {
-                room.battle.tick();
-                room.chunkFrame();
+            String mode=args.length==0?"shot":args[0];
+            if(mode.equals("walk")){
+                room.chunkBegin(1);
+                for(int tick=0;tick<36;tick++){room.battle.move(1);room.chunkFrame();}
+                room.battle.pass();room.chunkFrame();
+            }else{
+                room.battle.units[0].angle=55;
+                if(mode.equals("pow"))room.battle.pow=true;
+                room.command(host,1,1,0);
+                room.command(host,2,2,-(1+55*128+35));
+                for(int tick=0;tick<1500&&!room.battle.pendingNext&&!room.battle.over;tick++)room.tick();
             }
             room.chunkFlush(true);
-            var target = Path.of("client/build/shot-frames.bin");
+            var target = Path.of("client/build/"+mode+"-frames.bin");
             Files.createDirectories(target.getParent());
             try (var output = new DataOutputStream(Files.newOutputStream(target))) {
                 output.writeUTF(GunnyServer.capabilities(false, true));
@@ -47,8 +52,8 @@ public final class ShotFramesFixture {
                 }
                 output.writeInt(room.ground.craters.size());
             }
-            if (room.ground.craters.isEmpty()) throw new AssertionError("Volley must hit terrain");
-            System.out.println("PASS: captured complete thrown-weapon volley and terrain impacts");
+            if (!mode.equals("walk")&&room.ground.craters.isEmpty()) throw new AssertionError("Volley must hit terrain");
+            System.out.println("PASS: captured authoritative "+mode+" frames");
         }
     }
 }
