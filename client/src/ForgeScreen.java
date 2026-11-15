@@ -1,0 +1,375 @@
+import javax.microedition.lcdui.*;
+
+/**
+ * Two working slots and two inventory sections, following the supplied native
+ * forge.
+ */
+final class ForgeScreen {
+    final PhoneCanvas c;
+    int page, selection, count, kind, item, expected, expectedProgress, focus, confirm, animFrom, animTo, riseRank;
+    final int[] kinds = new int[130], items = new int[130];
+    final Image[] strength = new Image[16];
+    String requestKey = "";
+    Image frame, stone, stoneSmall, left, inventoryPanel, cell, equipTab, equipment, material, percent, on, off, action, fill,
+            success, slotSuccess, continuousText, stoneLabel, hammer;
+    boolean info;
+    boolean continuous, running;
+    long nextAt, animStart, successUntil, riseStart;
+
+    ForgeScreen(PhoneCanvas canvas) {
+        c = canvas;
+    }
+
+    void open() {
+        page = selection = focus = confirm = 0;
+        continuous = running = false;
+        requestKey = "";
+        c.mode = 18;
+        refresh();
+        if (c.onlineAccount())
+            c.net.request("economy");
+    }
+
+    void refresh() {
+        count = 0;
+        for (int k = 0; k < 7; k++)
+            if (ForgeRules.allowed(k))
+                for (int i = 0; i < 10; i++)
+                    if (c.inventory.owns(k, i) && !(k == 0 && !ShopCatalog.weapon(i))) {
+                        kinds[count] = k;
+                        items[count++] = i;
+                    }
+        selection = Math.min(selection, Math.max(0, count - 1));
+        if (count > 0) {
+            kind = kinds[selection];
+            item = items[selection];
+            int i = ForgeRules.index(c.gender, kind, item);
+            expected = c.economy.ranks()[i];
+            expectedProgress = c.economy.progress()[i];
+        }
+    }
+
+    boolean sending() {
+        return c.net.operation.equals("forge") || c.net.pending.equals("forge");
+    }
+
+    void select(int index) {
+        if (sending() || index < 0 || index >= count)
+            return;
+        running = false;
+        selection = index;
+        page = index / 25;
+        confirm = 0;
+        requestKey = "";
+        refresh();
+    }
+
+    void load() {
+        c.bag.load();
+        if (frame != null)
+            return;
+        frame = c.combatRoomArt("forge780-frame");
+        stone = c.combatRoomArt("stone780");
+        stoneSmall = NativeUi.fit(stone, 12 * c.s, 12 * c.s, 2 * c.s);
+        left = c.combatRoomArt("forge780-left");
+        inventoryPanel = NativeUi.fit(left, 142 * c.s, 168 * c.s, 5 * c.s);
+        cell = NativeUi.fit(c.bag.cell, 25 * c.s, 25 * c.s, 2 * c.s);
+        equipTab = NativeUi.fit(c.bag.equipOn, 21 * c.s, 43 * c.s, 2 * c.s);
+        equipment = c.combatRoomArt("forge780-equipment");
+        material = c.combatRoomArt("forge780-material");
+        percent = NativeUi.fit(c.combatRoomArt("forge780-percent"), 82 * c.s, 10 * c.s, 3 * c.s);
+        action = NativeUi.fit(c.combatRoomArt("auth714-button"), 78 * c.s, 21 * c.s, 5 * c.s);
+        fill = NativeUi.fit(c.combatRoomArt("forge780-fill"), 76 * c.s, 6 * c.s, 2 * c.s);
+        success = c.combatRoomArt("forge780-success");
+        slotSuccess = c.combatRoomArt("forge780-success-slot");
+        continuousText = c.combatRoomArt("forge780-continuous");
+        stoneLabel = c.combatRoomArt("forge780-stone-label");
+        hammer = NativeUi.fit(c.combatRoomArt("forge780-hammer"),
+        14 * c.s, 14 * c.s, 2 * c.s);
+        on = c.combatRoomArt("auth-check-on");
+        off = c.combatRoomArt("auth-check-off");
+    }
+
+    int percent() {
+        return count == 0 || expected >= ForgeRules.MAX_RANK ? 100 : expectedProgress * 100 / ForgeRules.cost(expected);
+    }
+
+    int shownPercent() {
+        long now = System.currentTimeMillis();
+        if (animStart > 0 && now - animStart < 900)
+            return animFrom + (animTo - animFrom) * (int) (now - animStart) / 900;
+        return percent();
+    }
+
+    void draw() {
+        load();
+        refresh();
+        long now = System.currentTimeMillis();
+        c.all();
+        c.img(c.lobbyBackground, 0, 0);
+        c.img(frame, 4, 8);
+        c.pcText("Tiệm rèn", 13, 14);
+        c.img(NativeUi.fit(
+            c.bag.close,
+            17 * c.s,
+            16 * c.s,
+            2 * c.s
+        ), 289, 10);
+        c.wallet(153, 34);
+        c.img(left, 12, 55);
+        c.pcText("Trang bị", 22, 57);
+        c.pcText("Đá cường hóa", 84, 57);
+        if (now < successUntil && ((now / 140) & 1) == 0)
+            c.img(slotSuccess, 24, 72);
+        c.img(equipment, 24, 72);
+        c.img(material, 94, 72);
+        if (count > 0)
+            c.img(c.bag.itemIcon(kind, item), 38, 83);
+        if (c.economy.stones() > 0)
+            c.img(stone, 107, 83);
+        c.pcCenter("+" + expected, 51, 108);
+        c.pcCenter("x" + c.economy.stones(), 120, 108);
+        if (riseStart > 0 && now - riseStart < 2000 && riseRank > 0) {
+            if (strength[riseRank] == null)
+                strength[riseRank] = c.combatRoomArt("strength780-" + riseRank);
+            c.img(strength[riseRank], 22, 54 - (int) (now - riseStart) * 25 / 2000);
+        }
+        c.img(percent, 45, 123);
+        int pct = shownPercent(), fw = 76 * pct / 100;
+        if (fw > 0)
+            c.part(fill, 0, 0, fw, 6, 48, 125, false);
+        c.pcCenter(pct + "%", 86, 123);
+        int need = expected >= ForgeRules.MAX_RANK ? 0 : ForgeRules.cost(expected) - expectedProgress;
+        c.img(stoneLabel, 18, 140);
+        c.pcText(": " + need, 75, 139);
+        c.img(stoneSmall, 105, 137);
+        c.img(continuous ? on : off, 61, 158);
+        c.img(continuousText, 18, 158);
+        if (focus == 2)
+            c.drawSelectionGlow(16, 155, 64, 18);
+        c.pcCenter(count == 0 ? "Chọn trang bị" : c.pcShort(c.bag.itemName(kind, item), 122), 84, 178);
+        c.img(hammer, 30, 202);
+        c.img(action, 48, 198);
+        c.pcCenter(running ? "Dừng" : "Cường hóa", 87, 203);
+
+        if (focus == 1)
+            c.drawSelectionGlow(48, 198, 78, 21);
+        c.img(inventoryPanel, 149, 55);
+        c.img(c.bag.input, 153, 57);
+        c.pcText(kind == 0 ? "Vũ khí" : kind == 2 ? "Áo" : kind == 3 ? "Nón" : "Kính", 160, 62);
+        c.img(equipTab, 292, 57);
+        for (int n = 0; n < 25; n++) {
+            int i = page * 25 + n, x = 154 + n % 5 * 26, y = 78 + n / 5 * 26;
+            c.img(cell, x, y);
+            if (i < count)
+                c.img(c.bag.itemIcon(kinds[i], items[i]), x + 2, y);
+            if (i == selection && count > 0)
+                c.drawSelectionGlow(x, y, 25, 25);
+        }
+        c.img(c.bag.arrow, 155, 207);
+        c.pcCenter("<", 165, 210);
+        c.pcCenter((page + 1) + "/" + Math.max(1, (count + 24) / 25), 222, 210);
+        c.img(c.bag.arrow, 269, 207);
+        c.pcCenter(">", 279, 210);
+        if (info && count > 0)
+            c.tooltip.draw(kind, item, new int[] { 154 + selection % 5 * 26, 78 + (selection % 25) / 5 * 26, 25, 25 });
+    }
+
+    void upgrade() {
+        if (running) {
+            running = false;
+            return;
+        }
+        if (count == 0 || expected >= ForgeRules.MAX_RANK)
+            return;
+        if (c.net.roomId > 0) {
+            c.message("Rời phòng trước khi rèn");
+            return;
+        }
+        if (c.economy.stones() <= 0) {
+            failed();
+            c.message("Không còn đá cường hóa");
+            return;
+        }
+        running = continuous;
+        submit();
+    }
+
+    void submit() {
+        if (sending() || c.net.pending.length() > 0)
+            return;
+        if (c.onlineAccount()) {
+            if (requestKey.length() == 0)
+                requestKey = c.nextEconomyKey();
+            c.net.forgeKind = kind;
+            c.net.forgeItem = item;
+            c.net.forgeExpected = expected;
+            c.net.forgeProgressExpected = expectedProgress;
+            c.net.economyKey = requestKey;
+            c.net.request("forge");
+        } else if (c.economy.forge(kind, item, expected, expectedProgress))
+            complete();
+        else
+            failed();
+    }
+
+    void complete() {
+        int before = expected, beforeProgress = expectedProgress,
+                from = before >= ForgeRules.MAX_RANK ? 100 : beforeProgress * 100 / ForgeRules.cost(before);
+        confirm = 0;
+        requestKey = "";
+        refresh();
+        animFrom = from;
+        animTo = expected > before ? 100 : percent();
+        animStart = System.currentTimeMillis();
+        nextAt = animStart + 1100;
+        if (expected > before) {
+            successUntil = animStart + 2000;
+            riseStart = animStart;
+            riseRank = expected;
+        }
+        c.message(expected > before ? "Cường hóa thành công +" + expected : "Đã tích lũy " + percent() + "%");
+    }
+
+    void failed() {
+        running = false;
+        confirm = 0;
+    }
+
+    void tick() {
+        if (c.mode != 18) {
+            running = false;
+            return;
+        }
+        if (!running || c.net.busy || c.net.pending.length() > 0 || System.currentTimeMillis() < nextAt)
+            return;
+        refresh();
+        if (count == 0 || expected >= ForgeRules.MAX_RANK || c.economy.stones() <= 0) {
+            running = false;
+            c.message(expected >= ForgeRules.MAX_RANK ? "Đã đạt +15" : "Dừng: đã hết đá");
+            return;
+        }
+        submit();
+    }
+
+    void toggle() {
+        continuous = !continuous;
+        if (!continuous)
+            running = false;
+    }
+
+    void leave() {
+        running = false;
+        c.openLobby();
+    }
+
+    void key(int key, int dir, boolean ok) {
+        if (key == -6) {
+            if (info)
+                info = false;
+            else if (count > 0)
+                info = true;
+            return;
+        }
+        if (key == -7) {
+            leave();
+            return;
+        }
+        // QWERTY Space swaps between the forge controls and the equipment bag.
+        // Enter/5/center-FIRE remains the activation key.
+        if (key == 32) {
+            info = false;
+            focus = focus == 0 ? 1 : 0;
+            return;
+        }
+        if (dir != 0) {
+            if (focus == 0) {
+                if (dir == 1 || dir == 2) {
+                    int row = selection % 25 / 5;
+                    if (dir == 1 && selection % 5 == 0 && page > 0)
+                        select(Math.min((page - 1) * 25 + row * 5 + 4, count - 1));
+                    else if (dir == 1 && selection % 5 == 0)
+                        focus = 1;
+                    else if (dir == 2 && selection % 5 == 4 && page < (count - 1) / 25)
+                        select(Math.min((page + 1) * 25 + row * 5, count - 1));
+                    else if (dir == 2 && selection % 5 == 4)
+                        focus = 1;
+                    else
+                        select(Battle.clamp(selection + (dir == 1 ? -1 : 1), 0, count - 1));
+                } else if (dir == 4) {
+                    if (selection >= 5)
+                        select(selection - 5);
+                    else
+                        focus = 3;
+                } else if (selection + 5 < count)
+                    select(selection + 5);
+                else
+                    focus = 6;
+            } else if (focus == 6)
+                focus = dir == 4 ? 0 : dir == 1 ? 2 : dir == 2 ? 0 : 1;
+            else if (focus == 2)
+                focus = dir == 2 || dir == 4 ? 0 : 1;
+            else if (focus == 1) {
+                if (dir == 2) {
+                    focus = 0;
+                } else if (dir == 4) {
+                    focus = 2;
+                } else if (dir == 1) {
+                    focus = 1;
+                } else {
+                    focus = 2;
+                }
+            }
+            else
+                focus = 0;
+            return;
+        }
+        if (ok) {
+            if (focus == 3)
+                leave();
+            else if (focus == 4 || focus == 5)
+                select(Battle.clamp(selection + (focus == 4 ? -25 : 25), 0, count - 1));
+            else if (focus == 2)
+                toggle();
+            else if (focus == 6) {
+                if (dir == 1) {
+                    focus = 1;
+                } else {
+                    focus = 0;
+                }
+            } else {
+                focus = 1;
+                upgrade();
+            }
+        }
+    }
+
+    void pointer(int x, int y) {
+        if (x >= 289 && y < 33) {
+            leave();
+            return;
+        }
+        if (x >= 154 && x < 284 && y >= 78 && y < 208) {
+            select(page * 25 + (y - 78) / 26 * 5 + (x - 154) / 26);
+            focus = 0;
+            return;
+        }
+        if (y >= 155 && y < 176 && x >= 14 && x < 82) {
+            focus = 2;
+            toggle();
+            return;
+        }
+        if (y >= 205 && x >= 150 && x < 185) {
+            select(Battle.clamp(selection - 25, 0, count - 1));
+            return;
+        }
+        if (y >= 205 && x >= 265 && x < 300) {
+            select(Battle.clamp(selection + 25, 0, count - 1));
+            return;
+        }
+        if (x >= 28 && x < 128 && y >= 194 && y < 223) {
+            focus = 1;
+            upgrade();
+        }
+    }
+}

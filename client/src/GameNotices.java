@@ -1,0 +1,11 @@
+import java.io.*;
+/** Per-login announcements: one asset-backed page at a time, no RMS suppression. */
+final class GameNotices {
+ final PhoneCanvas c;String[] titles=new String[0],bodies=new String[0],appeals=new String[0];int index,offset,next;
+ GameNotices(PhoneCanvas canvas){c=canvas;}
+ void read(DataInputStream in)throws IOException{int count=in.readUnsignedByte();if(count>21)throw new IOException("Quá nhiều thông báo");titles=new String[count];bodies=new String[count];appeals=new String[count];for(int i=0;i<count;i++){titles[i]=in.readUTF();bodies[i]=in.readUTF().replace('\n',' ').replace('\r',' ');appeals[i]=in.readUTF();if(titles[i].length()>80||bodies[i].length()>2000)throw new IOException("Thông báo quá dài");}index=offset=0;if(count>0)show();}
+ void show(){if(index>=titles.length)return;String remaining=bodies[index].substring(offset);String page="";int used=0;for(int row=0;row<(appeals[index].length()>0?4:5)&&remaining.length()>0;row++){int end=remaining.length();while(end>1&&c.pcWidth(remaining.substring(0,end))>222)end--;if(end<remaining.length()){int space=remaining.lastIndexOf(' ',end);if(space>0)end=space;}String line=remaining.substring(0,end);page+=line+" ";used+=end;remaining=remaining.substring(end);while(remaining.startsWith(" ")){remaining=remaining.substring(1);used++;}}next=offset+used;c.popup.open(titles[index],page.trim(),new String[]{next<bodies[index].length()?"Tiếp theo":"Xác nhận"},4);}
+ boolean hasAppeal(){return index<appeals.length&&appeals[index].length()>0;}
+ void appeal(){if(!hasAppeal())return;String link=appeals[index].trim();if(link.startsWith("http://")||link.startsWith("https://")||link.startsWith("tel:")){}else{String phone="";for(int i=0;i<link.length();i++){char ch=link.charAt(i);if(ch>='0'&&ch<='9'||ch=='+')phone+=ch;else if(ch!=' '&&ch!='-'&&ch!='('&&ch!=')'&&ch!='.'){phone="";break;}}if(phone.length()>=7)link="tel:"+phone;else if(link.indexOf('.')>0&&link.indexOf(' ')<0)link="https://"+link;else{c.message("Liên hệ: "+link);return;}}try{if(c.app.platformRequest(link))c.app.quit();}catch(Exception e){c.message("Không mở được: "+link);}}
+ void confirm(){if(next<bodies[index].length())offset=next;else{index++;offset=0;}show();}
+}
