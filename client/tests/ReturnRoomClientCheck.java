@@ -6,7 +6,12 @@ public final class ReturnRoomClientCheck {
 
 
   var net=c.net;net.alive=false;net.inBattle=true;net.roomKind=0;net.results.leave();
-  check(net.pending.equals("returnroom"),"PVP result returns to existing room");
+  check(net.pending.equals("leave"),"1v1 PVP result leaves for the room list");
+  net.pending="";net.roomKind=1;net.results.leave();check(net.pending.equals("leave"),"Solo mode result leaves for the room list");
+  net.pending="";net.results.stage=1;net.results.claimed=true;net.results.activate();check(net.pending.equals("leave"),"Solo confirmation after claiming reward goes to room list");
+  net.pending="";net.results.key(-7,0,false);check(net.pending.equals("leave"),"Solo back key after reward goes to room list");net.results.reset();
+  net.pending="";net.roomKind=0;net.count=4;net.results.leave();check(net.pending.equals("returnroom"),"2v2 keeps its waiting room");
+  net.pending="";net.roomKind=2;net.count=6;net.results.leave();check(net.pending.equals("returnroom"),"3v3 keeps its party room");
   net.pending="";net.roomKind=3;net.dungeonStage=2;net.results.leave();check(net.pending.equals("returnroom"),"Final dungeon result returns to existing room");
   net.returnToWaitingRoom();check(!net.inBattle&&c.mode==16&&net.queueCount==0,"Returning clears battle state and opens waiting room");
   net.inBattle=false;c.offlineDungeon.active=false;net.results.leave();check(c.mode==10,"Offline PVP returns to setup");

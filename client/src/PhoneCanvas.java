@@ -2535,23 +2535,33 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void drawSpeechBubble(int x, int tip, String[] lines,int top) {
+        drawSpeechBubble(x,tip,lines,top,false);
+    }
+
+    int speechBubbleLeft(int x,int width,boolean tailUp) {
+        int left=tailUp?(x<160?x-width+14:x-14):x-width/2;
+        return Battle.clamp(left,4,316-width);
+    }
+
+    void drawSpeechBubble(int x, int tip, String[] lines,int top,boolean tailUp) {
         int w = 0;
         for (int i=0; i<lines.length; i++) w=Math.max(w,pcWidth(lines[i]));
         w += 20;
         int h = lines.length * 11 + 10;
-        tip = Math.max(top + h + 9, tip);
-        int left = Battle.clamp(x - w/2, 4, 316 - w), y = tip - h - 9;
+        if(!tailUp)tip=Math.max(top+h+9,tip);
+        int left=speechBubbleLeft(x,w,tailUp);
+        int y=tailUp?Math.max(top,tip+9):tip-h-9;
         int tail = Battle.clamp(x, left + 14, left + w - 14);
         int px = ox + left*s, py = oy + y*s;
         g.setColor(0x302d2e);
         g.fillRoundRect(px,py,w*s,h*s,12*s,12*s);
-        g.fillTriangle(ox+(tail-9)*s,py+(h-4)*s,ox+(tail+10)*s,py+(h-4)*s,ox+x*s,oy+tip*s);
+        g.fillTriangle(ox+(tail-9)*s,py+(tailUp?4:h-4)*s,ox+(tail+10)*s,py+(tailUp?4:h-4)*s,ox+x*s,oy+tip*s);
         g.setColor(0xc6cfee);
         g.fillRoundRect(px+s,py+s,(w-2)*s,(h-2)*s,11*s,11*s);
-        g.fillTriangle(ox+(tail-7)*s,py+(h-5)*s,ox+(tail+8)*s,py+(h-5)*s,ox+x*s,oy+(tip-2)*s);
+        g.fillTriangle(ox+(tail-7)*s,py+(tailUp?5:h-5)*s,ox+(tail+8)*s,py+(tailUp?5:h-5)*s,ox+x*s,oy+(tailUp?tip+2:tip-2)*s);
         g.setColor(0xffffff);
         g.fillRoundRect(px+3*s,py+3*s,(w-6)*s,(h-6)*s,8*s,8*s);
-        g.fillTriangle(ox+(tail-5)*s,py+(h-6)*s,ox+(tail+6)*s,py+(h-6)*s,ox+x*s,oy+(tip-5)*s);
+        g.fillTriangle(ox+(tail-5)*s,py+(tailUp?6:h-6)*s,ox+(tail+6)*s,py+(tailUp?6:h-6)*s,ox+x*s,oy+(tailUp?tip+5:tip-5)*s);
         if (speechFont == null) speechFont = combatRoomArt("font-dungeon-speech");
         for (int row=0; row<lines.length; row++) {
             String value=lines[row];
@@ -3004,6 +3014,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
 
     final Image[] npcHud780=new Image[4],npcHeader780=new Image[4];
     void drawTurnPortrait(int index, int x, int y) {
+        net.chat.roomSpeech.head(index,x+12,y+26);
         img(hudPropSlot, x, y);
         int cx = g.getClipX(), cy = g.getClipY(), cw = g.getClipWidth(), ch = g.getClipHeight();
         g.clipRect(ox + (x + 1) * s, oy + (y + 1) * s, 22 * s, 22 * s);

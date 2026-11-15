@@ -180,7 +180,7 @@ final class RoomSpeech {
         until[actor]=System.currentTimeMillis()+time;
     }
 
-    void beginFrame() { for(int i=0;i<seen.length;i++) seen[i]=false; }
+    void beginFrame() { refresh(); for(int i=0;i<seen.length;i++) seen[i]=false; }
 
     void head(int actor,int x,int y) {
         if(actor<0||actor>=seen.length)return;
@@ -193,37 +193,39 @@ final class RoomSpeech {
         int current=refresh();
         if (current==0) return;
         c.all();
-        if (current==FIGHT) {
-            for(int i=0;i<c.game.unitCount&&i<seen.length;i++) {
-                Battle.Unit u=c.game.units[i];
-                if(u.hp>0&&!c.loadout.hidden(i)) {
-                    head(i,u.x-c.cameraX,u.y-c.cameraY-35);
-                }
-            }
-        }
         long now=System.currentTimeMillis();
         for(int i=0;i<seen.length;i++)
             if(seen[i]&&until[i]>now && headX[i]>=0 && headX[i]<320 && headY[i]>=12 && headY[i]<235)
-                bubble(headX[i],headY[i],messages[i],emojis[i]);
+                bubble(i,headX[i],headY[i],messages[i],emojis[i],current==FIGHT);
+        if(current==FIGHT)for(int i=0;i<seen.length;i++)
+            if(seen[i]&&until[i]<=now&&c.emotions.until[i]>now)
+                bubble(i,headX[i],headY[i],"",c.emotions.values[i],true);
         if (bar) drawBar();
         if (picker) drawPicker();
         if (quick.opened) quick.draw();
     }
 
-    private void bubble(int x,int y,String text,int emoji) {
-        if (text.length()==0) {
-            c.drawSpeechBubble(x,y,new String[]{"     "},4);
-            chat.drawEmoji(emoji,Battle.clamp(x-8,10,294),Math.max(9,y-32));
-            return;
-        }
-        String first=c.pcShort(text,145);
-        if(first.equals(text)) c.drawSpeechBubble(x,y,new String[]{text},4);
+    private void bubble(int actor,int x,int y,String text,int emoji,boolean hud) {
+        String[] lines;
+        int widthLimit=hud?115:145;
+        if(text.length()==0)lines=hud?new String[]{"     ","     "}:new String[]{"     "};
+        else if(c.pcShort(text,widthLimit).equals(text))lines=new String[]{text};
         else {
             int split=1;
-            while(split<text.length() && c.pcWidth(text.substring(0,split+1))<=145)split++;
+            while(split<text.length()&&c.pcWidth(text.substring(0,split+1))<=widthLimit)split++;
             int space=text.lastIndexOf(' ',split);
             if(space>0)split=space;
-            c.drawSpeechBubble(x,y,new String[]{text.substring(0,split),c.pcShort(text.substring(split).trim(),145)},4);
+            lines=new String[]{text.substring(0,split),c.pcShort(text.substring(split).trim(),widthLimit)};
+        }
+        int top=36+actor/2*36;
+        if(hud)c.drawSpeechBubble(x,y,lines,top,true);
+        else c.drawSpeechBubble(x,y,lines,4);
+        if(text.length()==0){
+            if(hud){
+                int width=c.pcWidth(lines[0])+20;
+                int left=c.speechBubbleLeft(x,width,true);
+                chat.drawEmoji(emoji,left+(width-22)/2,Math.max(top,y+9)+5);
+            }else chat.drawEmoji(emoji,Battle.clamp(x-8,10,294),Math.max(9,y-32));
         }
     }
 
