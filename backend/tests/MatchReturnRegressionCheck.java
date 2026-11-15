@@ -90,6 +90,53 @@ public final class MatchReturnRegressionCheck {
             store.register("solo-a@regression.test", "test-password-123", "Solo A");
             store.register("solo-b@regression.test", "test-password-123", "Solo B");
             server.startTcp("127.0.0.1", 0, 8);
+            for (int partySize : new int[]{1, 2}) {
+                var clients = new ArrayList<TcpGameplayCheck.Player>();
+                try {
+                    for (int i = 0; i < partySize * 2; i++) {
+                        String email = "private-" + partySize + "-" + i + "@regression.test";
+                        store.register(email, "test-password-123", "Private " + partySize + " " + i);
+                        clients.add(new TcpGameplayCheck.Player(server.tcpPort(), email));
+                    }
+                    var a = clients.get(0);
+                    var b = clients.get(partySize);
+                    int aId = a.call("create3", out -> {
+                        out.writeByte(1);out.writeByte(2);out.writeByte(-1);out.writeByte(12);
+                        out.writeUTF("First party");out.writeUTF("");
+                    }).readInt();
+                    int bId = b.call("create3", out -> {
+                        out.writeByte(1);out.writeByte(2);out.writeByte(-1);out.writeByte(12);
+                        out.writeUTF("Second party");out.writeUTF("");
+                    }).readInt();
+                    if (partySize == 2) {
+                        clients.get(1).call("join", out -> {out.writeInt(aId);out.writeByte(0);out.writeUTF("");});
+                        clients.get(3).call("join", out -> {out.writeInt(bId);out.writeByte(0);out.writeUTF("");});
+                        clients.get(1).call("ready", out -> out.writeBoolean(true));
+                        clients.get(3).call("ready", out -> out.writeBoolean(true));
+                    }
+                    var waiting = a.call("start", null);
+                    check(waiting.readInt() == aId && waiting.readByte() == 0 && waiting.readBoolean(), "First TCP party stays host while searching");
+                    var matched = b.call("start", null);
+                    int battleId = matched.readInt();
+                    check(matched.readByte() == 3, "Matched TCP start responds with loading phase for " + partySize + "v" + partySize);
+                    var battle = server.rooms.get(battleId);
+                    check(battle.count == partySize * 2, "TCP match contains exactly the two original parties");
+                    finish(battle);
+                    for (var client : clients) {
+                        var reply = client.call("returnroom", null);
+                        int homeId = reply.readInt();
+                        check(reply.readByte() == 0, "TCP result returns to waiting phase");
+                        var session = server.sessions.get(client.token);
+                        var partyHome = server.rooms.get(homeId);
+                        boolean firstParty = clients.indexOf(client) < partySize;
+                        check(partyHome.title.equals(firstParty ? "First party" : "Second party") && partyHome.seconds == 12 && partyHome.requestedMap == 1, "TCP return restores own room title, map and turn time");
+                        check((session == partyHome.host) == (client == a || client == b), "TCP return preserves original leader and teammate roles");
+                    }
+                } finally {
+                    for (var client : clients) client.close();
+                }
+                server.rooms.clear();
+            }
             try (var a = new TcpGameplayCheck.Player(server.tcpPort(), "solo-a@regression.test");
                  var b = new TcpGameplayCheck.Player(server.tcpPort(), "solo-b@regression.test")) {
                 int battleId = a.call("quick", out -> out.writeByte(1)).readInt();

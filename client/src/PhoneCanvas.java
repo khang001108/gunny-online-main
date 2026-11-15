@@ -1138,6 +1138,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void editName() {
+        if (onlineAccount() && net.choosingCharacter) return;
         typing.field("Tên nhân vật", playerName, 13, false, false, 105, 158, 110, new InlineText.Done() {
             public void accept(String text) {
                 String value = text.trim();
@@ -1189,8 +1190,12 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         button("NAM", 113, 102, 44, 25, gender == 0);
         button("NỮ", 165, 102, 44, 25, gender == 1);
         text("Tên:", 111, 140);
-        button(playerName, 101, 155, 118, 23, createFocus == 1);
-        center("N: nhập tên • Tối đa 13 ký tự", 160, 181);
+        if (onlineAccount())
+            center(playerName, 160, 155);
+        else {
+            button(playerName, 101, 155, 118, 23, createFocus == 1);
+            center("N: nhập tên • Tối đa 13 ký tự", 160, 181);
+        }
         button("VÀO GAME", 102, 202, 116, 28, createFocus == 2);
         if (createFocus == 0)
             center("Trái/phải: chọn • Xuống: tiếp", 160, 36);
@@ -3635,12 +3640,12 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             if (dir == 1 || dir == 2)
                 gender = 1 - gender;
             else if (dir == 4)
-                createFocus = (createFocus + 2) % 3;
+                createFocus = onlineAccount() ? 2 - createFocus : (createFocus + 2) % 3;
             else if (dir == 8)
-                createFocus = (createFocus + 1) % 3;
+                createFocus = onlineAccount() ? 2 - createFocus : (createFocus + 1) % 3;
             else if (ok || key == -6) {
                 if (createFocus == 0)
-                    createFocus = 1;
+                    createFocus = onlineAccount() ? 2 : 1;
                 else if (createFocus == 1)
                     editName();
                 else
@@ -4021,8 +4026,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         if (mode == 7) {
             if (y >= 102 && y < 132) {
                 gender = x < 160 ? 0 : 1;
-                createFocus = 1;
-            } else if (y >= 150 && y < 180)
+                createFocus = onlineAccount() ? 2 : 1;
+            } else if (y >= 150 && y < 180 && !onlineAccount())
                 editName();
             else if (y >= 201)
                 enterCharacter();

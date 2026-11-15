@@ -35,11 +35,31 @@ public final class PlayerUiClientCheck {
    check(error<=3.1,"Queen arrow follows projectile velocity on ascent and descent");
    check(c.queenArrowImage(velocity[0],velocity[1])!=null,"Queen arrow rotation renders");
   }
+  net.pending="";net.operation="";net.busy=false;net.choosingCharacter=true;
+  c.mode=7;c.createFocus=0;c.gender=0;c.playerName="Registered";c.loadCreation();
+  c.keyPressed('N');check(!c.typing.active(),"Character choice ignores the rename shortcut for registered accounts");
+  c.editName();check(!c.typing.active(),"Character choice blocks direct rename entry");
+  c.pointerPressed(150*scale,160*scale);check(!c.typing.active(),"Registered name has no editable touch field");
+  c.keyPressed('8');check(c.createFocus==2,"Down skips the name field and selects Enter Game");
+  c.keyPressed('2');check(c.createFocus==0,"Up returns directly to gender choice");
+  c.keyPressed('6');check(c.gender==1,"Gender can still be selected by keyboard");
+  c.keyPressed(32);check(c.createFocus==2&&net.pending.length()==0,"Gender confirmation selects Enter Game");
+  c.keyPressed(32);check(net.pending.equals("appearance"),"Enter Game submits character choice");
+  var appearance=new java.io.DataInputStream(new java.io.ByteArrayInputStream(net.body("appearance")));
+  appearance.readInt();appearance.readUTF();
+  check(appearance.readUTF().equals("Registered")&&appearance.readByte()==1,"Character submission keeps registered name with chosen gender");
+  net.pending="";c.pointerPressed(120*scale,110*scale);
+  check(c.gender==0&&c.createFocus==2,"Touch gender choice proceeds directly to Enter Game");
+  c.pointerPressed(150*scale,210*scale);check(net.pending.equals("appearance"),"Touch Enter Game submits character choice");
+  save(c,"creation");
+  net.logged=net.choosingCharacter=false;net.pending="";c.createFocus=0;
+  c.keyPressed('8');check(c.createFocus==1,"Offline creation retains its name step");
+  c.keyPressed('N');check(c.typing.active(),"Offline name remains editable");c.typing.cancel();
   net.stop();c.stop();System.exit(0);
  }
  static void save(PhoneCanvas c,String name)throws Exception{
   var image=javax.microedition.lcdui.Image.createImage(320*c.s,240*c.s);c.g=image.getGraphics();c.ox=c.oy=0;
-  if(name.equals("invite"))c.popup.draw();else c.drawVersus();
+  if(name.equals("invite"))c.popup.draw();else if(name.equals("creation"))c.drawCreation();else c.drawVersus();
   int[] pixels=new int[image.getWidth()*image.getHeight()];image.getRGB(pixels,0,image.getWidth(),0,0,image.getWidth(),image.getHeight());
   var output=new java.awt.image.BufferedImage(image.getWidth(),image.getHeight(),java.awt.image.BufferedImage.TYPE_INT_RGB);output.setRGB(0,0,image.getWidth(),image.getHeight(),pixels,0,image.getWidth());
   javax.imageio.ImageIO.write(output,"png",new java.io.File("client/build/player-ui-"+name+"-"+c.s+".png"));

@@ -5,8 +5,30 @@ public final class ReturnRoomClientCheck {
  public static void main(String[] args)throws Exception{Thread.setDefaultUncaughtExceptionHandler((t,e)->{e.printStackTrace();System.exit(1);});System.setProperty("java.awt.headless","true");int scale=args.length==0?1:Integer.parseInt(args[0]);var h=new Headless();var f=Headless.class.getDeclaredField("emulator");f.setAccessible(true);var common=(Common)f.get(h);common.initParams(new ArrayList<String>(Arrays.asList("--rms","memory","--appclassloader","system","GunnyMIDlet")),new DeviceEntry("Nokia",null,DeviceImpl.RESIZABLE_LOCATION,true,false),J2SEDevice.class);var display=(J2SEDeviceDisplay)DeviceFactory.getDevice().getDeviceDisplay();display.setDisplayRectangle(new Rectangle(0,0,320*scale,240*scale));display.setDisplayPaintable(new Rectangle(0,0,320*scale,240*scale));common.initMIDlet(true);Thread.sleep(200);var app=(GunnyMIDlet)MIDletBridge.getCurrentMIDlet();if(app.game==null)app.game=new PhoneCanvas(app);var c=app.game;javax.microedition.lcdui.Display.getDisplay(app).setCurrent(c);Thread.sleep(150);c.running=false;Thread.sleep(100);c.presentation.boot=2;c.presentation.music=false;c.tutorialDone=true;c.playerName="Gunner Test";c.mode=0;
 
 
-  var net=c.net;net.alive=false;net.inBattle=true;net.roomKind=0;net.results.leave();
-  check(net.pending.equals("leave"),"1v1 PVP result leaves for the room list");
+  var net=c.net;net.alive=false;
+  for(int i=0;i<6;i++){
+   net.names[i]="Player "+i;net.present[i]=true;net.wornMasks[i]=3;net.controls[i]=i==0;
+  }
+  net.roomMap=0;
+  for(int[] scenario:new int[][]{{0,2},{0,4},{1,2},{2,6},{3,6}}){
+   net.roomKind=scenario[0];net.count=scenario[1];net.inBattle=false;net.phase=0;c.mode=16;
+   net.showRoomState("start");
+   check(c.mode==16&&!net.inBattle,"Pending search keeps waiting room, kind "+net.roomKind+", count "+net.count);
+   net.phase=3;
+   net.showRoomState("start");
+   check(c.mode==14&&net.inBattle&&c.game.unitCount==net.count,"Matched start enters loading directly, kind "+net.roomKind+", count "+net.count);
+   net.showRoomState("emote");
+   check(c.mode==14,"Late room response preserves loading");
+   c.mode=1;net.phase=1;net.showRoomState("emote");
+   check(c.mode==1,"Late room response preserves combat");
+   net.returnToWaitingRoom();
+  }
+  net.inBattle=true;net.roomKind=0;net.count=2;net.results.leave();
+  check(net.pending.equals("returnroom"),"Private 1v1 PVP returns to its party room");
+  net.pending="";net.results.stage=1;net.results.claimed=true;net.results.activate();
+  check(net.pending.equals("returnroom"),"Private 1v1 reward confirmation keeps its room");
+  net.pending="";net.results.key(-7,0,false);
+  check(net.pending.equals("returnroom"),"Private 1v1 back key keeps its room");net.results.reset();
   net.pending="";net.roomKind=1;net.results.leave();check(net.pending.equals("leave"),"Solo mode result leaves for the room list");
   net.pending="";net.results.stage=1;net.results.claimed=true;net.results.activate();check(net.pending.equals("leave"),"Solo confirmation after claiming reward goes to room list");
   net.pending="";net.results.key(-7,0,false);check(net.pending.equals("leave"),"Solo back key after reward goes to room list");net.results.reset();

@@ -14,7 +14,7 @@ final class OnlineResult {
     boolean eligible(){if(c.offlineDungeon.active||online()&&net.roomKind==3)return won();return won()||c.game.winner<2&&damage(actor())>0;}
     boolean team(){return online()?net.roomKind==2:c.game.teams;}
     void returnOfflineRoom(){if(c.offlineDungeon.active){c.offlineDungeon.active=false;c.offlineDungeon.stage=1;c.roomSelection=5;c.mode=19;}else{c.roomSelection=5;c.mode=10;}}
-    boolean solo(){return net.roomKind==1||net.roomKind==0&&net.count==2;}
+    boolean solo(){return net.roomKind==1;}
     String returnOperation(){return solo()?"leave":"returnroom";}
     void leave(){if(antStage()){if(online())net.request("dungeoncontinue");else c.offlineDungeon.returnForBoss();}else if(online())net.request(returnOperation());else returnOfflineRoom();}
     void draw(){load();if(stage==1&&expanded()){expandedCards.draw();return;}c.all();c.img(background,0,0);c.img(light,12,22);try{if(hero==null)hero=online()?net.buildStanding(net.myActor,96,120):c.standingPreview(c.gender,c.skin,true,96,120);}catch(Exception ignored){}c.img(hero,29,30);c.pcCenter(c.pcShort(name(actor()),130),78,153);c.img(teamTitle,9,168);c.img(table,9,184);
