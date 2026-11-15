@@ -29,7 +29,7 @@ final class RoomLoadout {
  void dragToolbar(int x,int y){toolbarHover=toolbarHit(x,y);if(toolbarHover>=0)c.roomSelection=toolbarHover;}
  void releaseToolbar(int x,int y){int id=toolbarHit(x,y);boolean activate=toolbarTouch&&id>=0&&id==toolbarHover;toolbarTouch=false;toolbarHover=-1;if(activate){c.roomSelection=id;activate(c.onlineAccount());}}
  void draw(boolean online){draw(online,false);}
- void draw(boolean online,boolean dungeon){load();int f=c.roomSelection;String title=online?c.net.roomTitle:dungeon?"Huyệt Ma Kiến":"Phòng vui vẻ";
+ void draw(boolean online,boolean dungeon){load();int f=c.roomSelection;String title=online?c.net.roomTitle:dungeon?"Phó bản vui vẻ":"Thi đấu vui vẻ";
   int[] kit=online?onlineKit:this.kit;
   c.img(panel,214,0);c.pcText("Phòng "+(online?""+c.net.roomId:"Offline"),221,4);c.pcCenter(c.pcShort(title,88),267,18);c.pcText("Trong trận",222,32);
   for(int i=0;i<3;i++){int x=222+i*29;c.img(selected,x,46);c.img(icon(kit[i]),x,47);c.pcText(c.keyBindings.name(i==0?'z':i==1?'x':'c'),x,42);if(editSlot==i)c.drawSelectionGlow(x-1,45,27,27);}

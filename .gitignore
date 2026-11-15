@@ -22,3 +22,4 @@ __pycache__/
 /public/downloads/*-CaiDat-7.8.[012].zip
 
 /client/build/
+/.codex-remote-attachments/

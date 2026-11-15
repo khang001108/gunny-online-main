@@ -3,7 +3,7 @@ import javax.microedition.lcdui.*;
 final class DungeonScreen {
  static final int CONFIRM_SOLO = 6;
  static final String TITLE = "Ải Viễn Chinh";
- final PhoneCanvas c;final OnlineClient n;int focus,difficulty,page;boolean picker,create;Image banner,background;
+ final PhoneCanvas c;final OnlineClient n;int focus,page;boolean picker;Image banner,background;
  DungeonScreen(PhoneCanvas canvas){c=canvas;n=c.net;}
  void load(){if(banner==null)banner=c.combatRoomArt("dungeon780-banner");}
  String difficultyName(int value){return value==0?"Dễ":value==1?"Thường":"Khó";}
@@ -84,7 +84,6 @@ final class DungeonScreen {
   }
   n.rooms.drawToolbar(focus);
   n.rooms.drawToolTip(focus);
-  if(create)drawCreate();
  }
 
  private void drawSearch(){
@@ -111,16 +110,8 @@ final class DungeonScreen {
   if(focus==i+2)c.drawSelectionGlow(x-1,y-1,CARD_WIDTH+2,CARD_HEIGHT+2);
  }
 
- void drawCreate(){c.panel(37,42,246,157);c.pcCenter("TẠO PHÒNG ẢI VIỄN CHINH",160,53);c.img(banner,55,78);c.pcText("Huyệt Ma Kiến",150,83);c.pcText("2 ải • Tối đa 3 người",112,111);c.ui.button(difficultyName(difficulty),58,136,91,24,focus==50);c.ui.button("Tạo",169,136,91,24,focus==51);c.pcCenter(difficulty==2&&!c.economy.clear()?"Vượt Thường để mở Khó":"Lv 15+ • Thưởng 10–100 đá / thẻ",160,174);}
-
  void keyList(int key,int dir,boolean ok){
-  if(key==-7){if(create)closeCreate();else n.returnHome();return;}
-  if(create){
-   if(focus==50&&(dir==4||dir==8))difficulty=(difficulty+(dir==4?2:1))%3;
-   else if(dir==1||dir==2)focus=focus==50?51:50;
-   else if(ok||key==-6){if(focus==50)difficulty=(difficulty+1)%3;else create();}
-   return;
-  }
+  if(key==-7){n.returnHome();return;}
   if(dir!=0)moveList(dir);
   else if(key=='r'||key=='R')refresh();
   else if(ok||key==-6)activateList();
@@ -151,7 +142,6 @@ final class DungeonScreen {
   for(int i=0;i<menuArt.length;i++)if(id==MENU[i])return 183;
   return roomY((id-2)%PAGE_SIZE)+CARD_HEIGHT/2;
  }
- private void closeCreate(){create=false;focus=NEW_ROOM;}
  private void refresh(){
   if(!n.operation.equals("dungeonrooms")&&!n.pending.equals("dungeonrooms")&&n.request("dungeonrooms"))
    n.dungeonListLoading=true;
@@ -179,8 +169,7 @@ final class DungeonScreen {
   if(n.dungeonListLoading)return;
   if(focus==JOIN){joinByCode();return;}
   if(focus==NEW_ROOM){
-   n.create.name="Huyệt Ma Kiến";n.create.locked=false;n.create.secret="";
-   create=true;focus=50;return;
+   n.create.openDungeon();return;
   }
   if(focus==TEAM){
    if(!n.operation.equals("dungeonteam"))n.request("dungeonteam");
@@ -204,20 +193,7 @@ final class DungeonScreen {
   else if(!n.operation.equals("join"))n.request("join");
  }
 
- void create(){
-  if(difficulty==2&&!c.economy.clear()){c.popup.notice(DungeonScreen.TITLE,"Vượt Thường để mở Khó");return;}
-  n.dungeonDifficulty=difficulty;
-  if(n.request("dungeoncreate"))closeCreate();
- }
-
  void pointerList(int x,int y){
-  if(create){
-   if(y>=136&&y<161){
-    if(x>=58&&x<149){focus=50;difficulty=(difficulty+1)%3;}
-    else if(x>=169&&x<260){focus=51;create();}
-   }else if(y<43)closeCreate();
-   return;
-  }
   int count=cardsOnPage();
   for(int slot=0;slot<count;slot++){
    int left=roomX(slot),top=roomY(slot);
