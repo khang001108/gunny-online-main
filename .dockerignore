@@ -31,3 +31,15 @@ public/downloads/Gunny-*-Online-*.jad
 public/downloads/Gunny-*-CaiDat-*.zip
 !public/downloads/Gunny-*-CaiDat-7.8.3.zip
 public/review-*.png
+!backend/tribal.properties
+!backend/assets/land8.png
+!backend/assets/land9.png
+!backend/assets/land10.png
+!backend/assets/land11.png
+!backend/assets/hard8.dat
+!backend/assets/hard9.dat
+!backend/assets/hard10.dat
+!backend/assets/hard11.dat
+!public/downloads/Gunny-*-Online-784.jar
+!public/downloads/Gunny-*-Online-784.jad
+!public/downloads/Gunny-*-CaiDat-7.8.4.zip

@@ -12,6 +12,7 @@ final class Dungeon780 {
  static void handle(GunnyServer server,String op,GunnyServer.Session s,DataInputStream in,DataOutputStream out)throws Exception{
   if(!s.flock)throw new IllegalArgumentException("Cập nhật game để chơi Huyệt Ma Kiến.");
   if(op.equals("dungeoncontinue")){
+   var tribal=server.requireRoom(s);if(TribalDungeon.is(tribal)){synchronized(tribal){if(tribal.phase==0&&tribal.dungeonStage>3){server.lobby(out,tribal,s);return;}if(tribal.phase!=2||tribal.dungeonStage>=6||tribal.battle.winner!=0||!tribal.cardsOpen())throw new IllegalArgumentException("Chưa thể đi tiếp");for(var member:tribal.members)if(member!=null&&tribal.cardPicks.getOrDefault(member.id,0)<2)throw new IllegalArgumentException("Chờ đồng đội nhận thưởng");tribal.dungeonStage++;tribal.phase=0;tribal.battle=null;tribal.ground=null;tribal.resetDungeonResult();tribal.clearArmed();tribal.refreshWaiting();server.lobby(out,tribal,s);return;}}
    var room=server.requireRoom(s);
    synchronized(room){
     if(room.kind!=3)throw new IllegalArgumentException("Không phải phòng ải viễn chinh");
@@ -35,7 +36,7 @@ final class Dungeon780 {
    joinWaitingTeam(server,s,out);
    return;
   }
-  if(op.equals("dungeonsettings")){var r=server.requireRoom(s);int difficulty=in.readUnsignedByte();synchronized(r){if(r.kind!=3||r.host!=s||r.phase!=0||r.dungeonStage==2)throw new IllegalArgumentException("Chỉ chủ phòng chờ được chọn ải viễn chinh");for(var member:r.members)if(member!=null)eligible(member,difficulty);r.difficulty=difficulty;r.clearArmed();server.lobby(out,r,s);}return;}
+  if(op.equals("dungeonsettings")){var r=server.requireRoom(s);int difficulty=in.readUnsignedByte();int dungeon=s.tribal?in.readUnsignedByte():0;synchronized(r){if(r.kind!=3||r.host!=s||r.phase!=0||r.dungeonStage!=1&&r.dungeonStage!=3)throw new IllegalArgumentException("Chỉ chủ phòng chờ được chọn ải viễn chinh");for(var member:r.members)if(member!=null){if(dungeon==1)TribalDungeon.eligible(member,difficulty);else eligible(member,difficulty);}r.dungeonStage=dungeon==1?3:1;r.difficulty=difficulty;r.clearArmed();server.lobby(out,r,s);}return;}
   if(op.equals("dungeoncreate")||op.equals("dungeonquick")){int difficulty=in.readUnsignedByte();String name=op.equals("dungeoncreate")?GunnyServer.validRoomName(in.readUTF()):"Phó bản vui vẻ";String secret=op.equals("dungeoncreate")?in.readUTF():"";eligible(s,difficulty);if(secret.length()>16)throw new IllegalArgumentException("Mật mã tối đa 16 ký tự");
    synchronized(server.rooms){GunnyServer.Room room=null;if(op.equals("dungeonquick"))for(var r:server.rooms.values())synchronized(r){if(r.kind==3&&r.phase==0&&r.dungeonStage!=2&&r.difficulty==difficulty&&r.secret.isEmpty()&&r.cardPlayers()<3&&space(r)&&r.host.actors==s.actors&&r.host.live==s.live&&r.host.equipment==s.equipment&&r.host.arsenal==s.arsenal&&r.host.items==s.items&&r.host.itemVersion==s.itemVersion&&r.host.itemFx==s.itemFx){room=r;break;}}
     if(room==null){if(server.rooms.size()>=server.maxRooms)throw new IllegalArgumentException("Hết phòng trống");server.leave(s);room=server.new Room(s,6,2,-1,true);room.kind=3;room.difficulty=difficulty;room.title=name;room.secret=secret;room.strict=true;room.seconds=15;room.mapLimit=8;room.map=6;room.refreshWaiting();server.rooms.put(room.id,room);s.room=room.id;}
@@ -46,15 +47,16 @@ final class Dungeon780 {
   throw new IllegalArgumentException("Sai thao tác ải viễn chinh");
  }
  private static void joinWaitingTeam(GunnyServer server,GunnyServer.Session viewer,DataOutputStream out)throws Exception{
-  eligible(viewer,0);
+  GunnyServer.requireWeapon(viewer);
   synchronized(server.rooms){
    if(viewer.room!=0)throw new IllegalArgumentException("Rời phòng hiện tại trước khi tìm tổ đội.");
    var candidates=new ArrayList<>(server.rooms.values());
    Collections.shuffle(candidates,server.random);
    for(var room:candidates)synchronized(room){
     if(server.rooms.get(room.id)!=room||room.kind!=3||room.phase!=0||room.dungeonStage==2
-        ||!room.secret.isEmpty()||room.difficulty==2&&!viewer.profile.dungeonClear
+        ||!room.secret.isEmpty()||TribalDungeon.is(room)&&(!viewer.tribal||room.dungeonStage!=3)||!TribalDungeon.is(room)&&room.difficulty==2&&!viewer.profile.dungeonClear
         ||!compatible(room.host,viewer))continue;
+    if(TribalDungeon.is(room))TribalDungeon.eligible(viewer,room.difficulty);else eligible(viewer,room.difficulty);
     for(int seat=2;seat<6;seat+=2){
      if(room.occupiedSeat(seat)||(room.closedSlots&(1<<seat))!=0)continue;
      room.members[seat]=viewer;

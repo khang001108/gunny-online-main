@@ -114,7 +114,8 @@ final class BagScreen {
                 preview = null;
             }
         }
-        c.img(preview, 44, 58);
+        if(c.onlineAccount()&&c.economy.wingEquipped)c.tribalArt.wings(76,130);
+          c.img(preview, 44, 58);
         for (int i = 0; i < 7; i++) {
             int[] b = box(31 + i);
             int kind = WORN[i];
@@ -138,6 +139,7 @@ final class BagScreen {
         c.img(c.lobbyBackground, 0, 0);
         c.img(frame, 3, 8);
         c.pcText("Túi (B)", 14, 17);
+        if(c.onlineAccount()&&c.economy.wings>0)c.pcText(c.economy.wingEquipped?"W: Tháo cánh":"W: Mặc cánh",165,17);
         c.img(close, 289, 12);
         c.pcCenter(c.pcShort(c.playerName, 117), 77, 46);
         character();
@@ -567,6 +569,7 @@ final class BagScreen {
     }
 
     void key(int key, int dir, boolean ok) {
+        if((key=='w'||key=='W')&&c.onlineAccount()&&c.economy.wings>0){c.net.request("tribalwing");return;}
         if (key == 'l' || key == 'L' || key == 'p' || key == 'P') {
             switchTab(key == 'p' || key == 'P' ? 0 : 1);
             return;

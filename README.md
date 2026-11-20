@@ -1,5 +1,8 @@
 # Gunny Java Online 7.8.1
 
+Bản kiểm thử 7.8.4 thêm Bộ Lạc Tà Thần và cường hóa theo xác suất. Xem [báo cáo, cách build và giới hạn kiểm thử](docs/BAO-CAO-7.8.4.md). Với database đang từ 7.7.0 trở lên, chạy một file supabase/UPDATE-7.7.0-TO-7.8.4.sql trước khi cập nhật server.
+
+
 Sảnh đảo mới, tiệm rèn, đá cường hóa và phó bản Huyệt Ma Kiến cho 1–3 người.
 Di chuyển từ xa nội suy từ trạng thái TCP; 3v3 có 18 thẻ và hai lượt chọn mỗi người.
 Rèn đồ tích lũy đá đến +15. Mua đá giá 80 tiền mua sắm mỗi viên.

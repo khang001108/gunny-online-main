@@ -9,7 +9,7 @@ final class RewardCards780 {
  long revealAt;
  final boolean[] taken=new boolean[18];
  final int[] amount=new int[18],type=new int[18];
- Image stone;
+ Image stone,wing;
  RewardCards780(OnlineResult result){this.result=result;c=result.c;n=result.net;}
  void reset(){
   selected=offlinePicks=0;revealing=-1;revealAt=0;
@@ -42,14 +42,14 @@ final class RewardCards780 {
     c.img(opened?result.front:result.back,x,y);
     if(opened){
      int reward=result.online()?n.cardCoins[i]:amount[i],kind=result.online()?n.cardTypes[i]:type[i];
-     c.img(kind==1?stone:result.gold,x+8,y+9);
+     if(kind<2)c.img(kind==1?stone:result.gold,x+8,y+9);else if(kind==2){if(wing==null)wing=NativeUi.fit(c.combatRoomArt("tribal-wing"),22*c.s,20*c.s,0);c.img(wing,x+8,y+6);}else c.img(c.weapons[8],x+8,y+7);
      c.pcCenter("+"+reward,x+19,y+35);
      if(result.online())c.pcCenter(c.pcShort(n.cardNames[i],36),x+19,y+46);
     }
    }
    if(selected==i)c.drawSelectionGlow(x-2,y-2,42,59);
   }
-  c.pcCenter(picks()>=limit()?result.antStage()?"OK: về phòng chờ ải 2":"OK: về sảnh"
+  c.pcCenter(picks()>=limit()?result.antStage()||n.roomKind==3&&n.dungeonStage>=3&&n.dungeonStage<6?"OK: tiếp tục ải sau":"OK: về sảnh"
           :n.busy?"Đang nhận thưởng...":"Chọn thẻ • OK: lật",160,228);
  }
  void activate(){

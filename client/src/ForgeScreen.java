@@ -10,8 +10,11 @@ final class ForgeScreen {
     final int[] kinds = new int[130], items = new int[130];
     final Image[] strength = new Image[16];
     String requestKey = "";
+    Image closeButton;
     Image frame, stone, stoneSmall, left, inventoryPanel, cell, equipTab, equipment, material, percent, on, off, action, fill,
             success, slotSuccess, continuousText, stoneLabel, hammer;
+    int grade=1,quantity=1;
+    boolean lucky,protect;
     boolean info;
     boolean continuous, running;
     long nextAt, animStart, successUntil, riseStart;
@@ -50,7 +53,7 @@ final class ForgeScreen {
     }
 
     boolean sending() {
-        return c.net.operation.equals("forge") || c.net.pending.equals("forge");
+        return c.net.operation.equals("forgechance") || c.net.pending.equals("forgechance");
     }
 
     void select(int index) {
@@ -69,6 +72,7 @@ final class ForgeScreen {
         if (frame != null)
             return;
         frame = c.combatRoomArt("forge780-frame");
+        closeButton = NativeUi.fit(c.bag.close,17*c.s,16*c.s,2*c.s);
         stone = c.combatRoomArt("stone780");
         stoneSmall = NativeUi.fit(stone, 12 * c.s, 12 * c.s, 2 * c.s);
         left = c.combatRoomArt("forge780-left");
@@ -91,7 +95,7 @@ final class ForgeScreen {
     }
 
     int percent() {
-        return count == 0 || expected >= ForgeRules.MAX_RANK ? 100 : expectedProgress * 100 / ForgeRules.cost(expected);
+        return count==0||expected>=ForgeRules.MAX_RANK?0:ForgeRules.chance(expected,grade,quantity,lucky)/100;
     }
 
     int shownPercent() {
@@ -109,12 +113,7 @@ final class ForgeScreen {
         c.img(c.lobbyBackground, 0, 0);
         c.img(frame, 4, 8);
         c.pcText("Tiệm rèn", 13, 14);
-        c.img(NativeUi.fit(
-            c.bag.close,
-            17 * c.s,
-            16 * c.s,
-            2 * c.s
-        ), 289, 10);
+        c.img(closeButton,289,10);
         c.wallet(153, 34);
         c.img(left, 12, 55);
         c.pcText("Trang bị", 22, 57);
@@ -125,10 +124,10 @@ final class ForgeScreen {
         c.img(material, 94, 72);
         if (count > 0)
             c.img(c.bag.itemIcon(kind, item), 38, 83);
-        if (c.economy.stones() > 0)
-            c.img(stone, 107, 83);
+        if (c.economy.material(grade-1) > 0)
+            c.img(c.stoneShop.icon(grade-1), 107, 83);
         c.pcCenter("+" + expected, 51, 108);
-        c.pcCenter("x" + c.economy.stones(), 120, 108);
+        c.pcCenter("x" + c.economy.material(grade-1), 120, 108);
         if (riseStart > 0 && now - riseStart < 2000 && riseRank > 0) {
             if (strength[riseRank] == null)
                 strength[riseRank] = c.combatRoomArt("strength780-" + riseRank);
@@ -138,16 +137,16 @@ final class ForgeScreen {
         int pct = shownPercent(), fw = 76 * pct / 100;
         if (fw > 0)
             c.part(fill, 0, 0, fw, 6, 48, 125, false);
-        c.pcCenter(pct + "%", 86, 123);
-        int need = expected >= ForgeRules.MAX_RANK ? 0 : ForgeRules.cost(expected) - expectedProgress;
-        c.img(stoneLabel, 18, 140);
-        c.pcText(": " + need, 75, 139);
-        c.img(stoneSmall, 105, 137);
-        c.img(continuous ? on : off, 61, 158);
-        c.img(continuousText, 18, 158);
-        if (focus == 2)
-            c.drawSelectionGlow(16, 155, 64, 18);
-        c.pcCenter(count == 0 ? "Chọn trang bị" : c.pcShort(c.bag.itemName(kind, item), 122), 84, 178);
+
+        int chance=ForgeRules.chance(expected,grade,quantity,lucky);
+        c.pcCenter("Tỉ lệ: "+chance/100+"."+(chance%100<10?"0":"")+chance%100+"%",85,123);
+        c.ui.button("Đá Lv "+grade+" x"+quantity,18,138,120,15,false);
+        c.img(lucky?on:off,19,157);
+        c.pcText("May 25% ("+c.economy.material(5)+")",34,158);
+        c.img(protect?on:off,19,173);
+        c.pcText("Bảo vệ ("+c.economy.material(6)+")",34,174);
+        c.img(continuous?on:off,19,187);
+        c.pcText("Liên tục",34,187);
         c.img(hammer, 30, 202);
         c.img(action, 48, 198);
         c.pcCenter(running ? "Dừng" : "Cường hóa", 87, 203);
@@ -186,11 +185,12 @@ final class ForgeScreen {
             c.message("Rời phòng trước khi rèn");
             return;
         }
-        if (c.economy.stones() <= 0) {
+        if (c.economy.material(grade-1) < quantity) {
             failed();
             c.message("Không còn đá cường hóa");
             return;
         }
+        if(c.onlineAccount()&&!c.net.forgeChanceCap){c.message("Cập nhật máy chủ cường hóa");return;}
         running = continuous;
         submit();
     }
@@ -206,8 +206,9 @@ final class ForgeScreen {
             c.net.forgeExpected = expected;
             c.net.forgeProgressExpected = expectedProgress;
             c.net.economyKey = requestKey;
-            c.net.request("forge");
-        } else if (c.economy.forge(kind, item, expected, expectedProgress))
+            c.net.craftGrade=grade;c.net.craftQuantity=quantity;c.net.craftLucky=lucky;c.net.craftProtect=protect;
+            c.net.request("forgechance");
+        } else if (c.economy.forgeChance(kind,item,expected,grade,quantity,lucky,protect))
             complete();
         else
             failed();
@@ -220,7 +221,7 @@ final class ForgeScreen {
         requestKey = "";
         refresh();
         animFrom = from;
-        animTo = expected > before ? 100 : percent();
+        animTo = 100;
         animStart = System.currentTimeMillis();
         nextAt = animStart + 1100;
         if (expected > before) {
@@ -228,7 +229,7 @@ final class ForgeScreen {
             riseStart = animStart;
             riseRank = expected;
         }
-        c.message(expected > before ? "Cường hóa thành công +" + expected : "Đã tích lũy " + percent() + "%");
+        c.message(expected > before ? "Cường hóa thành công +" + expected : expected<before?"Thất bại, giảm xuống +"+expected:"Cường hóa thất bại, giữ cấp");
     }
 
     void failed() {
@@ -244,7 +245,7 @@ final class ForgeScreen {
         if (!running || c.net.busy || c.net.pending.length() > 0 || System.currentTimeMillis() < nextAt)
             return;
         refresh();
-        if (count == 0 || expected >= ForgeRules.MAX_RANK || c.economy.stones() <= 0) {
+        if (count == 0 || expected >= ForgeRules.MAX_RANK || c.economy.material(grade-1)<quantity || lucky&&c.economy.material(5)<1 || protect&&c.economy.material(6)<1) {
             running = false;
             c.message(expected >= ForgeRules.MAX_RANK ? "Đã đạt +15" : "Dừng: đã hết đá");
             return;
@@ -264,6 +265,12 @@ final class ForgeScreen {
     }
 
     void key(int key, int dir, boolean ok) {
+        if(!sending()&&!running){
+            if(key>='1'&&key<='5'){grade=key-'0';requestKey="";return;}
+            if(key=='6'){quantity=quantity%3+1;requestKey="";return;}
+            if(key=='l'||key=='L'){lucky=!lucky;requestKey="";return;}
+            if(key=='p'||key=='P'){protect=!protect;requestKey="";return;}
+        }
         if (key == -6) {
             if (info)
                 info = false;
@@ -345,6 +352,12 @@ final class ForgeScreen {
     }
 
     void pointer(int x, int y) {
+        if(!sending()&&!running&&x>=18&&x<138){
+            if(y>=138&&y<153){if(x<93)grade=grade%5+1;else quantity=quantity%3+1;requestKey="";return;}
+            if(y>=155&&y<171){lucky=!lucky;requestKey="";return;}
+            if(y>=171&&y<185){protect=!protect;requestKey="";return;}
+            if(y>=185&&y<198){toggle();return;}
+        }
         if (x >= 289 && y < 33) {
             leave();
             return;

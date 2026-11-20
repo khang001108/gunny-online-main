@@ -15,10 +15,11 @@ final class DungeonScreen {
  private int observedRoom;
  private final String[] observedPlayers = new String[6];
  private String portraitKey = "";
- private int draftDifficulty;
+ int draftDungeon;private int draftDifficulty;
  private boolean confirmFocused;
 
  Image stageCover(int stage) {
+  if(stage>=3)return c.tribalArt.cover(stage-2);
   int index = stage == 2 ? 1 : 0;
   if (stageCovers[index] == null)
    stageCovers[index] = c.combatRoomArt("dungeon-stage-" + (index + 1));
@@ -103,7 +104,7 @@ final class DungeonScreen {
  private void drawRoomCard(int i,int x,int y){
   boolean playing=n.roomPhases[i]!=0;
   c.img(playing?playingCard:waitingCard,x,y);
-  c.pcText("Huyệt Ma Kiến",x+5,y+2);
+  c.pcText(n.roomTribal[i]?"Bộ Lạc Tà Thần":"Huyệt Ma Kiến",x+5,y+2);
   if(n.roomLocked[i])c.img(lockArt,x+87,y+2);
   c.pcText("Số phòng "+n.roomIds[i],x+5,y+14);
   c.pcCenter(n.roomCounts[i]+"/3",x+128,y+14);
@@ -295,11 +296,12 @@ final class DungeonScreen {
  }
 
  void openPicker(boolean online) {
-  if (online ? n.dungeonStage==2 : c.offlineDungeon.stage==2) {c.message("Độ khó đã chọn từ ải 1");return;}
+  if (online ? n.dungeonStage!=1&&n.dungeonStage!=3 : c.offlineDungeon.stage==2) {c.message("Độ khó đã chọn từ ải 1");return;}
   if (online && (n.inBattle || !n.host || n.phase != 0)) {
    c.message("Chỉ chủ phòng được chọn ải viễn chinh trước trận");
    return;
   }
+  draftDungeon=online&&n.dungeonStage>=3?1:0;
   draftDifficulty = online ? n.dungeonDifficulty : c.offlineDungeon.difficulty;
   confirmFocused = false;
   setPicker(online, true);
@@ -312,10 +314,11 @@ final class DungeonScreen {
 
  void drawPicker() {
   c.maps.drawDungeon(draftDifficulty, confirmFocused);
+  if(c.onlineAccount()){c.ui.button(draftDungeon==1?"Bộ Lạc Tà Thần":"Huyệt Ma Kiến",25,195,150,23,false);c.pcCenter("1: Kiến • 2: Tà Thần",99,183);}
  }
 
  private void confirmPicker(boolean online) {
-  if (draftDifficulty == 2 && !c.economy.clear()) {
+  if (draftDungeon==0&&draftDifficulty == 2 && !c.economy.clear()) {
    c.maps.notice("Vượt Thường để mở Khó");
    return;
   }
@@ -340,6 +343,7 @@ final class DungeonScreen {
 
  void keyRoom(boolean online, int key, int dir, boolean ok) {
   if (online ? picker : c.offlineDungeon.picker) {
+   if(online&&(key=='1'||key=='2')){draftDungeon=key-'1';return;}
    if (key == -7) setPicker(online, false);
    else if (dir == 1 || dir == 2) {
     draftDifficulty = (draftDifficulty + (dir == 1 ? 2 : 1)) % 3;
@@ -396,7 +400,7 @@ final class DungeonScreen {
    return;
   }
   int difficulty = online ? n.dungeonDifficulty : c.offlineDungeon.difficulty;
-  if (difficulty == 2 && !c.economy.clear()) {
+  if ((!online||n.dungeonStage<3)&&difficulty == 2 && !c.economy.clear()) {
    c.popup.notice(DungeonScreen.TITLE, "Vượt Thường để mở Khó");
    return;
   }
@@ -455,6 +459,7 @@ final class DungeonScreen {
 
  void pointerRoom(boolean online, int x, int y) {
   if (online ? picker : c.offlineDungeon.picker) {
+   if(online&&x>=25&&x<175&&y>=183&&y<222){draftDungeon=1-draftDungeon;return;}
    if (x >= 297 && y < 25) setPicker(online, false);
    else if (c.maps.hitConfirm(x,y)) confirmPicker(online);
    else if (x >= 212 && x < 311 && y >= 53 && y < 74) {

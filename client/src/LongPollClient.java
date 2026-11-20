@@ -1,0 +1,13 @@
+import java.io.*;import javax.microedition.io.*;
+/** Wake hints only. The existing worker remains the sole decoder of authoritative game state. */
+final class LongPollClient implements Runnable {
+ final OnlineClient n;volatile HttpConnection connection;Thread thread;volatile boolean failed;volatile long signal;long consumed,lastStamp;int failures;
+ LongPollClient(OnlineClient client){n=client;}
+ boolean active(){return n.longPollCap&&!failed&&n.logged&&n.roomId>0;}
+ void ensure(){if(active()&&(thread==null||!thread.isAlive())){thread=new Thread(this);thread.start();}}
+ long stamp(){return n.c.game.turn*1000003L+(n.resolutionSeen?17:0)+(n.c.loadTicks>=60?31:0)+n.chunks.completed*79L+(n.chunks.frames!=null||n.chunks.ownPending?n.chunks.id:n.chunks.completed)*103L;}
+ boolean due(){return !active()||signal!=consumed||stamp()!=lastStamp||System.currentTimeMillis()-n.lastPoll>10000;}
+ void consume(){consumed=signal;lastStamp=stamp();}
+ void cancel(){HttpConnection h=connection;connection=null;if(h!=null)try{h.close();}catch(Exception ignored){}}
+ public void run(){int generation=n.networkGeneration,room=n.roomId;String token=n.token;long cursor=Long.MIN_VALUE;while(n.alive&&active()&&generation==n.networkGeneration&&room==n.roomId&&token.equals(n.token)){HttpConnection h=null;DataInputStream in=null;OutputStream out=null;ServerWake.Deadline deadline=null;try{String url=n.endpoint;while(url.endsWith("/"))url=url.substring(0,url.length()-1);h=(HttpConnection)Connector.open(url+"/wait",Connector.READ_WRITE,true);connection=h;deadline=new ServerWake.Deadline(h,18000);new Thread(deadline).start();h.setRequestMethod(HttpConnection.POST);h.setRequestProperty("Authorization","Bearer "+token);h.setRequestProperty("Content-Type","application/octet-stream");h.setRequestProperty("Content-Length","16");ByteArrayOutputStream bytes=new ByteArrayOutputStream();DataOutputStream data=new DataOutputStream(bytes);data.writeInt(OnlineClient.MAGIC);data.writeInt(room);data.writeLong(cursor);out=h.openOutputStream();out.write(bytes.toByteArray());out.close();out=null;if(h.getResponseCode()!=200)throw new IOException("Wait failed");in=h.openDataInputStream();long next=in.readLong();if(generation!=n.networkGeneration||room!=n.roomId||!token.equals(n.token))break;if(next!=cursor){cursor=next;signal++;}failures=0;}catch(Exception e){if(++failures>=3){failed=true;signal++;break;}try{Thread.sleep(500*failures);}catch(Exception ignored){}}finally{if(deadline!=null)deadline.done=true;if(in!=null)try{in.close();}catch(Exception ignored){}if(out!=null)try{out.close();}catch(Exception ignored){}if(h!=null)try{h.close();}catch(Exception ignored){}if(connection==h)connection=null;}}}
+}

@@ -119,7 +119,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
 
     String actorName(int i) {
         if (game.units[i].npc > 0 && (offlineDungeon.active || onlineBattle() && net.roomKind == 3))
-            return AntCaveRules.name(game.units[i].npc, map == 7);
+            return TribalRules.active(game)?TribalRules.name(game.units[i].npc):AntCaveRules.name(game.units[i].npc, map == 7);
         if (onlineBattle())
             return net.names[i];
         if(offlineDungeon.active&&i>0&&i%2==0)
@@ -266,7 +266,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 : onlineBattle() && net.roomKind == 3 ? net.dungeonStage : 0;
         if (dungeonStage > 0) pcCenter("Ải Viễn Chinh", 160, 74);
         else img(versusMode, 139, 73);
-        if (dungeonStage > 0) {
+        if(dungeonStage>=3)img(tribalArt.cover(dungeonStage-2),220,48);
+        else if (dungeonStage > 0) {
             int stageIndex = dungeonStage == 2 ? 1 : 0;
             if (dungeonLoadingCovers[stageIndex] == null)
                 dungeonLoadingCovers[stageIndex] = combatRoomArt("dungeon-loading-stage-" + (stageIndex + 1));
@@ -289,7 +290,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             }else pcCenter((onlineBattle()&&!net.controls[i]?"Đang tải":Math.min(100,loadTicks*100/60)+"%"),center,151);
             pcCenter(pcShort(actorName(i),width+8),center,165);
         }
-        pcText(offlineDungeon.active?"Huyệt Ma Kiến • Ải "+offlineDungeon.stage:onlineBattle()&&net.roomKind==3?"Huyệt Ma Kiến • Ải "+net.dungeonStage:game.unitCount == 6 ? "Tổ đội • 3 đấu 3"
+        pcText(offlineDungeon.active?"Huyệt Ma Kiến • Ải "+offlineDungeon.stage:onlineBattle()&&net.roomKind==3?(net.dungeonStage>=3?"Bộ Lạc Tà Thần • Ải "+(net.dungeonStage-2):"Huyệt Ma Kiến • Ải "+net.dungeonStage):game.unitCount == 6 ? "Tổ đội • 3 đấu 3"
                 : game.teams ? "Phòng riêng • 2 đấu 2" : "Phòng riêng • 1 đấu 1", 8, 179);
         pcText("Chuẩn bị nhân vật và vũ khí", 8, 190);
         pcText(loadTicks<60?"Đang tải tài nguyên...":allLoadingReady()?"Đã tải xong. Đang vào trận!":"Chờ người chơi khác tải xong...",8,201);
@@ -300,10 +301,11 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
 
     }
 
+    final Image[] dungeonLoadActors=new Image[3], dungeonLoadCompact=new Image[3];
     final Image[] dungeonLoadingCovers = new Image[2];
     Image roomLayout, roomWaiting, roomClosed, roomCheckOn, roomCheckOff, roomRandom, botListFrame;
     final Image[] roomControl = new Image[3], botPortrait = new Image[8];
-    final Image[] roomMaps = new Image[8];
+    final Image[] roomMaps = new Image[12];
     int roomSelection = 5, infoReturnMode, bagReturnMode, shopReturnMode;
     static final int[][] ROOM_BOX = { { 16, 29, 105, 103 }, { 125, 29, 105, 103 }, { 263, 30, 44, 43 },
             { 263, 80, 44, 43 }, { 141, 145, 117, 56 }, { 263, 143, 44, 43 }, { 16, 7, 104, 18 },
@@ -578,7 +580,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     String toast = "";
     int toastTicks, wins, buffFlash;
     Image background, font, title, fireImage, powImage, stickImage;
-    final Image[] hero = new Image[2], portrait = new Image[2], thumbs = new Image[8], weapons = new Image[10];
+    final Image[] hero = new Image[2], portrait = new Image[2], thumbs = new Image[12], weapons = new Image[10];
     final Image[] tiles = new Image[8];
     final boolean[] dirty = new boolean[8];
     int coins = 800, owned = 1, equipped, shopSelection;
@@ -610,10 +612,10 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     final Image[] impactArt = new Image[10];
     static final int[] ACTIVE_WEAPONS = { 0, 3, 5, 9, 2, 4, 7, 1 };
     static final String[] WEAPON_NAMES = { "Lựu đạn", "Pháo", "Tủ thuốc", "Lu gạch", "Tủ lạnh", "Phi tiêu", "Cung",
-            "Giỏ đồ", "Bóng đá", "Sấm sét" };
+            "Giỏ đồ", "VIP Thương Cổ", "Sấm sét" };
     static final String[] WEAPON_DESC = { "Lựu đạn: nổ và đào đất", "Pháo: ném ống pháo, nổ tập trung",
             "Tủ thuốc: ném viên thuốc, nhạy gió", "Lu gạch: ném viên gạch", "Tủ lạnh: đạn nặng, đào đất rộng",
-            "Phi tiêu: đạn phi tiêu", "Cung: bắn mũi tên", "Giỏ đồ: ném cà chua xoay", "Bóng đá: đạn quả bóng",
+            "Phi tiêu: đạn phi tiêu", "Cung: bắn mũi tên", "Giỏ đồ: ném cà chua xoay", "VIP Thương Cổ: phần thưởng Sulan",
             "Sấm sét: luồng điện" };
     static final int[] PRICES = { 0, 650, 950, 450, 550, 800, 1100, 700, 600, 1200 };
     int[] pixels, scratch;
@@ -623,7 +625,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     Graphics g;
     static final int PVP_MAP_COUNT = 6;
     static final String[] MAPS = { "Đu Quay", "Rừng Nhiệt Đới", "Lớp Học Ma Thuật", "Phố Nấm Lùn", "Mộc Diệp Trấn",
-            "Đáy Biển", "Huyệt Ma Kiến • Ải 1", "Huyệt Ma Kiến • Nữ Vương" };
+            "Đáy Biển", "Huyệt Ma Kiến • Ải 1", "Huyệt Ma Kiến • Nữ Vương", "Rừng nguyên sinh", "Bảo vệ Đậu Thần", "Bulan Anh và Em", "Đền thờ Sulan" };
     static final String[] PROPS = { "+2 đợt bắn", "Đạn 3 tia", "Sát thương +50%", "Hồi 500 HP", "Bay đến điểm đáp",
             "POW đặc biệt" };
     static final String[] PROP_KEYS = { "Q", "W", "E", "R", "T", "B" };
@@ -2156,6 +2158,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         Graphics screen = g;
         int oldX = ox, oldY = oy;
         boolean zoom = showingPowCutin();
+        int tribalShake=TribalRules.active(game)&&game.tribalPhase==2&&game.tribalFx>0&&game.tribalState!=TribalRules.DEAD?(frame%2==0?1:-1):0;cameraX+=tribalShake;
         if (!zoom)
             resetPowWorld();
         if (!zoom || powWorldPixels == null) {
@@ -2223,10 +2226,11 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         if (zoom)
             drawPowWorldZoom(screen, oldX, oldY);
         all();
+        cameraX-=tribalShake;
         if(AntCaveRules.titleVisible(game))drawQueenTitle();
         drawTop();
         drawHud();
-        drawDungeonSpeech();
+        if(!TribalRules.active(game))drawDungeonSpeech();
         drawPowCutin();
         if (toastTicks > 0) {
             if (toast.equals("Đến lượt bạn!")) {
@@ -2488,6 +2492,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         img(fadedUnits[index], u.x - cameraX - 40, u.y - cameraY - 70);
     }
 
+    final TribalArt tribalArt=new TribalArt(this);
     final Image[] npc780=new Image[4];
     final Image[][] antPoses = new Image[2][5];
     final Image[] antIdle = new Image[2];
@@ -2693,9 +2698,11 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     void drawUnitRaw(int index) {
         if(offlineDungeon.active&&index>0&&index<6&&index%2==0&&offlineDungeon.allyAt(index)<0)return;
         Battle.Unit u = game.units[index];
+        if(u.maxHp==0&&u.hp<=0||index>=6&&u.npc==0&&u.hp<=0)return;
         if(onlineBattle()&&net.roomKind==3&&index<net.count&&index%2==0&&!net.present[index]&&u.hp<=0)return;
         if (loadout.hidden(index))
             return;
+        if(u.npc>=4){tribalArt.draw(index);return;}
         if (u.npc > 0) {
             if (u.hp <= 0) {
                 if (u.npc==3&&AntCaveRules.dying(game)) {
@@ -2745,6 +2752,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
 
         if (u.rage >= 100)
             part(hudPowAura, frame / 3 % 5 * 64, 0, 64, 54, x - 32, y - 50, false);
+        if(onlineBattle()&&net.actorWings[index])tribalArt.wings(x,y);
         boolean shooting = attackPose(index) || freezeHolding(index);
         int anim = unitAnimation(index);
         oval(x - 10, y - 3, 22, 5, 0x453b35);
@@ -2998,9 +3006,11 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
 
     void drawTop() {
         if(game.dungeonStage!=2||game.active!=1)drawTeamName();
-        if(offlineDungeon.active||onlineBattle()&&net.roomKind==3){int stage=offlineDungeon.active?offlineDungeon.stage:net.dungeonStage,kills=offlineDungeon.active?offlineDungeon.kills:net.dungeonKills,diff=offlineDungeon.active?offlineDungeon.difficulty:net.dungeonDifficulty;pcText(stage==1?"Ải 1: "+kills+"/20":"Ải 2: Nữ Vương",72,32);pcText(dungeon.difficultyName(diff),193,32);}
+        if(offlineDungeon.active||onlineBattle()&&net.roomKind==3){int stage=offlineDungeon.active?offlineDungeon.stage:net.dungeonStage,kills=offlineDungeon.active?offlineDungeon.kills:net.dungeonKills,diff=offlineDungeon.active?offlineDungeon.difficulty:net.dungeonDifficulty;if(stage<3)pcText(stage==1?"Ải 1: "+kills+"/20":"Ải 2: Nữ Vương",72,32);pcText(dungeon.difficultyName(diff),193,32);}
+        tribalArt.hud();
         int activeNpc = game.units[game.active].npc;
-        if (activeNpc > 0 && activeNpc < npcHeader780.length) {
+        if(activeNpc>=4)tribalArt.header(activeNpc);
+        else if (activeNpc > 0 && activeNpc < npcHeader780.length) {
             if (npcHeader780[activeNpc] == null) {
                 Image source = combatRoomArt("npc780-" + activeNpc);
                 if (source != null) {
@@ -3030,7 +3040,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         }
         if (game.teams) {
             for (int i = 0; i < game.unitCount; i++)
-                if(game.units[i].npc==0 && (!offlineDungeon.active||game.units[i].hp>0))drawTurnPortrait(i, i % 2 == 0 ? (game.dungeonStage>0?61:70) + i / 2 * 24 : 190 + i / 2 * 24, 1);
+                if(i<6&&game.units[i].hp>0&&game.units[i].npc==0 && (!offlineDungeon.active||game.units[i].hp>0))drawTurnPortrait(i, i % 2 == 0 ? (game.dungeonStage>0?61:70) + i / 2 * 24 : 190 + i / 2 * 24, 1);
         } else {
             drawTurnPortrait(0, 112, 1);
             drawTurnPortrait(1, 184, 1);

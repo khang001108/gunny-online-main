@@ -174,7 +174,7 @@ final class ShopScreen {
         c.pcText("" + c.shoppingMoney, 26, 208);
         c.pcText("Tổng", 12, 221);
         c.img(money, 43, 220);
-        c.pcText("" + (tab == 3 ? c.stoneShop.quantity()*80 : total()), 57, 221);
+        c.pcText("" + (tab == 3 ? c.stoneShop.price() : total()), 57, 221);
         if (tab != 2) {
             c.img(buyArt, 106, 201);
             if (focus == 14 && tab == 3)
@@ -265,7 +265,7 @@ final class ShopScreen {
             } else if (dir == 8) {
                 if (tab == 3) {
                     focus = 0;
-                    focus = c.stoneShop.focus;
+                    focus = c.stoneShop.focus%6;
                 } else
                     focus = tab == 2 ? 17 : categoryFocus();
             }

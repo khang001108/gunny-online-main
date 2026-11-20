@@ -8,6 +8,7 @@ WORKDIR /app
 RUN useradd --system --uid 10001 gunny
 COPY --from=build /app/classes /app/classes
 COPY backend/assets/ /app/assets1/
+COPY backend/tribal.properties /app/tribal.properties
 COPY public/ /app/public/
 USER gunny
 ENV PORT=8080

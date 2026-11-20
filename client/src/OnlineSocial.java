@@ -36,7 +36,7 @@ final class OnlineSocial implements CommandListener {
     boolean viewing;
     String infoName;
     int infoSex, infoSkin, infoMask, infoWeapon, infoExp, infoWins, infoRank;
-    final int[] infoForge=new int[3];
+    final int[] infoForge=new int[3],infoRanks=new int[130];
     final int[] infoLook = new int[5];
     Image infoHero;
     final Image[] infoIcons = new Image[7];
@@ -53,6 +53,8 @@ final class OnlineSocial implements CommandListener {
         infoWins = in.readInt();
         infoRank = in.readInt();
         if(net.expansionCap)for(int i=0;i<3;i++)infoForge[i]=in.readUnsignedShort();
+        for(int i=0;i<130;i++)infoRanks[i]=0;
+        if(in.available()>=130)for(int i=0;i<130;i++)infoRanks[i]=in.readUnsignedByte();
         infoHero = c.equipmentPreview(infoSex, infoSkin, (infoMask & 2) == 0, infoLook, infoMask, 64, 80);
         for (int k = 0; k < 7; k++) {
             infoIcons[k] = null;
@@ -139,7 +141,7 @@ final class OnlineSocial implements CommandListener {
             c.drawItemSelection(b[0], b[1], b[2], b[3], itemInfo);
         if (itemInfo) {
             int k = BagScreen.WORN[infoFocus], item = k == 0 ? infoWeapon : k == 1 ? infoSkin : infoLook[k - 2];
-            c.tooltip.draw(k, item, b, "Đang trang bị");
+            c.tooltip.draw(k,item,b,"Đang trang bị",infoSex,infoRanks[ForgeRules.index(infoSex,k,item)]);
         }
     }
 

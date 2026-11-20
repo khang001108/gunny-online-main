@@ -27,7 +27,7 @@ final class OnlineMotion {
     // Render offsets never change authoritative coordinates used by collision or damage.
     final int[] fromX=new int[Battle.MAX_UNITS],fromY=new int[Battle.MAX_UNITS];
     final int[] goalX=new int[Battle.MAX_UNITS],goalY=new int[Battle.MAX_UNITS];
-    long received;int blend=50,liveTurn=-1;boolean liveReady;
+    long received;int blend=75,liveTurn=-1;boolean liveReady;
     int display(int from,int to,long now){int elapsed=(int)Math.max(0,Math.min(blend,now-received));return from+(to-from)*elapsed/blend;}
     void receiveLive(long now){Battle b=net.c.game;boolean snap=!liveReady||liveTurn!=b.turn||b.over;
         for(int i=0;i<b.unitCount;i++){Battle.Unit u=b.units[i];int ax=u.x*256,ay=u.y*256;
@@ -35,7 +35,7 @@ final class OnlineMotion {
             boolean jump=snap||u.dead||Math.abs(ax-px)>48*256||Math.abs(ay-py)>48*256;if(jump){px=ax;py=ay;}
             fromX[i]=px;fromY[i]=py;goalX[i]=ax;goalY[i]=ay;
         }
-        if(received>0)blend=(int)Math.max(33,Math.min(100,now-received));received=now;liveTurn=b.turn;liveReady=true;
+        if(received>0)blend=(int)Math.max(33,Math.min(200,now-received));received=now;liveTurn=b.turn;liveReady=true;
     }
     int offset(int actor,boolean vertical,int scale,long now){if(!liveReady||net.predicting&&actor<net.count&&net.controls[actor])return 0;Battle.Unit u=net.c.game.units[actor];return (display(vertical?fromY[actor]:fromX[actor],vertical?goalY[actor]:goalX[actor],now)-(vertical?u.y:u.x)*256)*scale/256;}
     int input(int kind,int arg,int seq){

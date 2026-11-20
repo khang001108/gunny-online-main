@@ -11,7 +11,8 @@ import javax.crypto.spec.PBEKeySpec;
 class CloudStore {
     static final class Profile {
         String id,name;int stones;boolean dungeonClear;final int[] forgeLevels=new int[130];int experience;int shoppingMoney,wornMask=3;int publicId,gender,skin,coins=0,wins,owned=1,equipped;int[] bagLayout=new int[175];boolean characterChosen,custom;int[] look=new int[5];int[] wardrobe={1,1,1,1,1,1,1,1,1,1,1,1};
-        final int[] forgeProgress=new int[130];
+        final int[] forgeProgress=new int[130],craftStones=new int[4];
+        int luckyCharms,protectionCharms,wings,vipSpears;boolean wingEquipped;
         Profile(String id,String name){this.id=id;this.name=name;Arrays.fill(bagLayout,-1);}
     }
     static final class Login {String userId;int lifetime=3600;Login(String id){userId=id;}}
@@ -47,7 +48,10 @@ class CloudStore {
     Login login(String email,String password)throws Exception{Map<String,Object> r=Json.obj(request("/auth/v1/token?grant_type=password","POST",Json.write(Map.of("email",email,"password",password)),false));Login l=new Login(Json.str(Json.obj(r.get("user")),"id"));l.lifetime=Math.min(3600,Json.num(r,"expires_in",3600));return l;}
     Profile profile(String id)throws Exception {
         UUID.fromString(id);List<?> rows=(List<?>)request("/rest/v1/profiles?id=eq."+id+"&select=*","GET",null,true);
-        if(rows.isEmpty())throw new IllegalStateException("Chưa có hồ sơ. Hãy chạy migration Supabase.");Map<String,Object> r=Json.obj(rows.get(0));Profile p=new Profile(id,Json.str(r,"display_name"));p.publicId=Json.num(r,"public_id",0);p.gender=Json.num(r,"gender",0);p.skin=Json.num(r,"skin",0);p.coins=Json.num(r,"coins",0);p.wins=Json.num(r,"wins",0);p.experience=Json.num(r,"experience",0);p.owned=Json.num(r,"owned",1);p.equipped=Json.num(r,"equipped",0);p.characterChosen=!Boolean.FALSE.equals(r.get("character_chosen"));p.custom=Boolean.TRUE.equals(r.get("custom_look"));p.wornMask=Json.num(r,"worn_mask",p.custom?125:3);p.shoppingMoney=Json.num(r,"shopping_money",0);Object layout=r.get("bag_layout");if(layout instanceof List&&((List<?>)layout).size()==175)for(int i=0;i<175;i++)p.bagLayout[i]=((Number)((List<?>)layout).get(i)).intValue();Object look=r.get("look");if(look instanceof List)for(int i=0;i<5&&i<((List<?>)look).size();i++)p.look[i]=((Number)((List<?>)look).get(i)).intValue();Object wardrobe=r.get("wardrobe");if(wardrobe instanceof List)for(int i=0;i<12&&i<((List<?>)wardrobe).size();i++)p.wardrobe[i]=((Number)((List<?>)wardrobe).get(i)).intValue();p.stones=Json.num(r,"stones",0);p.dungeonClear=Boolean.TRUE.equals(r.get("dungeon_normal_clear"));Object forge=r.get("forge_levels");if(forge instanceof List){if(((List<?>)forge).size()!=130)throw new IllegalStateException("Sai dữ liệu cường hóa");for(int i=0;i<130;i++)p.forgeLevels[i]=Math.min(ForgeRules.MAX_RANK,((Number)((List<?>)forge).get(i)).intValue());}Object progress=r.get("forge_progress");if(progress instanceof List){if(((List<?>)progress).size()!=130)throw new IllegalStateException("Sai tiến độ cường hóa");for(int i=0;i<130;i++)p.forgeProgress[i]=((Number)((List<?>)progress).get(i)).intValue();}return p;
+        if(rows.isEmpty())throw new IllegalStateException("Chưa có hồ sơ. Hãy chạy migration Supabase.");Map<String,Object> r=Json.obj(rows.get(0));Profile p=new Profile(id,Json.str(r,"display_name"));p.publicId=Json.num(r,"public_id",0);p.gender=Json.num(r,"gender",0);p.skin=Json.num(r,"skin",0);p.coins=Json.num(r,"coins",0);p.wins=Json.num(r,"wins",0);p.experience=Json.num(r,"experience",0);p.owned=Json.num(r,"owned",1);p.equipped=Json.num(r,"equipped",0);p.characterChosen=!Boolean.FALSE.equals(r.get("character_chosen"));p.custom=Boolean.TRUE.equals(r.get("custom_look"));p.wornMask=Json.num(r,"worn_mask",p.custom?125:3);p.shoppingMoney=Json.num(r,"shopping_money",0);Object layout=r.get("bag_layout");if(layout instanceof List&&((List<?>)layout).size()==175)for(int i=0;i<175;i++)p.bagLayout[i]=((Number)((List<?>)layout).get(i)).intValue();Object look=r.get("look");if(look instanceof List)for(int i=0;i<5&&i<((List<?>)look).size();i++)p.look[i]=((Number)((List<?>)look).get(i)).intValue();Object wardrobe=r.get("wardrobe");if(wardrobe instanceof List)for(int i=0;i<12&&i<((List<?>)wardrobe).size();i++)p.wardrobe[i]=((Number)((List<?>)wardrobe).get(i)).intValue();p.stones=Json.num(r,"stones",0);p.dungeonClear=Boolean.TRUE.equals(r.get("dungeon_normal_clear"));Object forge=r.get("forge_levels");if(forge instanceof List){if(((List<?>)forge).size()!=130)throw new IllegalStateException("Sai dữ liệu cường hóa");for(int i=0;i<130;i++)p.forgeLevels[i]=Math.min(ForgeRules.MAX_RANK,((Number)((List<?>)forge).get(i)).intValue());}Object progress=r.get("forge_progress");if(progress instanceof List){if(((List<?>)progress).size()!=130)throw new IllegalStateException("Sai tiến độ cường hóa");for(int i=0;i<130;i++)p.forgeProgress[i]=((Number)((List<?>)progress).get(i)).intValue();}p.wings=Json.num(r,"wings",0);p.wingEquipped=Boolean.TRUE.equals(r.get("wing_equipped"));p.vipSpears=Json.num(r,"vip_spears",0);p.luckyCharms=Json.num(r,"lucky_charms",0);p.protectionCharms=Json.num(r,"protection_charms",0);
+        Object material=r.get("craft_stones");if(material instanceof List && ((List<?>)material).size()==4)
+            for(int i=0;i<4;i++)p.craftStones[i]=((Number)((List<?>)material).get(i)).intValue();
+        return p;
     }
     Profile appearance(String id,String name,int gender,int skin,boolean custom,int[] look)throws Exception {UUID.fromString(id);request("/rest/v1/profiles?id=eq."+id,"PATCH",Json.write(Map.of("display_name",name,"gender",gender,"skin",skin,"custom_look",custom,"look",Arrays.stream(look).boxed().toList())),true);return profile(id);}
     int rank(String id)throws Exception{Map<String,Object> data=Json.obj(request("/rest/v1/rpc/gunny_progress","POST",Json.write(Map.of("p_user",id)),true));return Json.num(data,"rank",0);}
@@ -64,10 +68,18 @@ class CloudStore {
     static void validateLayout(Profile p,int[] slots){if(slots.length!=175)throw new IllegalArgumentException("Sai túi");Set<String> seen=new HashSet<>();for(int pos=0;pos<175;pos++){int value=slots[pos];if(value==-1)continue;int kind=value/10,item=value%10,sex=pos<100?0:1;if(value<0||value>69||pos<25&&(kind!=0||!ShopCatalog.weapon(item)||(p.owned&(1<<item))==0)||pos>=25&&(kind<1||(p.wardrobe[sex*6+kind-1]&(1<<item))==0)||!seen.add((pos<25?"w":String.valueOf(sex))+":"+value))throw new IllegalArgumentException("Sai vị trí đồ");}}
     /** Explicit loopback-only test adapter; unavailable in a deployed Render service. */
     Profile economy780(String id,String operation,Map<String,Object> payload,String key)throws Exception{request("/rest/v1/rpc/gunny_economy780","POST",Json.write(Map.of("p_user",id,"p_operation",operation,"p_payload",payload,"p_key",key)),true);return profile(id);}
+    Profile crafting(String id,String action,Map<String,Object> payload,String key,int roll)throws Exception{
+        request("/rest/v1/rpc/gunny_crafting","POST",
+            Json.write(Map.of("p_user",id,"p_action",action,"p_payload",payload,"p_key",key,"p_roll",roll)),true);
+        return profile(id);
+    }
+    Map<String,Object> tribal(String action,Map<String,Object> payload)throws Exception{return Json.obj(request("/rest/v1/rpc/gunny_tribal","POST",Json.write(Map.of("p_action",action,"p_payload",payload)),true));}
     int[] claim780(String match,String id,int pick,int card)throws Exception{Map<String,Object> r=Json.obj(request("/rest/v1/rpc/gunny_claim780","POST",Json.write(Map.of("p_match",match,"p_user",id,"p_pick",pick,"p_card",card)),true));return new int[]{Json.num(r,"card",-1),Json.num(r,"coins",0),Json.num(r,"stones",0),Json.num(r,"pick",-1)};}
     void finishAntStage(String match,int winner,List<Map<String,Object>> players,int difficulty)throws Exception{request("/rest/v1/rpc/gunny_finish_ant_stage","POST",Json.write(Map.of("p_match",match,"p_winner",winner,"p_players",players,"p_difficulty",difficulty)),true);}
     void finishDungeon780(String match,int winner,List<Map<String,Object>> players,int difficulty)throws Exception{request("/rest/v1/rpc/gunny_finish_dungeon780","POST",Json.write(Map.of("p_match",match,"p_winner",winner,"p_players",players,"p_difficulty",difficulty)),true);}
     static final class Memory extends CloudStore {
+        final TribalMemory tribalStore=new TribalMemory(this);
+        synchronized Map<String,Object> tribal(String action,Map<String,Object> payload){return tribalStore.apply(action,payload);}
         record Account(byte[] salt,byte[] hash,Profile profile){}
         final Map<String,Account> accounts=new ConcurrentHashMap<>();final Map<String,int[]> rewards=new ConcurrentHashMap<>();final Map<String,Set<String>> participants=new ConcurrentHashMap<>();final Set<String> settled=ConcurrentHashMap.newKeySet();final SecureRandom random=new SecureRandom();
         final boolean fresh;Memory(){this(false);}Memory(boolean clean){super(true);fresh=clean;}
@@ -86,8 +98,48 @@ class CloudStore {
                 if(p.forgeLevels[i]!=rank||p.forgeProgress[i]!=progress)throw new IllegalArgumentException("Cấp rèn đã thay đổi");if(rank>=ForgeRules.MAX_RANK||p.stones<=0)throw new IllegalArgumentException("Chưa đủ đá cường hóa");int spend=Math.min(p.stones,ForgeRules.cost(rank)-progress);p.stones-=spend;p.forgeProgress[i]+=spend;if(p.forgeProgress[i]>=ForgeRules.cost(rank)){p.forgeProgress[i]=0;p.forgeLevels[i]++;}
             }else throw new IllegalArgumentException("Sai thao tác");economyReceipts.put(key,signature);return p;
         }
+        synchronized Profile crafting(String id,String action,Map<String,Object> payload,String key,int roll){
+            if(key==null||!key.matches("[A-Za-z0-9_-]{1,64}"))throw new IllegalArgumentException("Sai mã yêu cầu");
+            String signature=id+":"+action+":"+new TreeMap<>(payload);
+            String prior=economyReceipts.get("chance:"+key);
+            if(prior!=null){if(!prior.equals(signature))throw new IllegalArgumentException("Request key payload mismatch");return profile(id);}
+            Profile p=profile(id);
+            int quantity=((Number)payload.get("quantity")).intValue();
+            if(action.equals("buy")){
+                int material=((Number)payload.get("material")).intValue();
+                if(material<0||material>6||quantity<1||quantity>1000)throw new IllegalArgumentException("Sai vật liệu");
+                int cost=ForgeRules.price(material)*quantity;
+                int owned=material==0?p.stones:material<5?p.craftStones[material-1]:material==5?p.luckyCharms:p.protectionCharms;
+                if(p.shoppingMoney<cost||owned>999999-quantity)throw new IllegalArgumentException("Chưa đủ tiền hoặc vượt giới hạn");
+                p.shoppingMoney-=cost;
+                if(material==0)p.stones+=quantity;else if(material<5)p.craftStones[material-1]+=quantity;
+                else if(material==5)p.luckyCharms+=quantity;else p.protectionCharms+=quantity;
+            }else if(action.equals("forge")){
+                int sex=((Number)payload.get("sex")).intValue(),kind=((Number)payload.get("kind")).intValue(),
+                    item=((Number)payload.get("item")).intValue(),rank=((Number)payload.get("rank")).intValue(),
+                    grade=((Number)payload.get("grade")).intValue();
+                boolean lucky=Boolean.TRUE.equals(payload.get("lucky")),protect=Boolean.TRUE.equals(payload.get("protect"));
+                int chance=ForgeRules.chance(rank,grade,quantity,lucky);
+                int index=ForgeRules.index(sex,kind,item);
+                if(sex!=p.gender||!ForgeRules.allowed(kind)||chance==0||roll<0||roll>=10000
+                    ||kind==0&&(!ShopCatalog.weapon(item)||(p.owned&(1<<item))==0)
+                    ||kind>0&&(p.wardrobe[sex*6+kind-1]&(1<<item))==0)
+                    throw new IllegalArgumentException("Sai trang bị");
+                if(p.forgeLevels[index]!=rank)throw new IllegalArgumentException("Cấp rèn đã thay đổi");
+                int stones=grade==1?p.stones:p.craftStones[grade-2];
+                if(stones<quantity||lucky&&p.luckyCharms<1||protect&&p.protectionCharms<1)
+                    throw new IllegalArgumentException("Thiếu đá hoặc bùa");
+                if(grade==1)p.stones-=quantity;else p.craftStones[grade-2]-=quantity;
+                if(lucky)p.luckyCharms--;if(protect)p.protectionCharms--;
+                p.forgeLevels[index]=ForgeRules.result(rank,roll<chance,protect);
+                p.forgeProgress[index]=0;
+            }else throw new IllegalArgumentException("Sai thao tác");
+            economyReceipts.put("chance:"+key,signature);
+            return p;
+        }
         synchronized int[] claim780(String match,String id,int pick,int card){int kind=matchKinds.getOrDefault(match,0);if((kind!=2&&kind!=3&&kind!=4)||pick<0||pick>(kind==4?0:1)||card<0||card>(kind==4?8:17)||!participants.getOrDefault(match,Set.of()).contains(id))throw new IllegalArgumentException("Không có quyền nhận thẻ");String key=match+":"+id+":"+pick;int[] old=rewards780.get(key);if(old!=null){if(old[0]!=card)throw new IllegalArgumentException("Reward payload mismatch");return old.clone();}
-            if(pick==1&&!rewards780.containsKey(match+":"+id+":0"))throw new IllegalArgumentException("Chọn thẻ thứ nhất trước");for(var e:rewards780.entrySet())if(e.getKey().startsWith(match+":")&&e.getValue()[0]==card)throw new IllegalArgumentException("Thẻ đã được mở");int coins=0,stones=0;if(kind>=3)stones=10+rewardRandom.nextInt(91);else if(rewardRandom.nextBoolean())stones=1+rewardRandom.nextInt(10);else coins=500+rewardRandom.nextInt(1501);Profile p=profile(id);p.coins=Math.min(999999,p.coins+coins);p.stones=Math.min(999999,p.stones+stones);int[] r={card,coins,stones,pick};rewards780.put(key,r);return r.clone();}
+            if(pick==1&&!rewards780.containsKey(match+":"+id+":0"))throw new IllegalArgumentException("Chọn thẻ thứ nhất trước");for(var e:rewards780.entrySet())if(e.getKey().startsWith(match+":")&&e.getValue()[0]==card)throw new IllegalArgumentException("Thẻ đã được mở");int coins=0,stones=0;if(kind>=3)stones=10+rewardRandom.nextInt(91);else if(rewardRandom.nextBoolean())stones=1+rewardRandom.nextInt(10);else coins=500+rewardRandom.nextInt(1501);Profile p=profile(id);p.coins=Math.min(999999,p.coins+coins);p.stones=Math.min(999999,p.stones+stones);if(kind>=3){p.luckyCharms=Math.min(999999,p.luckyCharms+1);if(kind==3)p.protectionCharms=Math.min(999999,p.protectionCharms+1);}
+            int[] r={card,coins,stones,pick};rewards780.put(key,r);return r.clone();}
         synchronized void finishAntStage(String match,int winner,List<Map<String,Object>> players,int difficulty){if(difficulty<0||difficulty>2||winner<0||winner>2||players.isEmpty()||players.size()>3)throw new IllegalArgumentException("Sai trận phó bản");if(settled.contains(match))return;Set<String> ids=new HashSet<>();for(var row:players){Profile p=profile((String)row.get("id"));if(!ids.add(p.id)||((Number)row.get("team")).intValue()!=0||Progression.level(p.experience)<15||difficulty==2&&!p.dungeonClear)throw new IllegalArgumentException("Chưa đủ điều kiện phó bản");}settled.add(match);matchKinds.put(match,4);participants.put(match,winner==0?ids:Set.of());for(String id:ids){Profile p=profile(id);p.experience=(int)Math.min(Integer.MAX_VALUE,p.experience+(winner==0?300L:100L));if(winner==0){p.wins++;}}}
         synchronized void finishDungeon780(String match,int winner,List<Map<String,Object>> players,int difficulty){if(difficulty<0||difficulty>2||winner<0||winner>2||players.isEmpty()||players.size()>3)throw new IllegalArgumentException("Sai trận phó bản");if(settled.contains(match))return;Set<String> ids=new HashSet<>();for(var row:players){Profile p=profile((String)row.get("id"));if(!ids.add(p.id)||((Number)row.get("team")).intValue()!=0||Progression.level(p.experience)<15||difficulty==2&&!p.dungeonClear)throw new IllegalArgumentException("Chưa đủ điều kiện phó bản");}settled.add(match);matchKinds.put(match,3);participants.put(match,winner==0?ids:Set.of());for(String id:ids){Profile p=profile(id);p.experience=(int)Math.min(Integer.MAX_VALUE,p.experience+(winner==0?300L:100L));if(winner==0){p.wins++;if(difficulty==1)p.dungeonClear=true;}}}
         synchronized Profile appearance(String id,String name,int gender,int skin,boolean custom,int[] look){ensureNameAvailable(name,id);Profile p=profile(id);p.name=name;p.gender=gender;p.skin=skin;p.custom=custom;p.wornMask=custom?125:3;p.look=look.clone();return p;}

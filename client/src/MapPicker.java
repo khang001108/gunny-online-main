@@ -5,7 +5,7 @@ final class MapPicker {
     final PhoneCanvas c;boolean online;int choice,seconds=12,focus,stage;
     static final int CONFIRM_X=236,CONFIRM_Y=210,CONFIRM_W=50,CONFIRM_H=20;
     Image frame,blueButton;final Image[] banners=new Image[7];
-    Image dungeonCover, compactFont;
+    Image dungeonCover, tribalCover, compactFont;
     private static final String DUNGEON_DESCRIPTION =
         "Dũng sĩ tứ phương bước vào rừng yên ắng, cứ như không có chuyện gì xảy ra. "
         + "Họ đâu ngờ trong cánh rừng sâu thẳm kia có cặp mắt đang quan sát họ.";
@@ -25,7 +25,9 @@ final class MapPicker {
         drawFrame("Chọn ải viễn chinh");
         if (dungeonCover == null)
             dungeonCover = c.combatRoomArt("dungeon-picker-cover");
-        c.img(dungeonCover, 25, 31);
+        boolean tribal=c.onlineAccount()&&c.dungeon.draftDungeon==1;
+        if(tribal&&tribalCover==null)tribalCover=c.combatRoomArt("tribal-picker-cover");
+        c.img(tribal?tribalCover:dungeonCover, 25, 31);
         c.drawSelectionGlow(23, 29, 155, 193);
         c.part(frame, 223, 17, 78, 14, 223, 31, false);
         c.pcCenter("Mức độ", 262, 34);
@@ -35,21 +37,22 @@ final class MapPicker {
             c.pcCenter(c.dungeon.difficultyName(i),x+15,60);
             if (difficulty == i) c.drawSelectionGlow(x-1,53,33,20);
         }
-        c.img(c.dungeon.smallCover(),216,89);
-        c.pcText("Huyệt Ma Kiến",216,130);
+        c.img(tribal?c.tribalArt.smallCover():c.dungeon.smallCover(),216,89);
+        c.pcText(tribal?"Bộ Lạc Tà Thần":"Huyệt Ma Kiến",211,130);
         drawDungeonDescription();
         if (confirmFocused) c.drawSelectionGlow(CONFIRM_X,CONFIRM_Y,CONFIRM_W,CONFIRM_H);
     }
     private void drawDungeonDescription() {
+        String description=c.onlineAccount()&&c.dungeon.draftDungeon==1?"Bốn ải giữa rừng sâu. Cứu Đậu Thần, hạ hai Bulan và đánh bại Sulan. Tổ đội 1-3 người.":DUNGEON_DESCRIPTION;
         if (compactFont == null) {
             Image source = c.combatRoomArt("font-pc");
             compactFont = NativeUi.fit(source, source.getWidth()*3/4, source.getHeight()*7/10, 0);
         }
         int x = 216, y = 143, start = 0;
-        while (start < DUNGEON_DESCRIPTION.length()) {
-            int end = DUNGEON_DESCRIPTION.indexOf(' ', start);
-            if (end < 0) end = DUNGEON_DESCRIPTION.length();
-            String word = DUNGEON_DESCRIPTION.substring(start, end);
+        while (start < description.length()) {
+            int end = description.indexOf(' ', start);
+            if (end < 0) end = description.length();
+            String word = description.substring(start, end);
             int width = 0;
             for (int i = 0; i < word.length(); i++)
                 width += compactWidth(word.charAt(i));

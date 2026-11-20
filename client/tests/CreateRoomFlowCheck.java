@@ -9,7 +9,7 @@ public final class CreateRoomFlowCheck {
   var net=c.net;net.alive=false;net.logged=true;net.modernRooms=net.asyncTurns=net.matchmakingCap=true;
   net.dungeonBrowser=true;net.dungeonListLoading=false;c.mode=16;c.dungeon.focus=1;
   c.dungeon.activateList();
-  check(net.create.opened&&net.create.dungeon&&net.create.name.equals("Phó bản vui vẻ"),"Dungeon Create opens shared room settings with correct suggestion");
+  check(net.create.opened&&net.create.dungeon&&net.create.name.equals("Ải viễn chinh"),"Dungeon Create opens shared room settings with correct suggestion");
   var frame=javax.microedition.lcdui.Image.createImage(320*scale,240*scale);c.paint(frame.getGraphics());
   int[] pixels=new int[320*scale*240*scale];frame.getRGB(pixels,0,320*scale,0,0,320*scale,240*scale);
   var picture=new java.awt.image.BufferedImage(320*scale,240*scale,java.awt.image.BufferedImage.TYPE_INT_RGB);picture.setRGB(0,0,320*scale,240*scale,pixels,0,320*scale);
