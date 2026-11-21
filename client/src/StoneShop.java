@@ -28,6 +28,7 @@ final class StoneShop {
    c.pcText(""+ForgeRules.price(type),x+43,y+26);
    if(focus==type&&c.shop.focus<6)c.drawItemSelection(x,y,box[2],box[3],false);
   }
+  if(infoType>=0)drawInfo(infoType,c.shop.box(focus%6));
   c.pcCenter("Có "+c.economy.material(focus)+" • "+(focus/6+1)+"/2",229,214);
  }
  void buy(){
@@ -49,13 +50,14 @@ final class StoneShop {
    c.net.request("buycraft");
   }else if(c.economy.buyMaterial(confirmedType,1))c.message("Đã mua "+NAMES[confirmedType]);
  }
- void info(int type){
-  String detail=type<5?"Đá cường hóa Lv "+(type+1)+"\nTăng tỉ lệ thành công theo cấp đá. Dùng 1–3 viên mỗi lần; đá vẫn tiêu hao khi thất bại.":type==5?"Tăng thêm 25% tỉ lệ gốc. Ví dụ 40% thành 50%. Tiêu hao 1 bùa mỗi lần cường hóa, cả khi thất bại.":"Bảo vệ trang bị không giảm cấp khi cường hóa thất bại từ +5. Tiêu hao 1 bùa mỗi lần sử dụng.";
-  c.popup.notice(NAMES[type],detail+"\nĐang có: "+c.economy.material(type)+"\nGiá: "+ForgeRules.price(type)+" tiền mua sắm/cái");
- }
+ int infoType=-1;
+ String description(int type){return (type<5?"Tăng tỉ lệ cường hóa theo cấp đá. Tiêu hao kể cả thất bại.":type==5?"Tăng 25% tỉ lệ gốc. Ví dụ 40% thành 50%. Tiêu hao mỗi lần rèn.":"Không giảm cấp khi rèn thất bại từ +5. Tiêu hao mỗi lần rèn.")+"\nCó: "+c.economy.material(type)+"\nGiá: "+ForgeRules.price(type);}
+ void info(int type){infoType=infoType==type?-1:type;}
+ void drawInfo(int type,int[] anchor){c.tooltip.goods(NAMES[type],type<5?"Đá Lv"+(type+1):"Bùa",description(type),anchor);}
  void key(int key,int dir,boolean ok){
   if(key==-6){info(focus);return;}
 
+  if(infoType>=0){infoType=-1;if(key==-6||key==-7||ok)return;}
   if(key==-7){c.shop.leave();return;}
   if(c.shop.focus==14){
    if(dir!=0)c.shop.focus=focus%6;else if(ok)buy();return;

@@ -17,7 +17,7 @@ final class ForgeScreen {
             success, slotSuccess, continuousText, stoneLabel, hammer;
     int grade=1,quantity=1;
     boolean lucky,protect;
-    boolean info;
+    boolean info;int step,stoneSelection;final int[] ownedGrades=new int[5];int gradeCount;
     boolean continuous, running;
     long nextAt, animStart, successUntil, riseStart;
 
@@ -27,7 +27,7 @@ final class ForgeScreen {
 
     void open() {
         page = selection = focus = confirm = 0;
-        continuous = running = false;
+        step=0;quantity=1;continuous = running = false;
         requestKey = "";
         c.mode = 18;
         refresh();
@@ -36,6 +36,7 @@ final class ForgeScreen {
     }
 
     void refresh() {
+        gradeCount=0;for(int g=1;g<=5;g++)if(c.economy.material(g-1)>0)ownedGrades[gradeCount++]=g;stoneSelection=Math.min(stoneSelection,Math.max(0,gradeCount-1));
         count = 0;
         for (int k = 0; k < 7; k++)
             if (ForgeRules.allowed(k))
@@ -143,31 +144,34 @@ final class ForgeScreen {
 
         int chance=ForgeRules.chance(expected,grade,quantity,lucky);
         c.pcCenter("Tỉ lệ: "+chance/100+"."+(chance%100<10?"0":"")+chance%100+"%",85,123);
-        c.ui.button("Đá Lv "+grade+" x"+quantity,18,138,120,15,focus==9);
+        c.pcCenter(step==0?"Chọn trang bị":step==1?"Chọn đá cường hóa":"Chọn bùa và cường hóa",80,140);
         c.img(lucky?on:off,19,157);
         c.img(luckyIcon,34,157);c.pcText("May 25% ("+c.economy.material(5)+")",49,158);
         c.img(protect?on:off,19,173);
         c.img(protectIcon,34,173);c.pcText("Bảo vệ ("+c.economy.material(6)+")",49,174);
         if(focus==7||lucky)c.drawSelectionGlow(17,155,123,16);
         if(focus==8||protect)c.drawSelectionGlow(17,171,123,15);
+        if(focus==2||continuous)c.drawSelectionGlow(17,185,123,13);
         c.img(continuous?on:off,19,187);
         c.pcText("Liên tục",34,187);
         c.img(hammer, 30, 202);
         c.img(action, 48, 198);
         c.pcCenter(running ? "Dừng" : "Cường hóa", 87, 203);
 
+        if(focus==9)c.drawSelectionGlow(94,72,52,53);
         if (focus == 1)
             c.drawSelectionGlow(48, 198, 78, 21);
+        if(c.toastTicks>0)c.pcCenter(c.pcShort(c.toast,135),80,57);
         c.img(inventoryPanel, 149, 55);
         c.img(c.bag.input, 153, 57);
-        c.pcText(kind == 0 ? "Vũ khí" : kind == 2 ? "Áo" : kind == 3 ? "Nón" : "Kính", 160, 62);
+        c.pcText(c.pcShort(step==1&&gradeCount>0?StoneShop.NAMES[ownedGrades[stoneSelection]-1]:count>0?c.bag.itemName(kind,item):"Trang bị",120),160,62);
         c.img(equipTab, 292, 57);
         for (int n = 0; n < 25; n++) {
             int i = page * 25 + n, x = 154 + n % 5 * 26, y = 78 + n / 5 * 26;
             c.img(cell, x, y);
-            if (i < count)
+            if(step==1){if(i<gradeCount){c.img(c.stoneShop.icon(ownedGrades[i]-1),x+2,y);c.pcText("L"+ownedGrades[i],x+12,y);}}else if (i < count)
                 c.img(c.bag.itemIcon(kinds[i], items[i]), x + 2, y);
-            if (i == selection && count > 0)
+            if (i == (step==1?stoneSelection:selection) && (step==1?gradeCount:count) > 0)
                 c.drawSelectionGlow(x, y, 25, 25);
         }
         c.img(c.bag.arrow, 155, 207);
@@ -175,7 +179,9 @@ final class ForgeScreen {
         c.pcCenter((page + 1) + "/" + Math.max(1, (count + 24) / 25), 222, 210);
         c.img(c.bag.arrow, 269, 207);
         c.pcCenter(">", 279, 210);
-        if (info && count > 0)
+        if(info&&step==2&&(focus==7||focus==8||focus==9))c.stoneShop.drawInfo(focus==7?5:focus==8?6:grade-1,new int[]{154,90,25,25});
+        else if(info&&step==1&&gradeCount>0)c.stoneShop.drawInfo(ownedGrades[stoneSelection]-1,new int[]{154+stoneSelection*26,78,25,25});
+        else if (info && count > 0)
             c.tooltip.draw(kind, item, new int[] { 154 + selection % 5 * 26, 78 + (selection % 25) / 5 * 26, 25, 25 });
     }
 
@@ -270,18 +276,21 @@ final class ForgeScreen {
     }
 
     void key(int key, int dir, boolean ok) {
+        if(step==2&&key==-7){step=1;focus=0;info=false;return;}if(step==2&&focus==0&&(dir!=0||ok))step=0;
+        if(step<2){if(key==-7){if(step==1){step=0;info=false;}else leave();return;}if(key==-6){info=!info;return;}if(dir!=0){info=false;if(step==1)stoneSelection=Battle.clamp(stoneSelection+(dir==1||dir==4?-1:1),0,Math.max(0,gradeCount-1));else select(Battle.clamp(selection+(dir==1?-1:dir==2?1:dir==4?-5:5),0,count-1));return;}if(ok){info=false;if(step==0){if(count>0){step=1;focus=0;}}else if(gradeCount>0){grade=ownedGrades[stoneSelection];quantity=1;step=2;focus=7;}else c.message("Chưa có đá cường hóa");}return;}
+
         if(!sending()&&!running){
-            if(key>='1'&&key<='5'){grade=key-'0';requestKey="";return;}
-            if(key=='6'){quantity=quantity%3+1;requestKey="";return;}
+
+
             if(key=='l'||key=='L'){lucky=!lucky;focus=7;requestKey="";return;}
             if(key=='p'||key=='P'){protect=!protect;focus=8;requestKey="";return;}
         }
-        if(key==-6&&(focus==7||focus==8||focus==9)){c.stoneShop.info(focus==7?5:focus==8?6:grade-1);return;}
+        if(key==-6&&(focus==7||focus==8||focus==9)){info=!info;return;}
         if(focus>=7&&focus<=9){
             if(dir==4)focus=focus==9?0:focus==7?9:7;
             else if(dir==8)focus=focus==9?7:focus==7?8:2;
-            else if(dir==1||dir==2){if(focus==9&&!sending()&&!running){grade=(grade+(dir==1?3:5))%5+1;requestKey="";}else focus=0;}
-            else if(ok&&!sending()&&!running){if(focus==7)lucky=!lucky;else if(focus==8)protect=!protect;else quantity=quantity%3+1;requestKey="";}
+            else if(dir==1||dir==2){if(focus==9&&!sending()&&!running){step=1;focus=0;info=false;}else focus=0;}
+            else if(ok&&!sending()&&!running){if(focus==7)lucky=!lucky;else if(focus==8)protect=!protect;else{step=1;focus=0;info=false;}requestKey="";}
             else if(key==-7)leave();
             return;
         }
@@ -366,8 +375,10 @@ final class ForgeScreen {
     }
 
     void pointer(int x, int y) {
+        if(step<2){if(x>=289&&y<33){leave();return;}if(x>=154&&x<284&&y>=78&&y<208){int id=(y-78)/26*5+(x-154)/26;if(step==0){if(id<count){select(id);key(10,0,true);}}else if(id<gradeCount){stoneSelection=id;key(10,0,true);}}return;}
+
         if(!sending()&&!running&&x>=18&&x<138){
-            if(y>=138&&y<153){focus=9;if(x<93)grade=grade%5+1;else quantity=quantity%3+1;requestKey="";return;}
+            if(y>=138&&y<153){focus=9;if(x<93)grade=grade%5+1;else{step=1;focus=0;info=false;}requestKey="";return;}
             if(y>=155&&y<171){lucky=!lucky;focus=7;requestKey="";return;}
             if(y>=171&&y<185){protect=!protect;focus=8;requestKey="";return;}
             if(y>=185&&y<198){toggle();return;}

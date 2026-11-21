@@ -85,9 +85,11 @@ final class BagScreen {
     }
 
     String itemName(int kind, int item) {
+        if(kind==STONE_KIND)return StoneShop.NAMES[item];if(kind==GIFT_KIND)return c.gifts.name(item);
         return kind == 0 ? PhoneCanvas.WEAPON_NAMES[item] : PhoneCanvas.BAG_TABS[kind] + " " + (item + 1);
     }
 
+    String entryName(int id){return kinds[id]==STONE_KIND?StoneShop.NAMES[items[id]]:kinds[id]==GIFT_KIND?c.gifts.name(items[id]):kinds[id]>=0?itemName(kinds[id],items[id]):"Vật phẩm";}
     String itemName(int id) {
         return itemName(kinds[id], items[id]);
     }
@@ -145,7 +147,7 @@ final class BagScreen {
         character();
         c.img(input, 153, 43);
         c.pcText(c.pcShort(heldSource >= 0 ? "OK: đặt • 0: mặc • R: huỷ"
-                : tab == 0 ? "Vũ khí" : filter == 0 ? "Toàn bộ" : PhoneCanvas.BAG_TABS[filter], 127), 159, 48);
+                : focus<PAGE&&page*PAGE+focus<count?entryName(page*PAGE+focus):tab==0?"Vật phẩm":filter==0?"Toàn bộ":PhoneCanvas.BAG_TABS[filter], 127), 159, 48);
         for (int i = 0; i < PAGE; i++) {
             int x = 154 + i % 5 * 26, y = 64 + i / 5 * 26;
             c.img(cell, x, y);
@@ -224,6 +226,7 @@ final class BagScreen {
     }
 
     void showInfo() {
+        if(focus<PAGE&&page*PAGE+focus<count&&kinds[page*PAGE+focus]<-1){infoKind=kinds[page*PAGE+focus];infoItem=items[page*PAGE+focus];info=true;return;}
         int kind = -1, item = 0;
         if (focus < PAGE && page * PAGE + focus < count && kinds[page * PAGE + focus] >= 0
                 && !isWorn(page * PAGE + focus)) {
@@ -244,8 +247,8 @@ final class BagScreen {
     }
 
     void drawInfo() {
-        if(infoKind==GIFT_KIND){info=false;c.popup.notice(c.gifts.name(infoItem),"Ấn OK trên vật phẩm để sử dụng");return;}
-        if(infoKind==STONE_KIND){c.popup.notice(StoneShop.NAMES[infoItem],"Số lượng: "+c.economy.material(infoItem)+"\nDùng tại Tiệm rèn");info=false;return;}
+        if(infoKind==GIFT_KIND){String desc=infoItem==0?"Thưởng: hòm Lv"+(c.gifts.value(0)+1)+", xu, đá Lv1 x50–100":infoItem==1?"Thưởng: đá Lv2 x20–70. Thẻ VIP 1 ngày: 10%.":"Kích hoạt VIP 1 ngày. Cộng dồn thời hạn.";c.tooltip.goods(c.gifts.name(infoItem),infoItem==0?"Hòm Lv"+c.gifts.value(0):"Quà",desc,box(focus));return;}
+        if(infoKind==STONE_KIND){c.stoneShop.drawInfo(infoItem,box(focus));return;}
         c.tooltip.draw(infoKind, infoItem, c.mode == 6 ? c.shop.box(c.shop.focus) : box(focus));
     }
 
@@ -472,7 +475,7 @@ final class BagScreen {
 
     void activate() {
         if(focus<PAGE&&page*PAGE+focus<count&&kinds[page*PAGE+focus]==GIFT_KIND){heldSource=-1;info=false;c.gifts.use(items[page*PAGE+focus]);return;}
-        if(focus<PAGE&&page*PAGE+focus<count&&kinds[page*PAGE+focus]==STONE_KIND){int m=items[page*PAGE+focus];heldSource=-1;info=false;c.popup.notice(StoneShop.NAMES[m],"Số lượng: "+c.economy.material(m)+"\nDùng tại Tiệm rèn");return;}
+        if(focus<PAGE&&page*PAGE+focus<count&&kinds[page*PAGE+focus]==STONE_KIND){int m=items[page*PAGE+focus];heldSource=-1;infoKind=STONE_KIND;infoItem=m;info=!info;return;}
 
         if (heldSource >= 0 && focus < PAGE) {
             int target = page * PAGE + focus;

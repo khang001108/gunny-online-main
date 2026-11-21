@@ -1,6 +1,6 @@
 # Gunny Java Online 7.8.1
 
-Bản kiểm thử 7.8.6 giảm ảnh giữ trong bộ nhớ lúc tải trận, tách đá/bùa trong Túi, sửa phòng thủ +15 và thêm hòm cấp/túi phó bản/thẻ VIP có thời hạn. Xem [báo cáo, cách build và giới hạn kiểm thử](docs/BAO-CAO-7.8.6.md). Với database đang từ 7.7.0 trở lên, chạy một file supabase/UPDATE-7.7.0-TO-7.8.6.sql trước khi cập nhật server.
+Bản kiểm thử 7.8.7 giảm ảnh giữ trong bộ nhớ lúc tải trận, tách đá/bùa trong Túi, sửa phòng thủ +15 và thêm hòm cấp/túi phó bản/thẻ VIP có thời hạn. Xem [báo cáo, cách build và giới hạn kiểm thử](docs/BAO-CAO-7.8.7.md). Với database đang từ 7.7.0 trở lên, chạy một file supabase/UPDATE-7.7.0-TO-7.8.7.sql trước khi cập nhật server.
 
 
 Sảnh đảo mới, tiệm rèn, đá cường hóa và phó bản Huyệt Ma Kiến cho 1–3 người.

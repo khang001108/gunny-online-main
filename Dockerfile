@@ -4,7 +4,7 @@ COPY backend/src src
 RUN mkdir classes && javac --release 17 -encoding UTF-8 -d classes src/*.java
 
 FROM eclipse-temurin:21-jre
-LABEL org.opencontainers.image.version="7.8.6"
+LABEL org.opencontainers.image.version="7.8.7"
 WORKDIR /app
 RUN useradd --system --uid 10001 gunny
 COPY --from=build /app/classes /app/classes

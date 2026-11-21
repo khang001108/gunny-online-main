@@ -19,7 +19,7 @@ Cần Java, Python và thư mục công cụ chứa `ecj.jar`, `proguard.jar` (6
 python client/build.py --tools D:/gunny/GunnyNokia/tools
 ```
 
-Script biên dịch CLDC 1.1 / MIDP 2.0, preverify và cập nhật hai JAR/JAD 7.8.6 cùng ZIP cài E6 trong `public/downloads`. Cần giữ các bộ cài hiện tại làm nguồn tài nguyên khi build. `client/build` chỉ chứa file sinh ra.
+Script biên dịch CLDC 1.1 / MIDP 2.0, preverify và cập nhật hai JAR/JAD 7.8.7 cùng ZIP cài E6 trong `public/downloads`. Cần giữ các bộ cài hiện tại làm nguồn tài nguyên khi build. `client/build` chỉ chứa file sinh ra.
 
 ## Kiểm thử màn hình và lưu cấu hình
 

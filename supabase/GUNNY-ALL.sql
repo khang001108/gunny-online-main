@@ -1663,3 +1663,8 @@ drop trigger if exists gunny_tribal_final_gift on public.gunny_tribal_matches;
 create trigger gunny_tribal_final_gift after insert on public.gunny_tribal_matches for each row execute function public.gunny_award_final_gift();
 notify pgrst,'reload schema';
 commit;
+
+-- 7.8.7: server-only deck inspection
+begin;
+grant select on public.gunny_tribal_matches to service_role;
+commit;

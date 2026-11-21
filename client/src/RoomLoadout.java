@@ -5,7 +5,7 @@ final class RoomLoadout {
  final PhoneCanvas c;final int[] kit={0,1,2},onlineKit={0,1,2};int editSlot;
  Image squareCancel;Image squareInvite,squareStart,squareReady;Image background,panel,left,cell,selected,invite,server,start,ready,card,waiting,closed,teamCard,teamWaiting,teamClosed,chat,tooltip,randomMap;
  final Image[] icons=new Image[6],grayIcons=new Image[6];
- void releaseMenuArt(){squareCancel=squareInvite=squareStart=squareReady=background=panel=left=cell=selected=invite=server=start=ready=card=waiting=closed=teamCard=teamWaiting=teamClosed=chat=tooltip=randomMap=toolBar=null;for(int i=0;i<tools.length;i++)tools[i]=null;}
+ void releaseMenuArt(){dungeonMapCover=dungeonMapGreen=dungeonMapYellow=null;dungeonCoverStage=-1;squareCancel=squareInvite=squareStart=squareReady=background=panel=left=cell=selected=invite=server=start=ready=card=waiting=closed=teamCard=teamWaiting=teamClosed=chat=tooltip=randomMap=toolBar=null;for(int i=0;i<tools.length;i++)tools[i]=null;}
  RoomLoadout(PhoneCanvas canvas){c=canvas;try{RecordStore rs=RecordStore.openRecordStore("gunny-loadout-v2",true);if(rs.getNumRecords()>0){byte[] b=rs.getRecord(1);int[] a={b[0],b[1],b[2]};if(Battle.validKit(a))for(int i=0;i<3;i++)kit[i]=a[i];}rs.closeRecordStore();}catch(Exception ignored){}}
  void load(){if(panel!=null)return;squareInvite=c.combatRoomArt("room-invite-square");squareStart=c.combatRoomArt("match742-start");squareCancel=c.combatRoomArt("match742-cancel");squareReady=c.combatRoomArt("room-ready-square");background=art("background");panel=art("panel");left=art("left");cell=art("cell");selected=art("selected");invite=art("invite");server=art("server");start=art("start");ready=art("ready");card=art("card");waiting=art("waiting");closed=art("closed");teamCard=art("team-card");teamWaiting=art("team-waiting");teamClosed=art("team-closed");chat=art("chat");tooltip=art("tooltip");randomMap=art("map-random");}
  Image art(String name){return c.combatRoomArt("kit-"+name);}
@@ -49,10 +49,11 @@ final class RoomLoadout {
   c.img(squareInvite,220,197);Image a=c.presentation.searching()?squareCancel:online&&!c.net.host?squareReady:squareStart;c.img(a,272,197);
   if(f>=20&&f<=22)c.drawSelectionGlow(221+(f-20)*29,45,27,27);else if(f==2)c.drawSelectionGlow(219,196,46,44);else if(f==5)c.drawSelectionGlow(271,196,46,44);else if(f==29||f==4)c.drawSelectionGlow(219,146,96,46);
  }
- Image dungeonMapCover, dungeonMapGreen, dungeonMapYellow;
+ Image dungeonMapCover, dungeonMapGreen, dungeonMapYellow;int dungeonCoverStage=-1;
  private void drawDungeonMap(boolean online) {
-  if (dungeonMapCover == null) {
-   dungeonMapCover = NativeUi.fit(c.dungeon.smallCover(), 82*c.s, 37*c.s, 0);
+  int selectedStage=online?c.net.dungeonStage:Math.max(1,c.offlineDungeon.stage);
+  if (dungeonMapCover == null||dungeonCoverStage!=selectedStage) {
+   dungeonCoverStage=selectedStage;dungeonMapCover = NativeUi.fit(c.dungeon.stageCover(selectedStage), 82*c.s, 37*c.s, 0);
    dungeonMapGreen = c.combatRoomArt("font-pc-green");
    dungeonMapYellow = c.combatRoomArt("font-pc-yellow");
   }

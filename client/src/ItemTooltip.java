@@ -7,6 +7,10 @@ final class ItemTooltip {
  ItemTooltip(PhoneCanvas owner){c=owner;}
  int[] bounds(int[] anchor,int kind){int right=316-(anchor[0]+anchor[2]+4),left=anchor[0]-8;boolean after=right>=138;int w=Math.min(180,after?right:left),h=kind==0?150:134;w=Math.max(128,w);int x=after?anchor[0]+anchor[2]+4:anchor[0]-4-w;return new int[]{Battle.clamp(x,4,316-w),Battle.clamp(anchor[1],38,226-h),w,h};}
  void colored(String text,int x,int y,Image font){for(int n=0;n<text.length();n++){int id=c.glyph(text.charAt(n));c.part(font,id%16*8,id/16*10,8,10,x,y,false);x+=(c.widths[id]*8+5)/11;}}
+ void goods(String title,String category,String description,int[] anchor){
+  if(source==null){source=c.combatRoomArt("item752-tooltip");purple=c.combatRoomArt("font-pc-purple");orange=c.combatRoomArt("font-pc-orange");green=c.combatRoomArt("font-pc-green");}
+  int[] b=bounds(anchor,2);b[3]=168;b[1]=Math.min(b[1],68);if(panel==null||width!=b[2]||height!=b[3]){width=b[2];height=b[3];panel=NativeUi.fit(source,width*c.s,height*c.s,5*c.s);}c.img(panel,b[0],b[1]);int x=b[0]+7,y=b[1]+8;colored(c.pcShort(title,width-14),x,y,purple);c.pcText("Loại: "+c.pcShort(category,width-42),x,y+16);c.line(x,y+29,b[0]+width-7,y+29,0x777777);String rest=description;int row=0;while(rest.length()>0&&row<10){int end=rest.indexOf('\n');if(end<0)end=rest.length();while(end>1&&c.pcWidth(rest.substring(0,end))>width-14)end--;if(end<rest.length()&&rest.charAt(end)!='\n'){int space=rest.lastIndexOf(' ',end);if(space>0)end=space;}c.pcText(rest.substring(0,end),x,y+36+row*12);rest=rest.substring(Math.min(rest.length(),end+(end<rest.length()&&(rest.charAt(end)==' '||rest.charAt(end)=='\n')?1:0)));row++;}
+ }
  void draw(int kind,int item,int[] anchor){draw(kind,item,anchor,c.inventory.owns(kind,item)?"Đã sở hữu":"Chưa sở hữu");}
  void stat(String label,int value,int bonus,int x,int y){String base=label+": "+value;c.pcText(base,x,y);if(bonus>0)colored("(+"+bonus+")",x+c.textWidth(base)+3,y,green);}
  void draw(int kind,int item,int[] anchor,String footer){draw(kind,item,anchor,footer,c.gender,c.economy.ranks()[ForgeRules.index(c.gender,kind,item)]);}

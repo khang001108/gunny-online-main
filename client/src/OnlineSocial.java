@@ -104,6 +104,7 @@ final class OnlineSocial implements CommandListener {
             itemInfo = !itemInfo;
     }
 
+    Image infoStats;
     void drawInfo() {
         c.bag.load();
         if (infoFrame == null)
@@ -126,16 +127,9 @@ final class OnlineSocial implements CommandListener {
             if (infoIcons[k] != null)
                 c.img(infoIcons[k], b[0] + 1, b[1] + 1);
         }
-        if (c.bag.statsPanel == null)
-            c.bag.statsPanel = NativeUi.fit(c.combatRoomArt("item752-tooltip"), 85 * c.s, 54 * c.s, 4 * c.s);
-        c.img(c.bag.statsPanel, 132, 138);
-        c.drawLevel(infoExp, 135, 139);
-        c.pcText("EXP", 162, 140);
-        c.pcText(Progression.level(infoExp) == 70 ? "MAX"
-                : Progression.within(infoExp) + "/" + Progression.limit(infoExp), 162, 150);
-        c.pcText("Xếp hạng: " + infoRank, 136, 161);
-        c.pcText("Thắng: " + infoWins, 136, 171);
-        c.pcText("Lực chiến: " + (Progression.power(infoMask, infoWeapon, infoExp)+infoForge[0]+infoForge[1]+infoForge[2]), 136, 181);
+        c.drawLevel(infoExp,128,139);c.pcText(Progression.level(infoExp)==70?"EXP MAX":"EXP "+Progression.within(infoExp)+"/"+Progression.limit(infoExp),155,141);
+        if(infoStats==null)infoStats=NativeUi.fit(c.combatRoomArt("item752-tooltip"),107*c.s,43*c.s,4*c.s);
+        c.img(infoStats,111,155);c.pcText("Xếp hạng: "+infoRank,117,160);c.pcText("Thắng: "+infoWins,117,172);c.pcText("LC: "+(Progression.power(infoMask,infoWeapon,infoExp)+infoForge[0]+infoForge[1]+infoForge[2]),117,184);
         int[] b = infoBox(infoFocus);
         if (infoIcons[BagScreen.WORN[infoFocus]] != null)
             c.drawItemSelection(b[0], b[1], b[2], b[3], itemInfo);

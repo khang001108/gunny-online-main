@@ -249,7 +249,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
 
     void drawVersus() {
         all();
-        if (versusBg == null) {
+        if (versusBg == null || versusLogo==null || versusOK==null || versusMode==null || versusTime==null || versusDigits==null) {
             versusBg = combatRoomArt("room-loading-bg");
             versusLogo = combatRoomArt("room-loading-vs");
             versusOK = combatRoomArt("room-loading-ok");
@@ -287,7 +287,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             img(loadingHeroes[i],center-width/2,145-height);
             img(weapons[game.units[i].weapon],center+width/3-8,127);
             if(loadingReady(i)){
-                img(versusOK,center-versusOK.getWidth()/(2*s),149);
+                if(versusOK!=null)img(versusOK,center-versusOK.getWidth()/(2*s),149);else pcCenter("OK",center,149);
             }else pcCenter((onlineBattle()&&!net.controls[i]?"Đang tải":Math.min(100,loadTicks*100/60)+"%"),center,151);
             pcCenter(pcShort(actorName(i),width+8),center,165);
         }
