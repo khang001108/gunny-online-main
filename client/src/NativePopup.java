@@ -1,13 +1,15 @@
 import javax.microedition.lcdui.Image;
 /** One asset-backed popup for notices, choices and battle menus. */
 final class NativePopup {
+    void releaseArt(){frame=button=close=fittedFrame=playerPortrait=searchInput=searchInputFit=checkOn=checkOff=null;for(int i=0;i<fittedButtons.length;i++)fittedButtons[i]=null;}
+
  static final int CONFIRM_QUIT = 8, INVITE_TEAM=30;
  Image playerPortrait;String playerName;int playerLevel;
  final PhoneCanvas c;boolean opened,pausedOffline;int action,selected;String title="",text="";String[] options={"Đóng"};Image frame,button,close;final Image[] fittedButtons=new Image[3];final int[] fittedWidths=new int[3];
  NativePopup(PhoneCanvas canvas){c=canvas;}
  boolean skipHint, hintFocused;
  Image checkOn, checkOff;
- void open(String heading,String message,String[] choices,int callback){playerPortrait=null;title=heading;text=message;options=choices;action=callback;selected=scroll=0;skipHint=hintFocused=false;opened=true;c.toastTicks=0;c.held=0;}
+ void open(String heading,String message,String[] choices,int callback){c.gifts.showing=false;playerPortrait=null;title=heading;text=message;options=choices;action=callback;selected=scroll=0;skipHint=hintFocused=false;opened=true;c.toastTicks=0;c.held=0;}
  void playerNotice(String heading,String message,Image portrait,String name,int level,String[] choices,int callback){open(heading,message,choices,callback);playerPortrait=portrait;playerName=name;playerLevel=level;}
  void notice(String heading,String message){open(heading,message,new String[]{"Đóng"},0);}
  void confirmQuit(){
@@ -37,6 +39,7 @@ final class NativePopup {
  int hintY(){return top+height-49;}
  void draw(){
   if(!opened)return;
+  if(c.gifts.showing){c.gifts.draw();return;}
   render(title,text,options,hintFocused?-1:selected);
   if(soloHint()){
    if(checkOn==null){checkOn=c.combatRoomArt("auth-check-on");checkOff=c.combatRoomArt("auth-check-off");}
@@ -63,6 +66,7 @@ final class NativePopup {
   int callback=action,index=selected;opened=false;if(callback==DungeonScreen.CONFIRM_SOLO){if(index==0)c.dungeon.confirmSolo(skipHint);}else if(callback==StoneShop.CONFIRM_PURCHASE){if(index==1)c.stoneShop.confirmPurchase();}else if(callback==1){if(index==0)resumeOffline();else if(index==1)c.presentation.settings=true;else if(index==2)open("Thoát trận","Bạn muốn rời trận đang chơi?",new String[]{"Ở lại","Thoát trận"},3);}else if(callback==3){resumeOffline();if(index==1){if(c.onlineBattle())c.net.request("leave");else c.openLobby();}}else if(callback==4){c.notices.confirm();}else if(callback==2){c.net.departureVersion=c.net.departure.alertVersion;c.net.departureFinish=index==1;c.net.request("departure");}
  }
  void key(int key,int dir,boolean ok){
+  if(c.gifts.showing){if(ok||key==-6||key==-7){c.gifts.showing=false;dismiss();}return;}
   layout(title,text,options);
   if(rows>visibleRows&&(dir==4||dir==8)){scroll=Battle.clamp(scroll+(dir==4?-1:1),0,rows-visibleRows);return;}
   if(action==4&&key==-6&&c.notices.hasAppeal()){c.notices.appeal();return;}
@@ -76,6 +80,7 @@ final class NativePopup {
   if(dir!=0)selected=(selected+options.length+(dir==4||dir==1?-1:1))%options.length;else if(ok||key==-6)choose();
  }
  void pointer(int x,int y){
+  if(c.gifts.showing){if(y>=188&&y<=220){c.gifts.showing=false;dismiss();}return;}
   layout(title,text,options);
   if(action==4&&c.notices.hasAppeal()&&x>=48&&x<272&&y>=135&&y<150){c.notices.appeal();return;}
   if(x>=left+width-25&&x<left+width-4&&y>=top+5&&y<top+25){if(action!=2&&action!=4)dismiss();return;}

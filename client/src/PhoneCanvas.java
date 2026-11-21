@@ -12,6 +12,7 @@ import java.io.IOException;
  */
 final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     final GunnyMIDlet app;
+    final GiftBag gifts=new GiftBag(this);
     final EconomyInventory economy=new EconomyInventory(this);
     final OfflineDungeon offlineDungeon=new OfflineDungeon(this);
     final HomeScreen home=new HomeScreen(this);final ForgeScreen forge=new ForgeScreen(this);final StoneShop stoneShop=new StoneShop(this);DungeonScreen dungeon;
@@ -1358,7 +1359,17 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         return selectedMap >= 0 && selectedMap < PVP_MAP_COUNT ? selectedMap : 0;
     }
 
+    void releaseNpcArt(){
+        queenCall=queenBow=queenDeath=queenArrow=queenIdle=queenShade=queenHit=queenTitle=speechFont=null;
+        for(int i=0;i<2;i++){antIdle[i]=antWalk[i]=antBeat[i]=null;for(int j=0;j<antPoses[i].length;j++)antPoses[i][j]=null;}
+        for(int i=0;i<queenArrowRotations.length;i++)queenArrowRotations[i]=null;
+        tribalArt.release();
+    }
     void beginMatch(int battleMap) throws IOException {
+        releaseNpcArt();loadout.releaseMenuArt();gifts.releaseArt();home.releaseArt();bag.releaseArt();shop.releaseArt();forge.releaseArt();tooltip.releaseArt();popup.releaseArt();ui.releaseArt();
+        if(dungeon!=null)dungeon.releaseArt();if(net!=null){net.waiting.releaseArt();net.rooms.releaseArt();for(int i=0;i<net.standing.length;i++)net.standing[i]=null;}
+        for(int i=0;i<stoneShop.icons.length;i++)stoneShop.icons[i]=null;
+
         presentation.offlineSearch = 0;
         emotions.reset();
         if (!onlineAccount() && requireWeapon()) {
@@ -1370,7 +1381,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             fadedUnits[i] = null;
         freeCamera = cameraReturning = cameraOnPlayer = false;
         cameraHeld = 0;
-        onlineGround = null;
+        onlineGround = null;opponentStanding=null;
         if (net != null)
             net.results.reset();
         powShotPending = false;
@@ -1475,7 +1486,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     w = nextWeapon(w, 1);
                 game.units[i].weapon = w;
             }
-        } else if (!training) {
+        } else if (!training && !onlineAccount()) {
             game.units[1].botStyle = game.rand(4);
             game.units[1].weapon = nextWeapon(equipped, 1 + game.rand(3));
             actorSex[1] = game.rand(2);
@@ -1510,7 +1521,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void openLobby() {
-        queenCall=queenBow=queenDeath=queenArrow=queenIdle=null;
+        releaseNpcArt();background=null;
+        if(net!=null&&!net.inBattle)for(int i=0;i<net.layers.length;i++)for(int j=0;j<5;j++)net.layers[i][j]=null;
         offlineDungeon.active=false;forge.running=false;
         toastTicks = 0;
         resetPending = loadingRequested = false;

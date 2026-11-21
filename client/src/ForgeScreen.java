@@ -5,12 +5,14 @@ import javax.microedition.lcdui.*;
  * forge.
  */
 final class ForgeScreen {
+    void releaseArt(){frame=stone=stoneSmall=left=inventoryPanel=cell=equipTab=equipment=material=percent=on=off=action=fill=success=slotSuccess=continuousText=stoneLabel=hammer=closeButton=luckyIcon=protectIcon=null;for(int i=0;i<strength.length;i++)strength[i]=null;running=false;}
+
     final PhoneCanvas c;
     int page, selection, count, kind, item, expected, expectedProgress, focus, confirm, animFrom, animTo, riseRank;
     final int[] kinds = new int[130], items = new int[130];
     final Image[] strength = new Image[16];
     String requestKey = "";
-    Image closeButton;
+    Image closeButton,luckyIcon,protectIcon;
     Image frame, stone, stoneSmall, left, inventoryPanel, cell, equipTab, equipment, material, percent, on, off, action, fill,
             success, slotSuccess, continuousText, stoneLabel, hammer;
     int grade=1,quantity=1;
@@ -73,7 +75,8 @@ final class ForgeScreen {
             return;
         frame = c.combatRoomArt("forge780-frame");
         closeButton = NativeUi.fit(c.bag.close,17*c.s,16*c.s,2*c.s);
-        stone = c.combatRoomArt("stone780");
+        luckyIcon=NativeUi.fit(c.stoneShop.icon(5),12*c.s,12*c.s,0);protectIcon=NativeUi.fit(c.stoneShop.icon(6),12*c.s,12*c.s,0);
+        stone = c.stoneShop.icon(0);
         stoneSmall = NativeUi.fit(stone, 12 * c.s, 12 * c.s, 2 * c.s);
         left = c.combatRoomArt("forge780-left");
         inventoryPanel = NativeUi.fit(left, 142 * c.s, 168 * c.s, 5 * c.s);
@@ -140,11 +143,13 @@ final class ForgeScreen {
 
         int chance=ForgeRules.chance(expected,grade,quantity,lucky);
         c.pcCenter("Tỉ lệ: "+chance/100+"."+(chance%100<10?"0":"")+chance%100+"%",85,123);
-        c.ui.button("Đá Lv "+grade+" x"+quantity,18,138,120,15,false);
+        c.ui.button("Đá Lv "+grade+" x"+quantity,18,138,120,15,focus==9);
         c.img(lucky?on:off,19,157);
-        c.pcText("May 25% ("+c.economy.material(5)+")",34,158);
+        c.img(luckyIcon,34,157);c.pcText("May 25% ("+c.economy.material(5)+")",49,158);
         c.img(protect?on:off,19,173);
-        c.pcText("Bảo vệ ("+c.economy.material(6)+")",34,174);
+        c.img(protectIcon,34,173);c.pcText("Bảo vệ ("+c.economy.material(6)+")",49,174);
+        if(focus==7||lucky)c.drawSelectionGlow(17,155,123,16);
+        if(focus==8||protect)c.drawSelectionGlow(17,171,123,15);
         c.img(continuous?on:off,19,187);
         c.pcText("Liên tục",34,187);
         c.img(hammer, 30, 202);
@@ -268,8 +273,17 @@ final class ForgeScreen {
         if(!sending()&&!running){
             if(key>='1'&&key<='5'){grade=key-'0';requestKey="";return;}
             if(key=='6'){quantity=quantity%3+1;requestKey="";return;}
-            if(key=='l'||key=='L'){lucky=!lucky;requestKey="";return;}
-            if(key=='p'||key=='P'){protect=!protect;requestKey="";return;}
+            if(key=='l'||key=='L'){lucky=!lucky;focus=7;requestKey="";return;}
+            if(key=='p'||key=='P'){protect=!protect;focus=8;requestKey="";return;}
+        }
+        if(key==-6&&(focus==7||focus==8||focus==9)){c.stoneShop.info(focus==7?5:focus==8?6:grade-1);return;}
+        if(focus>=7&&focus<=9){
+            if(dir==4)focus=focus==9?0:focus==7?9:7;
+            else if(dir==8)focus=focus==9?7:focus==7?8:2;
+            else if(dir==1||dir==2){if(focus==9&&!sending()&&!running){grade=(grade+(dir==1?3:5))%5+1;requestKey="";}else focus=0;}
+            else if(ok&&!sending()&&!running){if(focus==7)lucky=!lucky;else if(focus==8)protect=!protect;else quantity=quantity%3+1;requestKey="";}
+            else if(key==-7)leave();
+            return;
         }
         if (key == -6) {
             if (info)
@@ -315,7 +329,7 @@ final class ForgeScreen {
             } else if (focus == 6)
                 focus = dir == 4 ? 0 : dir == 1 ? 2 : dir == 2 ? 0 : 1;
             else if (focus == 2)
-                focus = dir == 2 || dir == 4 ? 0 : 1;
+                focus = dir == 4 ? 8 : dir == 2 ? 0 : 1;
             else if (focus == 1) {
                 if (dir == 2) {
                     focus = 0;
@@ -353,9 +367,9 @@ final class ForgeScreen {
 
     void pointer(int x, int y) {
         if(!sending()&&!running&&x>=18&&x<138){
-            if(y>=138&&y<153){if(x<93)grade=grade%5+1;else quantity=quantity%3+1;requestKey="";return;}
-            if(y>=155&&y<171){lucky=!lucky;requestKey="";return;}
-            if(y>=171&&y<185){protect=!protect;requestKey="";return;}
+            if(y>=138&&y<153){focus=9;if(x<93)grade=grade%5+1;else quantity=quantity%3+1;requestKey="";return;}
+            if(y>=155&&y<171){lucky=!lucky;focus=7;requestKey="";return;}
+            if(y>=171&&y<185){protect=!protect;focus=8;requestKey="";return;}
             if(y>=185&&y<198){toggle();return;}
         }
         if (x >= 289 && y < 33) {

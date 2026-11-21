@@ -14,7 +14,7 @@ final class ForgeRules {
  static int result(int rank,boolean success,boolean protection){
   return success?Math.min(MAX_RANK,rank+1):rank>=5&&!protection?rank-1:rank;
  }
- static int bonus(int[] ranks,int sex,int kind,int item){return 5*ranks[index(sex,kind,item)];}
+ static int bonus(int[] ranks,int sex,int kind,int item){return (kind==2||kind==3||kind==6?13:5)*ranks[index(sex,kind,item)];}
  static int[] equipped(int[] ranks,int sex,int mask,int weapon,int skin,int[] look){int[] b=new int[3];for(int k=0;k<7;k++)if((mask&(1<<k))!=0){int n=bonus(ranks,sex,k,k==0?weapon:k==1?skin:look[k-2]);if(k==0)b[0]+=n;else if(k==1){b[0]+=n;b[1]+=n;b[2]+=n;}else b[1]+=n;}return b;}
  static void apply(Battle.Unit u,int[] bonuses){u.forgeAttack=bonuses[0];u.forgeDefense=bonuses[1];u.forgeLuck=bonuses[2];}
  static void apply(Battle.Unit u,int[] bonuses,int[] ranks){apply(u,bonuses);for(int i=0;i<10;i++)u.weaponForge[i]=ranks[i]*5;u.forgeWeaponBonus=u.weaponForge[u.weapon];}

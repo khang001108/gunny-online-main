@@ -16,9 +16,9 @@ public final class Expansion780Check {
   int[] ranks=new int[130];for(int sex=0;sex<2;sex++)for(int kind=0;kind<7;kind++)for(int item=0;item<10;item++){int index=ForgeRules.index(sex,kind,item);check(index>=0&&index<130,"Forge index remains inside inventory");}
   ranks[ForgeRules.index(0,0,0)]=2;ranks[ForgeRules.index(0,1,0)]=3;ranks[ForgeRules.index(0,2,0)]=4;
   int[] b=ForgeRules.equipped(ranks,0,3,0,0,new int[5]);check(Arrays.equals(b,new int[]{25,15,15}),"Weapon grows attack; full suit grows all three stats");
-  b=ForgeRules.equipped(ranks,0,5,0,0,new int[5]);check(Arrays.equals(b,new int[]{10,20,0}),"Separate clothing grows defense only");
-  var unit=new Battle.Unit();unit.experience=Progression.experienceForLevel(20);ForgeRules.apply(unit,b,ranks);ItemRules.apply(unit,5);check(unit.attackBonus==110&&unit.defense==160&&unit.luck==120,"Level, equipment and forge bonuses combine exactly once");
-  ItemRules.weapon(unit,3);check(unit.forgeAttack==0&&unit.forgeDefense==20,"Changing weapon replaces its forge contribution and preserves armor bonuses");
+  b=ForgeRules.equipped(ranks,0,5,0,0,new int[5]);check(Arrays.equals(b,new int[]{10,52,0}),"Separate clothing grows defense only");
+  var unit=new Battle.Unit();unit.experience=Progression.experienceForLevel(20);ForgeRules.apply(unit,b,ranks);ItemRules.apply(unit,5);check(unit.attackBonus==110&&unit.defense==192&&unit.luck==120,"Level, equipment and forge bonuses combine exactly once");
+  ItemRules.weapon(unit,3);check(unit.forgeAttack==0&&unit.forgeDefense==52,"Changing weapon replaces its forge contribution and preserves armor bonuses");
   var queen=new Battle.Unit();queen.npc=3;queen.x=380;queen.y=210;
   check(Battle.hitsUnit(queen,380,150)&&!Battle.hitsUnit(queen,420,150),"Queen collision covers her visible torso without a rectangular oversize hitbox");
   var person=new Battle.Unit();person.x=100;person.y=210;check(Battle.hitsUnit(person,107,198)&&!Battle.hitsUnit(person,109,198),"Human PVP collision remains unchanged");

@@ -1,7 +1,7 @@
 import java.io.*;import java.util.*;
 /** Server-only entry points: client supplies intents; prices, ranks and rewards are authoritative. */
 final class Expansion780 {
- static void write(DataOutputStream out,CloudStore.Profile p)throws IOException{out.writeInt(p.stones);out.writeBoolean(p.dungeonClear);for(int rank:p.forgeLevels)out.writeByte(rank);for(int progress:p.forgeProgress)out.writeShort(progress);for(int amount:p.craftStones)out.writeInt(amount);out.writeInt(p.luckyCharms);out.writeInt(p.protectionCharms);out.writeInt(p.wings);out.writeBoolean(p.wingEquipped);out.writeInt(p.vipSpears);out.writeBoolean(p.testCheats);out.writeBoolean(p.testGod);}
+ static void write(DataOutputStream out,CloudStore.Profile p)throws IOException{out.writeInt(p.stones);out.writeBoolean(p.dungeonClear);for(int rank:p.forgeLevels)out.writeByte(rank);for(int progress:p.forgeProgress)out.writeShort(progress);for(int amount:p.craftStones)out.writeInt(amount);out.writeInt(p.luckyCharms);out.writeInt(p.protectionCharms);out.writeInt(p.wings);out.writeBoolean(p.wingEquipped);out.writeInt(p.vipSpears);out.writeBoolean(p.testCheats);out.writeBoolean(p.testGod);out.writeInt(p.giftLevel);out.writeInt(p.giftBags);out.writeInt(p.vipTickets);out.writeLong(p.vipUntil);}
  static int[] bonuses(CloudStore.Profile p){return ForgeRules.equipped(p.forgeLevels,p.gender,p.wornMask,p.equipped,p.skin,p.look);}
  static boolean handles(String op){return Set.of("economy","buystones","forge","claim780","dungeonrooms","dungeoncreate","dungeonquick","dungeonteam","dungeonsettings","dungeoncontinue").contains(op);}
  static void handle(GunnyServer server,String op,GunnyServer.Session s,DataInputStream in,DataOutputStream out)throws Exception{

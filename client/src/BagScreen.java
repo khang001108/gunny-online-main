@@ -1,10 +1,12 @@
 import javax.microedition.lcdui.Image;
 
 final class BagScreen {
-    static final int STONE_KIND = -2;
+    void releaseArt(){frame=cell=slot=equipOn=equipOff=fashionOn=fashionOff=arrow=input=close=preview=propsOn=propsOff=stoneIcon=statsPanel=female=male=moving=null;previewKey="";for(int i=0;i<icons.length;i++)icons[i]=null;for(int i=0;i<worn.length;i++)worn[i]=null;}
+
+    static final int STONE_KIND = -2,GIFT_KIND=-3;
     final PhoneCanvas c;
     int tab, filter, page, focus, selected, count;
-    final int[] kinds = new int[75], items = new int[75];
+    final int[] kinds = new int[90], items = new int[90];
     final Image[] icons = new Image[60], worn = new Image[7];
     Image frame, cell, slot, equipOn, equipOff, fashionOn, fashionOff, arrow, input, close, preview;
     String previewKey = "";
@@ -38,11 +40,8 @@ final class BagScreen {
 
     void list() {
         count = c.bagLayout.fill(tab, filter, kinds, items);
-        if (tab == 0 && count < kinds.length) {
-            kinds[count] = STONE_KIND;
-            items[count] = 0;
-            count++;
-        }
+        if(tab==0)for(int type=0;type<3;type++)if(c.gifts.visible(type)&&count<kinds.length){kinds[count]=GIFT_KIND;items[count++]=type;}
+        if (tab == 0)for(int type=0;type<7;type++)if(c.economy.material(type)>0&&count<kinds.length){kinds[count]=STONE_KIND;items[count++]=type;}
         page = Math.min(page, lastPage());
         selected = Math.min(selected, Math.max(0, count - 1));
         if (iconSex != c.gender) {
@@ -139,6 +138,7 @@ final class BagScreen {
         c.img(c.lobbyBackground, 0, 0);
         c.img(frame, 3, 8);
         c.pcText("Túi (B)", 14, 17);
+        if(c.gifts.vipUntil()>System.currentTimeMillis()/1000)c.pcText("VIP "+((c.gifts.vipUntil()-System.currentTimeMillis()/1000+3599)/3600)+"h",76,17);
         if(c.onlineAccount()&&c.economy.wings>0)c.pcText(c.economy.wingEquipped?"W: Tháo cánh":"W: Mặc cánh",165,17);
         c.img(close, 289, 12);
         c.pcCenter(c.pcShort(c.playerName, 117), 77, 46);
@@ -150,11 +150,11 @@ final class BagScreen {
             int x = 154 + i % 5 * 26, y = 64 + i / 5 * 26;
             c.img(cell, x, y);
             int id = page * PAGE + i;
-            if (id < count && kinds[id] == STONE_KIND) {
-                if (stoneIcon == null)
-                    stoneIcon = c.combatRoomArt("stone780");
-                c.img(stoneIcon, x + 1, y + 1);
-                c.pcText("x" + c.economy.stones(), x + 1, y + 16);
+            if(id<count&&kinds[id]==GIFT_KIND){c.img(c.gifts.icon(items[id]),x+1,y+1);c.pcText(items[id]==0?"Lv"+c.gifts.value(0):GiftBag.quantity(c.gifts.value(items[id])),x+1,y+16);
+            }else if (id < count && kinds[id] == STONE_KIND) {
+                c.img(c.stoneShop.icon(items[id]), x + 1, y + 1);
+                if(items[id]<5)c.pcText("L"+(items[id]+1),x+12,y+1);
+                c.pcText(GiftBag.quantity(c.economy.material(items[id])), x + 1, y + 16);
             } else if (id < count && kinds[id] >= 0 && !isWorn(id)
                     && !(moving != null && pendingRemove && kinds[id] == pendingKind && items[id] == pendingItem))
                 c.img(itemIcon(kinds[id], items[id]), x + 1, y + 1);
@@ -244,6 +244,8 @@ final class BagScreen {
     }
 
     void drawInfo() {
+        if(infoKind==GIFT_KIND){info=false;c.popup.notice(c.gifts.name(infoItem),"Ấn OK trên vật phẩm để sử dụng");return;}
+        if(infoKind==STONE_KIND){c.popup.notice(StoneShop.NAMES[infoItem],"Số lượng: "+c.economy.material(infoItem)+"\nDùng tại Tiệm rèn");info=false;return;}
         c.tooltip.draw(infoKind, infoItem, c.mode == 6 ? c.shop.box(c.shop.focus) : box(focus));
     }
 
@@ -469,6 +471,9 @@ final class BagScreen {
     }
 
     void activate() {
+        if(focus<PAGE&&page*PAGE+focus<count&&kinds[page*PAGE+focus]==GIFT_KIND){heldSource=-1;info=false;c.gifts.use(items[page*PAGE+focus]);return;}
+        if(focus<PAGE&&page*PAGE+focus<count&&kinds[page*PAGE+focus]==STONE_KIND){int m=items[page*PAGE+focus];heldSource=-1;info=false;c.popup.notice(StoneShop.NAMES[m],"Số lượng: "+c.economy.material(m)+"\nDùng tại Tiệm rèn");return;}
+
         if (heldSource >= 0 && focus < PAGE) {
             int target = page * PAGE + focus;
             if (target == heldSource) {

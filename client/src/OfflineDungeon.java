@@ -107,5 +107,5 @@ final class OfflineDungeon {
   b.check();
   progress();
  }
- void finish(){if(settled)return;settled=true;if(c.game.winner==0){c.wins++;c.economy.offlineMaterials[4]=Math.min(999999,c.economy.offlineMaterials[4]+1);if(stage==2)c.economy.offlineMaterials[5]=Math.min(999999,c.economy.offlineMaterials[5]+1);if(stage==2&&difficulty==1)c.economy.offlineClear=true;}c.experience=(int)Math.min(2147483647L,c.experience+(c.game.winner==0?300L:100L));c.economy.save();c.saveExperience();c.saveSettings();}
+ void finish(){if(settled)return;settled=true;if(c.game.winner==0){c.wins++;c.economy.offlineMaterials[4]=Math.min(999999,c.economy.offlineMaterials[4]+1);if(stage==2)c.economy.offlineMaterials[5]=Math.min(999999,c.economy.offlineMaterials[5]+1);if(stage==2){c.gifts.awardOffline();if(difficulty==1)c.economy.offlineClear=true;}}c.experience=(int)Math.min(2147483647L,c.experience+(c.game.winner==0?300L:100L));c.economy.save();c.saveExperience();c.saveSettings();}
 }

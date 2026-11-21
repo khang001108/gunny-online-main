@@ -49,16 +49,22 @@ final class StoneShop {
    c.net.request("buycraft");
   }else if(c.economy.buyMaterial(confirmedType,1))c.message("Đã mua "+NAMES[confirmedType]);
  }
+ void info(int type){
+  String detail=type<5?"Đá cường hóa Lv "+(type+1)+"\nTăng tỉ lệ thành công theo cấp đá. Dùng 1–3 viên mỗi lần; đá vẫn tiêu hao khi thất bại.":type==5?"Tăng thêm 25% tỉ lệ gốc. Ví dụ 40% thành 50%. Tiêu hao 1 bùa mỗi lần cường hóa, cả khi thất bại.":"Bảo vệ trang bị không giảm cấp khi cường hóa thất bại từ +5. Tiêu hao 1 bùa mỗi lần sử dụng.";
+  c.popup.notice(NAMES[type],detail+"\nĐang có: "+c.economy.material(type)+"\nGiá: "+ForgeRules.price(type)+" tiền mua sắm/cái");
+ }
  void key(int key,int dir,boolean ok){
+  if(key==-6){info(focus);return;}
+
   if(key==-7){c.shop.leave();return;}
   if(c.shop.focus==14){
-   if(dir!=0)c.shop.focus=focus%6;else if(ok||key==-6)buy();return;
+   if(dir!=0)c.shop.focus=focus%6;else if(ok)buy();return;
   }
   if(dir==1&&focus>0)focus--;
   else if(dir==2&&focus<6)focus++;
   else if(dir==4){if(focus%6>=2)focus-=2;else{c.shop.focus=19;return;}}
   else if(dir==8){if(focus+2<7)focus+=2;else{c.shop.focus=14;return;}}
-  else if(ok||key==-6)buy();
+  else if(ok)buy();
   c.shop.focus=focus%6;
  }
  boolean pointer(int x,int y){

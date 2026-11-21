@@ -1,6 +1,8 @@
 import javax.microedition.lcdui.*;
 /** Cooperative browser, a three-seat staging room, and its own map/difficulty picker. */
 final class DungeonScreen {
+    void releaseArt(){banner=background=smallCover=seatCard=emptyCard=localPortrait=allyPortrait=closedCard=null;portraitKey="";for(int i=0;i<stageCovers.length;i++)stageCovers[i]=null;}
+
  static final int CONFIRM_SOLO = 6;
  static final String TITLE = "Ải Viễn Chinh";
  final PhoneCanvas c;final OnlineClient n;int focus,page;boolean picker;Image banner,background;

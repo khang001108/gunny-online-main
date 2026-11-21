@@ -5,6 +5,8 @@ import javax.microedition.lcdui.*;
  * room browser.
  */
 final class HomeScreen {
+    void releaseArt(){background=online=forge=dungeon=onlineGlow=forgeGlow=onlineZoom=forgeZoom=null;for(int i=0;i<labels.length;i++)labels[i]=null;for(int i=0;i<friends.length;i++)friends[i]=null;}
+
     static final int CONFIRM_OFFLINE = 7;
     final PhoneCanvas c;
     Image background, online, forge, dungeon, onlineGlow, forgeGlow, onlineZoom, forgeZoom;

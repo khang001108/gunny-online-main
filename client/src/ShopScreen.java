@@ -1,6 +1,8 @@
 import javax.microedition.lcdui.*;
 
 final class ShopScreen {
+    void releaseArt(){frame=card=cartArt=buyArt=previous=next=money=coin=close=curtain=subTab=activeSubTab=null;for(int i=0;i<mainTabs.length;i++)for(int j=0;j<2;j++)mainTabs[i][j]=null;}
+
     final PhoneCanvas c;
     int tab, kind, page, selected, focus, trialMask, trialSkin, trialWeapon;
     boolean trialCustom;
@@ -175,6 +177,7 @@ final class ShopScreen {
         c.pcText("Tổng", 12, 221);
         c.img(money, 43, 220);
         c.pcText("" + (tab == 3 ? c.stoneShop.price() : total()), 57, 221);
+        if(tab==3)c.pcText("Thông tin",4,229);
         if (tab != 2) {
             c.img(buyArt, 106, 201);
             if (focus == 14 && tab == 3)
