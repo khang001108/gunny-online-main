@@ -13,7 +13,7 @@ Nếu Caddy chạy trong container, cần dùng network chung và upstream `gunn
 Tại thư mục gốc repo, build image trên Docker endpoint sẽ chạy game:
 
 ```sh
-docker build -t gunny-online:7.9.0 .
+docker build -t gunny-online:7.9.1 .
 ```
 
 Trong Portainer, chọn đúng Environment → stack game hiện có. Đối chiếu và cập nhật
@@ -66,5 +66,5 @@ DNS nội bộ trỏ tên miền về IP LAN. Một lần timeout từ LAN qua I
 
 Nếu Supabase đang ở schema 7.7.0, chạy một lần
 [SQL nâng cấp gộp](../../supabase/UPDATE-CURRENT.sql).
-Từ 7.8.x phải chạy `supabase/migrations/202611220001_vip_wings.sql` trước. Đặt `GUNNY_IMAGE=gunny-online:7.9.0` trong stack
+Từ 7.8.x phải chạy `supabase/migrations/202611220001_vip_wings.sql` trước. Đặt `GUNNY_IMAGE=gunny-online:7.9.1` trong stack
 Portainer rồi cập nhật stack để đưa bộ cài 790 lên trang tải.

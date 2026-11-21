@@ -12,6 +12,6 @@
 public/review-*.png
 public/downloads/*.jar
 public/downloads/*.jad
-!public/downloads/Gunny-*-Online-790.jar
-!public/downloads/Gunny-*-Online-790.jad
+!public/downloads/Gunny-*-Online-791.jar
+!public/downloads/Gunny-*-Online-791.jad
 public/downloads/*-CaiDat-*.zip

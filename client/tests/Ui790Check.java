@@ -57,7 +57,7 @@ public class Ui790Check {
         c.mode=6;c.shop.open();c.shop.tab=3;c.shop.focus=19;c.shop.key(0,2,false);
         if(c.shop.tab!=4||c.shop.focus!=43)throw new AssertionError("VIP tab is next to Props");
         c.shop.key(0,8,false);c.shop.key(0,8,false);if(c.vip.shopFocus!=2)throw new AssertionError("VIP two-column navigation");shot(c,"vip790-shop");
-        c.vip.experience=0;c.vip.owned=0;c.vip.shopFocus=4;c.vip.buy();if(n.pending.length()!=0)throw new AssertionError("Locked wing cannot buy");shot(c,"vip790-shop-locked");
+        c.vip.experience=0;c.vip.owned=0;c.vip.shopFocus=4;c.vip.buy();if(n.pending.length()!=0)throw new AssertionError("Locked wing cannot buy");shot(c,"vip790-shop-locked");c.vip.info=true;shot(c,"vip790-shop-info");c.vip.info=false;
         c.vip.experience=VipRules.TOTAL;c.vip.buy();if(!n.pending.equals("vipbuy")||c.vip.owned!=0)throw new AssertionError("Buy waits for server");n.pending="";
         c.mode=0;n.social.opened=n.social.inviting=true;n.social.friendsPopup=false;n.social.tab=0;n.social.count=2;n.social.names[0]=null;n.social.names[1]="Kenji";n.social.online[1]=true;shot(c,"vip790-invite");
         if(c.pcWidth(null)!=0||!c.pcShort(null,20).equals(""))throw new AssertionError("Null invite names safe");n.social.opened=n.social.inviting=false;
@@ -93,6 +93,8 @@ public class Ui790Check {
           if(read.available()!=0||n.actorVip[2]!=1800||n.actorWing[2]!=1||c.game.units[2].wingHp!=1000)throw new AssertionError("Server roster decodes VIP and equipped wing/HP without byte drift");
           c.mode=16;shot(c,"vip790-dungeon-waiting");room.kind=2;room.refreshWaiting();wire.reset();server.lobby(new java.io.DataOutputStream(wire),room,host);n.readLobby(new java.io.DataInputStream(new java.io.ByteArrayInputStream(wire.toByteArray())));shot(c,"vip790-pvp-waiting");n.rewardWaitingMask=4;shot(c,"vip790-pvp-rewards-waiting");if(!n.waiting.rewardLabel(2).equals("Nhận quà")||!n.waiting.rewardLabel(0).equals("Đã xong"))throw new AssertionError("Every party member has a reward status label");
         }
+        n.roomKind=1;if(!n.results.returnOperation().equals("leave"))throw new AssertionError("Solo result exits to lobby");
+        c.economy.testCheats=true;c.returnMode=0;c.mode=9;c.cheatSelection=6;shot(c,"fix791-cheat");if(c.cheatOptions()!=7)throw new AssertionError("VIP cheat visible");
         c.stop();System.out.println("PASS VIP inventory, wing slot, shop locks/navigation, receipt drafts, null invite, 12 tier renders, independent cards and cache release at "+(320*scale)+"x"+(240*scale));System.exit(0);
     }
 }

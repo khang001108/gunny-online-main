@@ -82,7 +82,7 @@ class UpdaterChecks(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.args = argparse.Namespace(container="gunny-online", image="gunny-online:7.9.0", state_dir=Path(self.temp.name), sql_confirmed=True, build=False)
+        self.args = argparse.Namespace(container="gunny-online", image="gunny-online:7.9.1", state_dir=Path(self.temp.name), sql_confirmed=True, build=False)
         self.docker = FakeDocker()
         self.policy = patch.object(updater, "migration_status", return_value={"enabled": False, "offline_days": 90})
         self.preview = patch.object(updater, "preview_image")
@@ -215,11 +215,11 @@ class MigrationGateChecks(unittest.TestCase):
 
 
 class LiveImageGateChecks(unittest.TestCase):
-    def verify(self, health, version="7.9.0"):
+    def verify(self, health, version="7.9.1"):
         def reply(url, **kwargs):
             if url.endswith("/health"):
                 return io.BytesIO(json.dumps({"ok": True}).encode())
-            self.assertIn("-Online-790.jad", url)
+            self.assertIn("-Online-791.jad", url)
             return io.BytesIO(("MIDlet-Version: " + version + "\nGunny-Server-URL: socket://127.0.0.1:22122\n").encode())
         with patch.object(updater.urllib.request, "urlopen", side_effect=reply), patch.object(updater.socket, "create_connection", return_value=MagicMock()), patch.object(updater, "read_frame", return_value=json.dumps(health).encode()):
             updater.verify_endpoints(("127.0.0.1",8080),("127.0.0.1",22122))

@@ -486,8 +486,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         int age = POW_CUTIN_TIME - powCutinTicks;
         if (age < 30)
             return;
-        int x = powCutinX(), effectFrame = Math.min(19, (age - 30) * 20 / Math.max(1, POW_CUTIN_TIME - 42));
-        vip.back(vip.actorExp(powCutinActor),vip.actorWing(powCutinActor),x+40,150,0,true);
+        int x = VipRules.level(vip.actorExp(powCutinActor))>0?120:powCutinX(), effectFrame = Math.min(19, (age - 30) * 20 / Math.max(1, POW_CUTIN_TIME - 42));
+        vip.back(vip.actorExp(powCutinActor),-1,x+40,228,3,true);
         if (age >= 42 && powCutinTicks > 7)
             img(powCutin, x, 51);
     }
@@ -1078,12 +1078,12 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     int cheatOptions() {
-        if(onlineAccount())return 6;
+        if(onlineAccount())return 7;
         return returnMode == 1 && offlineDungeon.active && !game.over ? 5 : 4;
     }
 
     void drawCheats() {
-        if(onlineAccount()){panel(30,32,260,198);center("CHEAT TÀI KHOẢN TEST",160,42);String[] names={"FULL ĐÁ LV1-5 + BÙA","FULL CƯỜNG HÓA +15","FULL CẤP NHÂN VẬT","FULL TIỀN MUA SẮM","BẤT TỬ: "+(economy.testGod?"BẬT":"TẮT"),"QUA ẢI PHÓ BẢN"};for(int i=0;i<6;i++)button(names[i],40,63+i*25,240,23,cheatSelection==i);return;}
+        if(onlineAccount()){panel(30,32,260,198);center("CHEAT TÀI KHOẢN TEST",160,42);String[] names={"FULL ĐÁ LV1-5 + BÙA","FULL CƯỜNG HÓA +15","FULL CẤP NHÂN VẬT","FULL TIỀN MUA SẮM","BẤT TỬ: "+(economy.testGod?"BẬT":"TẮT"),"QUA ẢI PHÓ BẢN","+999 THẺ VIP 1-12 / FULL"};for(int i=0;i<7;i++)button(names[i],40,59+i*23,240,21,cheatSelection==i);return;}
         boolean canSkip = cheatOptions() == 5;
         panel(30, canSkip ? 22 : 42, 260, canSkip ? 214 : 189);
         center("CHEAT • TEST OFFLINE", 160, 50);
@@ -2782,7 +2782,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         }
         int x = u.x - cameraX, y = u.y - cameraY;
 
-        if(!(showingPowCutin()&&powCutinActor==index))vip.back(vip.actorExp(index),vip.actorWing(index),x,y,1,false);
+        if(!(showingPowCutin()&&powCutinActor==index))vip.back(0,vip.actorWing(index),x,y,1,false);
         if (u.rage >= 100)
             part(hudPowAura, frame / 3 % 5 * 64, 0, 64, 54, x - 32, y - 50, false);
         if(onlineBattle()&&net.actorWings[index])tribalArt.wings(x,y);
@@ -3042,6 +3042,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         if(offlineDungeon.active||onlineBattle()&&net.roomKind==3){int stage=offlineDungeon.active?offlineDungeon.stage:net.dungeonStage,kills=offlineDungeon.active?offlineDungeon.kills:net.dungeonKills,diff=offlineDungeon.active?offlineDungeon.difficulty:net.dungeonDifficulty;if(stage<3)pcText(stage==1?"Ải 1: "+kills+"/20":"Ải 2: Nữ Vương",72,32);pcText(dungeon.difficultyName(diff),193,32);}
         tribalArt.hud();
         int activeNpc = game.units[game.active].npc;
+        if(activeNpc==0)vip.back(vip.actorExp(game.active),vip.actorWing(game.active),14,58,1,false);
         if(activeNpc>=4)tribalArt.header(activeNpc);
         else if (activeNpc > 0 && activeNpc < npcHeader780.length) {
             if (npcHeader780[activeNpc] == null) {
@@ -4056,7 +4057,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             return;
         }
         if (mode == 9) {
-            if(onlineAccount()){if(y>=63&&y<213&&x>=40&&x<280){cheatSelection=(y-63)/25;cheat();}return;}
+            if(onlineAccount()){if(y>=59&&y<220&&x>=40&&x<280){cheatSelection=(y-59)/23;cheat();}return;}
             int options = cheatOptions();
             if (x >= 50 && x < 270 && y >= 78 && y < 78 + options * 30 && (y - 78) % 30 < 25) {
                 cheatSelection = (y - 78) / 30;

@@ -34,8 +34,8 @@ final class HomeScreen {
         }
         if (c.lobbySelection == 7) {
             if (forgeZoom == null) {
-                forgeZoom = NativeUi.fit(forge, 76 * c.s, 57 * c.s, 0);
-                forgeGlow = outline(forgeZoom);
+                forgeZoom = c.combatRoomArt("home791-forge-zoom");
+                forgeGlow = c.combatRoomArt("home791-forge-glow");
             }
             c.img(forgeGlow, 42, 39);
             c.img(forgeZoom, 45, 42);
@@ -43,8 +43,8 @@ final class HomeScreen {
             c.img(forge, 51, 51);
         if (c.lobbySelection == 6) {
             if (onlineZoom == null) {
-                onlineZoom = NativeUi.fit(online, 59 * c.s, 64 * c.s, 0);
-                onlineGlow = outline(onlineZoom);
+                onlineZoom = c.combatRoomArt("home791-online-zoom");
+                onlineGlow = c.combatRoomArt("home791-online-glow");
             }
             c.img(onlineGlow, 62, 99);
             c.img(onlineZoom, 65, 102);
@@ -89,20 +89,9 @@ final class HomeScreen {
         int pad = 3 * c.s, w = image.getWidth(), h = image.getHeight(), stride = w + pad * 2;
         int[] source = new int[w * h], pixels = new int[stride * (h + pad * 2)];
         image.getRGB(source, 0, w, 0, 0, w, h);
-        for (int y = 0; y < h; y++)
-            for (int x = 0; x < w; x++)
-                if ((source[y * w + x] >>> 24) > 96)
-                    for (int dy = -pad; dy <= pad; dy++)
-                        for (int dx = -pad; dx <= pad; dx++) {
-                            int distance = dx * dx + dy * dy;
-                            if (distance > pad * pad)
-                                continue;
-                            int color = distance <= c.s * c.s ? 0xfffff1a4
-                                    : distance <= 4 * c.s * c.s ? 0xffffce00 : 0x99ffb400;
-                            int p = (y + dy + pad) * stride + x + dx + pad;
-                            if ((pixels[p] >>> 24) < (color >>> 24) || color == 0xfffff1a4)
-                                pixels[p] = color;
-                        }
+        for(int y=0;y<h;y++)for(int x=0;x<w;x++)if((source[y*w+x]>>>24)>96&&(x==0||y==0||x==w-1||y==h-1||(source[y*w+x-1]>>>24)<=96||(source[y*w+x+1]>>>24)<=96||(source[(y-1)*w+x]>>>24)<=96||(source[(y+1)*w+x]>>>24)<=96)){
+            int step=Math.max(1,c.s);for(int dy=-pad;dy<=pad;dy+=step)for(int dx=-pad;dx<=pad;dx+=step)if(dx*dx+dy*dy<=pad*pad)pixels[(y+dy+pad)*stride+x+dx+pad]=0xffffce00;
+        }
         return Image.createRGBImage(pixels, stride, h + pad * 2, true);
     }
 

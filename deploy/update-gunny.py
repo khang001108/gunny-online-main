@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Interactive Docker updater for Gunny 7.9.0. Never executes a SQL migration."""
+"""Interactive Docker updater for Gunny 7.9.1. Never executes a SQL migration."""
 import argparse
 import contextlib
 import datetime
@@ -19,7 +19,7 @@ import urllib.request
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "7.9.0"
+VERSION = "7.9.1"
 PROJECT = "mnquwasxacifkktmckdv"
 MIGRATION = ROOT / "supabase/migrations/202611120001_virtual_accounts_retention.sql"
 EXPANSION = ROOT / "supabase/migrations/202611130001_forge_dungeon.sql"
@@ -111,7 +111,7 @@ def migration_status(env):
             with opener.open(req, timeout=15) as response:
                 return json.load(response)
         except (urllib.error.URLError, ValueError, OSError):
-            raise UpdateError("Chưa xác minh được SQL hiện tại gồm VIP 7.9.0. Tự chạy file migration trong Supabase SQL Editor rồi thử lại. Tool không chạy SQL.") from None
+            raise UpdateError("Chưa xác minh được SQL hiện tại gồm VIP 7.9.1. Tự chạy file migration trong Supabase SQL Editor rồi thử lại. Tool không chạy SQL.") from None
 
     policy = request("/rest/v1/rpc/gunny_admin", {"p_op": "retention-policy", "p_data": {}})
     if not isinstance(policy, dict) or type(policy.get("enabled")) is not bool or type(policy.get("offline_days")) is not int or not 1 <= policy["offline_days"] <= 3650:
@@ -330,7 +330,7 @@ def update(docker, args):
     if not old["State"]["Running"]:
         raise UpdateError("Container hiện tại đang dừng; kiểm tra nguyên nhân trước khi cập nhật.")
     policy = migration_status(environment(old))
-    print("SQL hiện tại gồm VIP 7.9.0 hợp lệ. Hạn: " + str(policy["offline_days"]) + " ngày; tự xoá: " + ("bật" if policy["enabled"] else "tắt"), flush=True)
+    print("SQL hiện tại gồm VIP 7.9.1 hợp lệ. Hạn: " + str(policy["offline_days"]) + " ngày; tự xoá: " + ("bật" if policy["enabled"] else "tắt"), flush=True)
     image = docker.image(args.image, missing_ok=True)
     if args.build or image is None:
         docker.build(args.image)
@@ -404,7 +404,7 @@ def check(docker, args):
     print("Image " + args.image + ": " + ("đã có" if image else "chưa có; tool sẽ build khi cập nhật"))
     validate_container(old)
     policy = migration_status(environment(old))
-    print("SQL hiện tại gồm VIP 7.9.0 đã có: " + str(policy["offline_days"]) + " ngày, tự xoá " + ("bật" if policy["enabled"] else "tắt"))
+    print("SQL hiện tại gồm VIP 7.9.1 đã có: " + str(policy["offline_days"]) + " ngày, tự xoá " + ("bật" if policy["enabled"] else "tắt"))
     print("Có thể chọn Cập nhật. Không có container hay dữ liệu nào vừa bị thay đổi.")
 
 

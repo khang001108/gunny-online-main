@@ -135,7 +135,7 @@ final class ShopScreen {
         c.bag.characterFor(trialMask, trialCustom, trialSkin, trialLook, trialWeapon);
         if (tab < 2)
             c.pcCenter(c.pcShort(name(kind, item(selected)), 68), 77, 182);
-        for(int i=0;i<5;i++){int value=TAB_VALUES[i],x=151+i*32;if(value==4)c.ui.button("VIP",x,38,31,20,tab==4);else c.img(mainTabs[value==3?2:value==2?3:value][tab==value?1:0],x,38);}
+        for(int i=0;i<5;i++){int value=TAB_VALUES[i],x=151+i*32;if(value==4){c.img(mainTabs[2][tab==4?1:0],x,38);c.rect(x+3,42,25,12,tab==4?0x9e2911:0x80601d);c.pcCenter("VIP",x+15,45);}else c.img(mainTabs[value==3?2:value==2?3:value][tab==value?1:0],x,38);}
         if(tab==4){c.vip.drawShop();}
         else if (tab == 2) {
             c.exchangePanel.draw();
@@ -187,7 +187,8 @@ final class ShopScreen {
                 || focus >= 8 && focus <= 11;
         if (!tabFocus && (tab != 3 || focus >= 6) && (tab != 2 || focus != 17))
             c.drawItemSelection(b[0], b[1], b[2], b[3], true);
-        if(tab==3&&c.stoneShop.infoType>=0)c.stoneShop.drawInfo(c.stoneShop.infoType,box(c.stoneShop.focus%6));
+        if(tab==4&&c.vip.info)c.vip.drawInfo();
+        else if(tab==3&&c.stoneShop.infoType>=0)c.stoneShop.drawInfo(c.stoneShop.infoType,box(c.stoneShop.focus%6));
         else if (c.bag.info)
             c.bag.drawInfo();
         else if (c.toastTicks > 0) {
