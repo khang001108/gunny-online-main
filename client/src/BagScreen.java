@@ -145,7 +145,7 @@ final class BagScreen {
         if(c.gifts.vipUntil()>System.currentTimeMillis()/1000)c.pcText("VIP "+((c.gifts.vipUntil()-System.currentTimeMillis()/1000+3599)/3600)+"h",76,17);
 
         c.img(close, 289, 12);
-        c.pcCenter(c.pcShort(c.playerName, 62), 46, 46);
+        c.pcCenter(c.pcShort(c.playerName, 110), 77, 46);
         character();
         c.img(input, 153, 43);
         c.pcText(c.pcShort(heldSource >= 0 ? "OK: đặt • 0: mặc • R: huỷ"
@@ -154,7 +154,7 @@ final class BagScreen {
             int x = 154 + i % 5 * 26, y = 64 + i / 5 * 26;
             c.img(cell, x, y);
             int id = page * PAGE + i;
-            if(id<count&&kinds[id]==VIP_KIND){c.img(c.vip.cardIcon(items[id]),x+1,y+1);c.pcText(items[id]==12?"MAX":"V"+(items[id]+1),x+1,y);c.pcText(GiftBag.quantity(c.vip.cards[items[id]]),x+1,y+16);}
+            if(id<count&&kinds[id]==VIP_KIND){c.img(c.vip.cardIcon(items[id]),x+1,y+1);c.pcText(items[id]==12?"MAX":items[id]>=9?"EXP":"V"+(items[id]+1),x+1,y);c.pcText(GiftBag.quantity(c.vip.cards[items[id]]),x+1,y+16);}
             else if(id<count&&kinds[id]==WING_KIND){c.img(c.vip.wingIcon(items[id]),x+1,y+1);if(c.vip.wing()==items[id])c.pcText("Đeo",x+1,y+16);}
             else if(id<count&&kinds[id]==GIFT_KIND){c.img(c.gifts.icon(items[id]),x+1,y+1);c.pcText(items[id]==0?"Lv"+c.gifts.value(0):GiftBag.quantity(c.gifts.value(items[id])),x+1,y+16);
             }else if (id < count && kinds[id] == STONE_KIND) {
@@ -253,7 +253,7 @@ final class BagScreen {
     }
 
     void drawInfo() {
-        if(infoKind==VIP_KIND){c.tooltip.goods(VipRules.cardName(infoItem),"Thẻ VIP",infoItem==12?"Dùng: đạt ngay VIP 12. Vật phẩm chỉ do quản trị cấp.":"Dùng: +"+((infoItem+1)*100)+" EXP VIP. Tiêu hao 1 thẻ.",box(focus));return;}
+        if(infoKind==VIP_KIND){c.tooltip.goods(VipRules.cardName(infoItem),"Thẻ VIP",infoItem==12?"Dùng: đạt ngay VIP 9. Vật phẩm chỉ do quản trị cấp.":"Dùng: +"+((infoItem+1)*100)+" EXP VIP. Tiêu hao 1 thẻ.",box(focus));return;}
         if(infoKind==WING_KIND){if(infoItem<0)return;c.tooltip.goods(c.vip.wingName(infoItem),"Cánh",infoItem==5?"Cánh thưởng phó bản. Trang bị vĩnh viễn.":"+"+VipRules.WING_HP[infoItem]+" HP khi đeo. Cần VIP "+VipRules.WING_VIP[infoItem]+" để mua. Vĩnh viễn.",box(focus));return;}
 
         if(infoKind==GIFT_KIND){String desc=infoItem==0?"Thưởng: hòm Lv"+(c.gifts.value(0)+1)+", xu, đá Lv1 x50-100":infoItem==1?"Thưởng: đá Lv2 x20-70. Thẻ VIP 1 ngày: 10%.":"Kích hoạt VIP 1 ngày. Cộng dồn thời hạn.";c.tooltip.goods(c.gifts.name(infoItem),infoItem==0?"Hòm Lv"+c.gifts.value(0):"Quà",desc,box(focus));return;}

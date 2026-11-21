@@ -1,6 +1,6 @@
 services:
   gunny:
-    image: ${GUNNY_IMAGE:-gunny-online:7.9.1}
+    image: ${GUNNY_IMAGE:-gunny-online:7.9.2}
     restart: unless-stopped
     ports:
       - "127.0.0.1:8080:8080/tcp"

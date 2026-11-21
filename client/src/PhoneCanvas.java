@@ -487,7 +487,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         if (age < 30)
             return;
         int x = VipRules.level(vip.actorExp(powCutinActor))>0?120:powCutinX(), effectFrame = Math.min(19, (age - 30) * 20 / Math.max(1, POW_CUTIN_TIME - 42));
-        vip.back(vip.actorExp(powCutinActor),-1,x+40,228,3,true);
+        vip.back(vip.actorExp(powCutinActor),-1,x+40,192,3,true);
         if (age >= 42 && powCutinTicks > 7)
             img(powCutin, x, 51);
     }
@@ -1083,7 +1083,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void drawCheats() {
-        if(onlineAccount()){panel(30,32,260,198);center("CHEAT TÀI KHOẢN TEST",160,42);String[] names={"FULL ĐÁ LV1-5 + BÙA","FULL CƯỜNG HÓA +15","FULL CẤP NHÂN VẬT","FULL TIỀN MUA SẮM","BẤT TỬ: "+(economy.testGod?"BẬT":"TẮT"),"QUA ẢI PHÓ BẢN","+999 THẺ VIP 1-12 / FULL"};for(int i=0;i<7;i++)button(names[i],40,59+i*23,240,21,cheatSelection==i);return;}
+        if(onlineAccount()){panel(30,32,260,198);center("CHEAT TÀI KHOẢN TEST",160,42);String[] names={"FULL ĐÁ LV1-5 + BÙA","FULL CƯỜNG HÓA +15","FULL CẤP NHÂN VẬT","FULL TIỀN MUA SẮM","BẤT TỬ: "+(economy.testGod?"BẬT":"TẮT"),"QUA ẢI PHÓ BẢN","+999 THẺ VIP / EXP / FULL"};for(int i=0;i<7;i++)button(names[i],40,59+i*23,240,21,cheatSelection==i);return;}
         boolean canSkip = cheatOptions() == 5;
         panel(30, canSkip ? 22 : 42, 260, canSkip ? 214 : 189);
         center("CHEAT • TEST OFFLINE", 160, 50);
@@ -2782,10 +2782,10 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         }
         int x = u.x - cameraX, y = u.y - cameraY;
 
-        if(!(showingPowCutin()&&powCutinActor==index))vip.back(0,vip.actorWing(index),x,y,1,false);
+        if(!(showingPowCutin()&&powCutinActor==index))vip.battleWing(index,false);
         if (u.rage >= 100)
             part(hudPowAura, frame / 3 % 5 * 64, 0, 64, 54, x - 32, y - 50, false);
-        if(onlineBattle()&&net.actorWings[index])tribalArt.wings(x,y);
+
         boolean shooting = attackPose(index) || freezeHolding(index);
         int anim = unitAnimation(index);
         oval(x - 10, y - 3, 22, 5, 0x453b35);
@@ -2814,6 +2814,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 oval(x + cs * 17 / 1024 - 3, y - 12 - sn * 17 / 1024 - 3, 6, 6, u.weapon == 9 ? 0x8ceaff : 0xffdb85);
             }
         }
+        if(!(showingPowCutin()&&powCutinActor==index))vip.battleWing(index,true);
         if (u.freezeTurns > 0)
             loadout.frost(x, y);
         if (index == game.active && !game.busy()) {

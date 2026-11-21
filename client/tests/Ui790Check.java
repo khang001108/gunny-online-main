@@ -62,14 +62,14 @@ public class Ui790Check {
         c.mode=0;n.social.opened=n.social.inviting=true;n.social.friendsPopup=false;n.social.tab=0;n.social.count=2;n.social.names[0]=null;n.social.names[1]="Kenji";n.social.online[1]=true;shot(c,"vip790-invite");
         if(c.pcWidth(null)!=0||!c.pcShort(null,20).equals(""))throw new AssertionError("Null invite names safe");n.social.opened=n.social.inviting=false;
         n.social.viewing=true;n.social.infoName="Kenji";n.social.infoVip=VipRules.TOTAL;n.social.infoWing=3;n.social.infoExp=c.experience;n.social.infoHero=c.standingPreview(c.gender,c.skin,true,64,80);n.social.opened=true;shot(c,"vip790-friend");n.social.opened=false;n.social.viewing=false;
-        c.mode=8;c.vip.equipped=4;c.vip.owned=31;int cumulative=0;for(int i=0;i<12;i++){cumulative+=VipRules.COST[i];c.vip.experience=cumulative;if(VipRules.level(cumulative)!=i+1)throw new AssertionError("VIP tier "+i);shot(c,"vip790-tier-"+(i+1));}
+        c.mode=8;c.vip.equipped=4;c.vip.owned=31;int cumulative=0;for(int i=0;i<9;i++){cumulative+=VipRules.COST[i];c.vip.experience=cumulative;if(VipRules.level(cumulative)!=i+1)throw new AssertionError("VIP tier "+i);shot(c,"vip790-tier-"+(i+1));}
         c.vip.release();for(int i=0;i<3;i++)for(int j=0;j<3;j++)if(c.vip.rings[i][j]!=null)throw new AssertionError("Ring release");
         if(c.vip.wings[4][0]!=null)throw new AssertionError("Wing release");
         n.inBattle=true;n.roomKind=0;n.myActor=0;n.settled=n.cardsOpen=true;n.resultsReady=false;c.game.over=true;c.game.winner=0;n.results.reset();n.results.syncStage();
         if(n.results.stage!=1)throw new AssertionError("Other player's ACK does not block own cards");n.results.claimed=true;n.results.activate();
         if(!n.pending.equals("returnroom"))throw new AssertionError("Own claim can return before deck reveal");n.pending="";
         n.inBattle=false;c.vip.resetAccount();if(c.vip.exp()!=0||c.vip.cards[0]!=0||c.vip.wing()!=-1)throw new AssertionError("New account clears old VIP state");
-        n.inBattle=false;c.vip.experience=VipRules.TOTAL;c.vip.equipped=4;c.wornMask=3;c.equipped=0;c.owned=1;c.beginMatch(0);n.inBattle=true;n.count=2;for(int i=0;i<2;i++){n.names[i]="Player "+i;n.present[i]=true;n.wornMasks[i]=3;}n.actorVip[0]=VipRules.TOTAL;n.actorWing[0]=4;c.mode=1;c.game.units[0].x=180;c.game.units[0].y=160;c.game.active=0;c.frame=95;shot(c,"vip790-combat");
+        n.inBattle=false;c.vip.experience=VipRules.TOTAL;c.vip.equipped=4;c.wornMask=3;c.equipped=0;c.owned=1;c.beginMatch(0);n.inBattle=true;n.count=2;for(int i=0;i<2;i++){n.names[i]="Player "+i;n.present[i]=true;n.wornMasks[i]=3;}n.actorVip[0]=VipRules.TOTAL;n.actorWing[0]=4;c.actorStand[0]=n.buildStanding(0,32,40);c.actorStand[1]=n.buildStanding(1,32,40);c.mode=1;c.game.units[0].x=180;c.game.units[0].y=160;c.game.active=0;c.frame=95;shot(c,"vip790-combat");
         c.game.pow=true;c.startPowCutin();c.powCutinTicks=c.POW_CUTIN_TIME-50;shot(c,"vip790-pow-vip");
         c.vip.experience=0;n.actorVip[0]=0;shot(c,"vip790-pow-zero");c.powCutinTicks=0;
         n.inBattle=false;c.openLobby();n.logged=true;c.vip.experience=VipRules.TOTAL;c.vip.equipped=4;c.mode=8;c.bag.open();
@@ -95,6 +95,6 @@ public class Ui790Check {
         }
         n.roomKind=1;if(!n.results.returnOperation().equals("leave"))throw new AssertionError("Solo result exits to lobby");
         c.economy.testCheats=true;c.returnMode=0;c.mode=9;c.cheatSelection=6;shot(c,"fix791-cheat");if(c.cheatOptions()!=7)throw new AssertionError("VIP cheat visible");
-        c.stop();System.out.println("PASS VIP inventory, wing slot, shop locks/navigation, receipt drafts, null invite, 12 tier renders, independent cards and cache release at "+(320*scale)+"x"+(240*scale));System.exit(0);
+        c.stop();System.out.println("PASS VIP inventory, wing slot, shop locks/navigation, receipt drafts, null invite, 9 tier renders, independent cards and cache release at "+(320*scale)+"x"+(240*scale));System.exit(0);
     }
 }

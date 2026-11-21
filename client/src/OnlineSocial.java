@@ -76,15 +76,15 @@ final class OnlineSocial implements CommandListener {
     }
 
     int[] infoBox(int n) {
-        int[] b = c.bag.box(31 + n);
+        int[] b = c.bag.box(n==7?41:31+n);
         return new int[] { b[0] + 84, b[1], b[2], b[3] };
     }
 
     void infoMove(int dir) {
         int[] a = infoBox(infoFocus);
         int best = infoFocus, score = 999999;
-        for (int n = 0; n < 7; n++)
-            if (n != infoFocus && infoIcons[BagScreen.WORN[n]] != null) {
+        for (int n = 0; n < 8; n++)
+            if (n != infoFocus && infoHas(n)) {
                 int[] b = infoBox(n);
                 int dx = b[0] * 2 + b[2] - a[0] * 2 - a[2], dy = b[1] * 2 + b[3] - a[1] * 2 - a[3],
                         along = dir == 1 ? -dx : dir == 2 ? dx : dir == 4 ? -dy : dy,
@@ -101,8 +101,9 @@ final class OnlineSocial implements CommandListener {
         itemInfo = false;
     }
 
+    boolean infoHas(int n){return n==7?infoWing>=0:infoIcons[BagScreen.WORN[n]]!=null;}
     void infoToggle() {
-        if (infoIcons[BagScreen.WORN[infoFocus]] != null)
+        if (infoHas(infoFocus))
             itemInfo = !itemInfo;
     }
 
@@ -128,13 +129,20 @@ final class OnlineSocial implements CommandListener {
             c.img(c.bag.slot, b[0], b[1]);
             if (infoIcons[k] != null)
                 c.img(infoIcons[k], b[0] + 1, b[1] + 1);
+            else c.pcCenter(k==0?"Vũ khí":k==1?"Bộ":k==2?"Áo":k==3?"Nón":k==4?"Tóc":k==5?"Mặt":"Kính",b[0]+12,b[1]+10);
         }
-        c.drawLevel(infoExp,128,139);c.pcText(Progression.level(infoExp)==70?"EXP MAX":"EXP "+Progression.within(infoExp)+"/"+Progression.limit(infoExp),155,141);
-        if(infoStats==null)infoStats=NativeUi.fit(c.combatRoomArt("item752-tooltip"),107*c.s,43*c.s,4*c.s);
-        c.img(infoStats,111,155);c.pcText("Xếp hạng: "+infoRank,117,160);c.pcText("Thắng: "+infoWins,117,172);c.pcText("LC: "+(Progression.power(infoMask,infoWeapon,infoExp)+infoForge[0]+infoForge[1]+infoForge[2]),117,184);
+        c.img(c.bag.slot,100,168);if(infoWing>=0)c.img(c.vip.wingIcon(infoWing),101,169);else c.pcCenter("Cánh",112,177);
+        c.vip.badge(infoVip,172,54);c.pcCenter(VipRules.need(infoVip)==0?"MAX":VipRules.within(infoVip)+"/"+VipRules.need(infoVip),182,69);
+        c.drawLevel(infoExp,128,130);c.pcText(Progression.level(infoExp)==70?"EXP MAX":"EXP "+Progression.within(infoExp)+"/"+Progression.limit(infoExp),156,140);
+        if(infoStats==null)infoStats=NativeUi.fit(c.combatRoomArt("item752-tooltip"),99*c.s,42*c.s,4*c.s);
+        c.img(infoStats,125,152);String[] labels={"Công","Thủ","May"};for(int i=0;i<3;i++)c.pcText(labels[i]+" "+Progression.bonus(infoExp)+" (+"+infoForge[i]+")",132,156+i*11);
+        c.img(c.bag.female,101,203);c.img(c.bag.male,127,203);
+        int hp=Progression.baseHp(infoExp)+infoForge[1]+VipRules.hp(infoWing),energy=240+Progression.bonus(infoExp)+infoForge[2];
+        for(int i=0;i<2;i++){int y=203+i*8;c.rect(154,y,65,7,0x35271d);c.rect(155,y+1,63,5,i==0?0xd63832:0x3bba53);c.pcText((i==0?"HP "+hp:"TL "+energy),156,y);}
         int[] b = infoBox(infoFocus);
-        if (infoIcons[BagScreen.WORN[infoFocus]] != null)
+        if (infoHas(infoFocus))
             c.drawItemSelection(b[0], b[1], b[2], b[3], itemInfo);
+        if(itemInfo&&infoFocus==7){c.tooltip.goods(c.vip.wingName(infoWing),"Cánh","+"+VipRules.hp(infoWing)+" HP khi trang bị.",infoBox(7));return;}
         if (itemInfo) {
             int k = BagScreen.WORN[infoFocus], item = k == 0 ? infoWeapon : k == 1 ? infoSkin : infoLook[k - 2];
             c.tooltip.draw(k,item,b,"Đang trang bị",infoSex,infoRanks[ForgeRules.index(infoSex,k,item)]);
@@ -722,6 +730,7 @@ final class OnlineSocial implements CommandListener {
             return;
         }
         if (viewing) {
+            int[] wingBox=infoBox(7);if(infoWing>=0&&x>=wingBox[0]&&x<wingBox[0]+wingBox[2]&&y>=wingBox[1]&&y<wingBox[1]+wingBox[3]){infoFocus=7;itemInfo=!itemInfo;return;}
             if (x >= 209 && x < 231 && y >= 12 && y < 33) {
                 closeInfo();
                 return;
