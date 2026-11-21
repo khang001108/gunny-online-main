@@ -1,0 +1,27 @@
+import java.io.*;import java.net.*;import java.net.http.*;import java.nio.file.*;import java.util.*;
+public class Online785Check {
+ static int checks;static void check(boolean value,String message){if(!value)throw new AssertionError(message);checks++;}
+ static byte[] wire(int action,boolean enabled){return new byte[]{(byte)action,(byte)(enabled?1:0)};}
+ static void cheat(GunnyServer server,GunnyServer.Session user,int action,boolean enabled)throws Exception{TestCheats.handle(server,user,new DataInputStream(new ByteArrayInputStream(wire(action,enabled))),new DataOutputStream(new ByteArrayOutputStream()));}
+ static int[] stones(CloudStore.Profile p){return new int[]{p.stones,p.craftStones[0],p.craftStones[1],p.craftStones[2],p.craftStones[3]};}
+ public static void main(String[] args)throws Exception{
+  for(int d=0;d<3;d++){int[] counts=new int[5];for(int roll=0;roll<100;roll++)counts[StoneDrops.grade(d,roll)-1]++;check(Arrays.equals(counts,StoneDrops.WEIGHTS[d]),"Exact stone distribution");}
+  var store=new CloudStore.Memory();var user=Expansion780Check.session(store,"CheatOwner",20);var other=Expansion780Check.session(store,"NoCheat",20);
+  try(var server=new GunnyServer(new InetSocketAddress("127.0.0.1",0),Path.of("backend/assets"),store,new Admin750Check.Records(store),Admin750Check.PASSWORD,true)){
+   server.clock.shutdownNow();server.admin.tasks.shutdownNow();server.sessions.put("owner",user);server.sessions.put("other",other);
+   try{cheat(server,user,0,false);throw new AssertionError("Unauthorized cheat");}catch(IllegalArgumentException expected){checks++;}
+   String base="http://127.0.0.1:"+server.port();var manager=new CookieManager();manager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);var http=HttpClient.newBuilder().cookieHandler(manager).build();
+   check(http.send(HttpRequest.newBuilder(URI.create(base+"/admin/api/test-cheats")).header("Origin",base).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString("{}")).build(),HttpResponse.BodyHandlers.ofString()).statusCode()==401,"Unauthenticated admin request denied");
+   var login=HttpRequest.newBuilder(URI.create(base+"/admin/api/login")).header("Origin",base).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(Json.write(Map.of("password",Admin750Check.PASSWORD)))).build();var loginReply=http.send(login,HttpResponse.BodyHandlers.ofString());check(loginReply.statusCode()==200,"Admin login");String cookie=loginReply.headers().firstValue("Set-Cookie").orElseThrow().split(";")[0];http=HttpClient.newHttpClient();
+   var enable=HttpRequest.newBuilder(URI.create(base+"/admin/api/test-cheats")).header("Cookie",cookie).header("Origin",base).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(Json.write(Map.of("id",user.id,"enabled",true)))).build();var response=http.send(enable,HttpResponse.BodyHandlers.ofString());check(response.statusCode()==200&&user.profile.testCheats&&!other.profile.testCheats,"Admin enables one account only");
+   for(int action=0;action<4;action++)cheat(server,user,action,false);
+   check(Arrays.stream(stones(user.profile)).allMatch(n->n==999999),"Full stones 1-5");check(user.profile.forgeLevels[0]==15&&user.profile.forgeLevels[1]==0,"Only owned equipment upgraded");check(Progression.level(user.profile.experience)==70&&user.profile.shoppingMoney==999999,"Full level and shopping wallet");
+   cheat(server,user,4,true);cheat(server,user,4,true);check(user.profile.testGod,"God enable retry stays enabled");
+   Battle b=TribalCheck.battle(1,0);b.units[0].god=true;b.units[0].hp=0;b.check();check(!b.over&&b.units[0].hp==b.units[0].maxHp,"God survives lethal and direct NPC damage");
+   var room=server.new Room(user,6,2,-1,true);room.kind=3;room.dungeonStage=3;room.ground=room.newGround(8);room.battle=b;room.phase=1;room.shared=false;user.room=room.id;room.participants.add(Map.of("id",user.id,"team",0));server.rooms.put(room.id,room);room.chunkTurn=b.turn;room.chunks.add(new byte[4]);cheat(server,user,5,false);check(room.battle.over&&room.battle.winner==0&&room.phase==2,"Skip uses real result flow");check(room.chunkTurn==-1&&room.chunks.isEmpty(),"Skip cancels old playback");long deadline=System.currentTimeMillis()+2000;while(!room.settled&&System.currentTimeMillis()<deadline)Thread.sleep(10);check(room.settled,"Skipped stage persists before rewards");int[] skipped=TribalDungeon.claim(server,room,user.id,0,0);check(skipped[2]>0,"Skipped stage can award a real card");
+   store.testCheat(user.id,6,false);check(!user.profile.testGod,"Revocation removes invincibility");try{cheat(server,user,3,false);throw new AssertionError("Revoked cheat");}catch(IllegalArgumentException expected){checks++;}
+   other.profile.dungeonClear=true;other.profile.stones=999999;var players=List.<Map<String,Object>>of(Map.of("id",other.id,"team",0));for(int d=0;d<3;d++){String match=UUID.randomUUID().toString();store.finishAntStage(match,0,players,d);var first=store.claimDungeon(match,other.id,0,0,d);var before=stones(other.profile);var again=store.claimDungeon(match,other.id,0,0,d);check(other.profile.stones==999999,"Capped Lv1 balance preserved");check(first[4]>=1&&first[4]<=5&&Arrays.equals(before,stones(other.profile))&&Arrays.equals(first,again),"Ant grade receipt stable on retry");}
+  }
+  System.out.println("PASS: "+checks+" account cheat, admin authorization and stone-grade checks");
+ }
+}

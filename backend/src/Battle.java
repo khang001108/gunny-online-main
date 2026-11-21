@@ -56,7 +56,7 @@ final class Battle {
     static final int[] ITEM_COST={50,150,170,150,120,120};
     static final String[] ITEM_NAMES={"Tàng hình","Đạn băng","Hồi máu nhóm","Tàng hình nhóm","Dẫn đường","Kích nộ"};
     static boolean validKit(int[] kit){return kit!=null&&kit.length==3&&kit[0]>=0&&kit[0]<6&&kit[1]>=0&&kit[1]<6&&kit[2]>=0&&kit[2]<6&&kit[0]!=kit[1]&&kit[0]!=kit[2]&&kit[1]!=kit[2];}
-    static final class Unit {final int[] weaponForge=new int[10];int forgeWeaponBonus;int npc;int maxHp=MAXHP,maxEnergy=240,attackBonus,defense,luck,experience,forgeAttack,forgeDefense,forgeLuck,wornMask=3;boolean statsEnabled;final int[] kit={0,1,2};int itemUsed,frozen,freezeTurns,invisible,flyCooldown;boolean assist,flightAim;int team,botStyle=-1;boolean human;int x,y,vy,hp=MAXHP,energy=240,rage,angle=45,power=60,face=1,walk,weapon,attackTicks,slope,heals=5,deathX,deathY,lastPower=-1,pendingPower=-1,flashTicks,landingTicks,lastBuff;boolean dead;}
+    static final class Unit {final int[] weaponForge=new int[10];int forgeWeaponBonus;int npc;int maxHp=MAXHP,maxEnergy=240,attackBonus,defense,luck,experience,forgeAttack,forgeDefense,forgeLuck,wornMask=3;boolean god,statsEnabled;final int[] kit={0,1,2};int itemUsed,frozen,freezeTurns,invisible,flyCooldown;boolean assist,flightAim;int team,botStyle=-1;boolean human;int x,y,vy,hp=MAXHP,energy=240,rage,angle=45,power=60,face=1,walk,weapon,attackTicks,slope,heals=5,deathX,deathY,lastPower=-1,pendingPower=-1,flashTicks,landingTicks,lastBuff;boolean dead;}
     static final class Ball {int x,y,vx,vy,owner,age,damage,radius,weapon;boolean guided,freeze,fly,homing,powered;}
     static final class Blast {boolean freeze;int x,y,radius,time,damage,owner,weapon;}
     Battle(Ground ground){this.ground=ground;for(int i=0;i<units.length;i++)units[i]=new Unit();}
@@ -65,7 +65,7 @@ final class Battle {
     void start(boolean two){
         explicitHumans=false;deferNext=pendingNext=false;teams=false;unitCount=2;active=0;turn=1;over=false;hotseat=two;winner=-1;ballCount=blastCount=bursts=settle=trailCount=0;
         dungeonStage=queenShots=0;lastDungeonAlly=4;
-        for(int i=0;i<units.length;i++){damage[i]=kills[i]=0;Unit u=units[i];u.itemUsed=u.frozen=u.freezeTurns=u.invisible=u.flyCooldown=u.hp=u.npc=0;u.dead=false;u.assist=false;u.kit[0]=0;u.kit[1]=1;u.kit[2]=2;}damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rollWind();lastWind=0;countdown=turnLimit;botWait=0;selectedWeapon=0;
+        for(int i=0;i<units.length;i++){damage[i]=kills[i]=0;Unit u=units[i];u.itemUsed=u.frozen=u.freezeTurns=u.invisible=u.flyCooldown=u.hp=u.npc=0;u.dead=false;u.god=false;u.assist=false;u.kit[0]=0;u.kit[1]=1;u.kit[2]=2;}damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rollWind();lastWind=0;countdown=turnLimit;botWait=0;selectedWeapon=0;
         for(int i=0;i<unitCount;i++){Unit u=units[i];for(int k=0;k<10;k++)u.weaponForge[k]=0;u.forgeWeaponBonus=0;u.npc=0;u.botStyle=-1;u.x=spawnX(i,2);u.y=ground.surface(u.x,35);u.vy=0;u.maxHp=MAXHP;u.maxEnergy=240;u.attackBonus=u.defense=u.luck=u.experience=u.forgeAttack=u.forgeDefense=u.forgeLuck=0;u.statsEnabled=false;u.hp=MAXHP;u.energy=240;u.rage=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.face=i==0?1:-1;u.walk=0;u.attackTicks=0;u.slope=0;u.heals=5;u.flashTicks=u.landingTicks=0;u.dead=false;u.deathX=u.deathY=0;refreshAim(u);}
         clear();
     }
@@ -191,7 +191,7 @@ final class Battle {
             Unit u=units[n];if(u.hp<=0)continue;
             if(!ground.solid(u.x-2,u.y+1)&&!ground.solid(u.x+2,u.y+1)){
                 u.vy+=44;int dy=Math.max(1,u.vy/256),surface=ground.surface(u.x,u.y+1);
-                u.y=Math.min(surface,u.y+dy);if(u.y==surface)u.vy=0;if(u.y>H+20)u.hp=0;
+                u.y=Math.min(surface,u.y+dy);if(u.y==surface)u.vy=0;if(u.y>H+20){if(u.god){u.x=spawnX(n,unitCount>6?6:unitCount);u.y=ground.surface(u.x,5);u.vy=0;}else u.hp=0;}
             }else u.vy=0;
             refreshAim(u);
         }
@@ -271,6 +271,7 @@ final class Battle {
             if(u.hp>0&&dist<r*r){
                 int damage=b.damage*(100-(int)Math.sqrt(dist)*65/r)/100;
                 if(TribalRules.active(this)&&u.npc==TribalRules.RAGE)damage=damage*100/(100+u.defense/8);
+                if(u.god)damage=0;
                 if(lightBotDamage(b.owner,i))damage=Math.min(60,Math.max(1,damage/10));
                 if(u.freezeTurns>0){u.freezeTurns=u.frozen=0;damage=damage/2;}
                 int received=Math.min(u.hp,damage);u.hp=Math.max(0,u.hp-damage);
@@ -296,7 +297,7 @@ final class Battle {
         }
         return false;
     }
-    void check(){if(TribalRules.active(this)){if(!over)TribalRules.check(this);return;}boolean left=false,right=false;for(int i=0;i<unitCount;i++){Unit u=units[i];if(u.hp<=0&&!u.dead&&(dungeonStage==0||u.maxHp>0)){u.dead=true;u.deathX=clamp(u.x,12,W-12);u.deathY=clamp(u.y,40,H-4);}if(u.hp>0){if((teams?u.team:i)==0)left=true;else right=true;}}if(dungeonStage==2&&units[1].hp<=0){if(!AntCaveRules.dying(this)&&!over){ballCount=bursts=settle=0;charging=pendingNext=false;botPhase=AntCaveRules.QUEEN_DEATH;}return;}if(!left||!right){finishPower();over=true;winner=!left?(!right?2:1):0;charging=false;winSerial++;}}
+    void check(){for(int i=0;i<unitCount;i++)if(units[i].god)units[i].hp=units[i].maxHp;if(TribalRules.active(this)){if(!over)TribalRules.check(this);return;}boolean left=false,right=false;for(int i=0;i<unitCount;i++){Unit u=units[i];if(u.hp<=0&&!u.dead&&(dungeonStage==0||u.maxHp>0)){u.dead=true;u.deathX=clamp(u.x,12,W-12);u.deathY=clamp(u.y,40,H-4);}if(u.hp>0){if((teams?u.team:i)==0)left=true;else right=true;}}if(dungeonStage==2&&units[1].hp<=0){if(!AntCaveRules.dying(this)&&!over){ballCount=bursts=settle=0;charging=pendingNext=false;botPhase=AntCaveRules.QUEEN_DEATH;}return;}if(!left||!right){finishPower();over=true;winner=!left?(!right?2:1):0;charging=false;winSerial++;}}
     void finishPower(){Unit u=units[active];if(u.pendingPower>=0){u.lastPower=u.pendingPower;u.pendingPower=-1;}}
     void next(){finishPower();check();if(over)return;if(deferNext){pendingNext=true;charging=false;return;}Unit previous=units[active];if(previous.invisible>0)previous.invisible--;if(previous.frozen==2){previous.freezeTurns=Math.max(0,previous.freezeTurns-1);previous.frozen=previous.freezeTurns>0?1:0;}int next=active;if(TribalRules.active(this))next=TribalRules.nextActor(this,active);else if(dungeonStage>0)next=AntCaveRules.nextActor(this,active);else do{next=(next+1)%unitCount;}while(units[next].hp<=0);beginTurn(next);}
     void beginTurn(int actor){

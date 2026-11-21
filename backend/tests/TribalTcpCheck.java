@@ -2,7 +2,7 @@ import java.io.*;import java.net.*;import java.nio.file.*;import java.util.*;
 /** Actual framed TCP room lifecycle with three independent account connections. */
 public class TribalTcpCheck {
  static int checks;static void check(boolean value,String message){if(!value)throw new AssertionError(message);checks++;}
- static final int FLAGS=33554432|0x3fffff;
+ static final int FLAGS=67108864|33554432|16777216|8388608|4194304|0x3fffff;
  static class Player implements AutoCloseable {
   Socket socket;DataInputStream in;DataOutputStream out;String token="";
   Player(int port,String email)throws Exception{socket=new Socket("127.0.0.1",port);socket.setSoTimeout(5000);in=new DataInputStream(socket.getInputStream());out=new DataOutputStream(socket.getOutputStream());token=call("login",o->{o.writeUTF(email);o.writeUTF("test-password-123");}).readUTF();}
@@ -21,7 +21,7 @@ public class TribalTcpCheck {
     // Controlled knockouts exercise the real transition/settlement/card routes without a long manual battle.
     while(!r.battle.over){for(var u:r.battle.units)if(u.team==1)u.hp=0;r.battle.tribalFx=0;r.battle.check();}for(var m:r.members)if(m!=null)m.resultAck=r.battle.turn;r.tick();long deadline=System.currentTimeMillis()+5000;while(!r.settled&&System.currentTimeMillis()<deadline)Thread.sleep(10);check(r.settled,"Stage persisted before cards open");for(var player:p)player.call("cardsready",null);
     int[] deck=(int[])store.tribalStore.matches.get(r.match).get("deck");List<Integer> order=new ArrayList<>();for(int i=0;i<18;i++)order.add(i);if(stage==4)order.sort(Comparator.comparingInt((Integer card)->deck[card]==2?10:deck[card]).reversed());
-    for(int actor=0;actor<3;actor++)for(int pick=0;pick<2;pick++){int card=order.get(actor*2+pick),which=pick;var reply=p[actor].call("claim780",o->{o.writeByte(which);o.writeByte(card);});check(reply.readUnsignedByte()==card,"Server confirms shared card");int stones=r.members[actor*2].profile.stones;p[actor].call("claim780",o->{o.writeByte(which);o.writeByte(card);});check(r.members[actor*2].profile.stones==stones,"Repeated TCP claim never duplicates stones");}
+    for(int actor=0;actor<3;actor++)for(int pick=0;pick<2;pick++){int card=order.get(actor*2+pick),which=pick;var reply=p[actor].call("claim780",o->{o.writeByte(which);o.writeByte(card);});check(reply.readUnsignedByte()==card,"Server confirms shared card");int stones=r.members[actor*2].profile.stones+Arrays.stream(r.members[actor*2].profile.craftStones).sum();p[actor].call("claim780",o->{o.writeByte(which);o.writeByte(card);});check(r.members[actor*2].profile.stones+Arrays.stream(r.members[actor*2].profile.craftStones).sum()==stones,"Repeated TCP claim never duplicates stones");}
     if(stage<4){for(var player:p)player.call("dungeoncontinue",null);check(r.phase==0&&r.dungeonStage==stage+3,"All clients return to next staging room once");}
    }
    check(Arrays.stream(r.members).filter(Objects::nonNull).mapToInt(m->m.profile.wings).sum()==1,"Only one wing granted across the final deck");for(var player:p)player.call("leave",null);check(Arrays.stream(r.members).allMatch(Objects::isNull),"All players leave for lobby after final rewards");

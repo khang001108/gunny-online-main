@@ -106,7 +106,7 @@ $('supportEntryForm').onsubmit = async event => {
                 }
             } else {
                 if (!confirm('Ghi nhận ủng hộ và cộng quà vào ' + $('supportPlayer').selectedOptions[0].textContent + '?')) return;
-                data.request_key = crypto.randomUUID();
+                data.request_key = requestId();
                 pendingSupport = {data, label: $('supportPlayer').selectedOptions[0].textContent};
                 sessionStorage.setItem(supportStorage, JSON.stringify(pendingSupport));
             }

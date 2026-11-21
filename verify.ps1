@@ -10,7 +10,7 @@ New-Item -ItemType Directory -Force backend/build | Out-Null
 $sourceFiles=@(Get-ChildItem backend/src,backend/tests -Filter *.java | ForEach-Object FullName)
 & "$javaBin/javac.exe" --release 17 -encoding UTF-8 -d backend/build @sourceFiles
 if($LASTEXITCODE -ne 0){throw 'Compilation failed'}
-foreach($check in "TribalCheck","TribalTcpCheck","CraftingChanceCheck"){
+foreach($check in "AdminLanCheck","Online785Check","TribalCheck","TribalTcpCheck","CraftingChanceCheck"){
  & "$javaBin/java.exe" '-Djava.awt.headless=true' -cp backend/build $check
  if($LASTEXITCODE -ne 0){throw "$check failed"}
 }

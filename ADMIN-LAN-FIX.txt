@@ -1,0 +1,13 @@
+BẢN VÁ ADMIN LAN CHO GUNNY 7.8.5
+
+1. Giải nén, chép đè các file trong gunny-online-main vào đúng thư mục source 7.8.5 trên Pi.
+2. Nếu dùng Docker/Portainer: build lại image từ source đã chép rồi redeploy container. Chỉ restart image cũ sẽ chưa có bản vá.
+3. Nếu chạy JAR: thay gunny-server-7.8.5.jar cùng public/admin/app.js và support.js ở đúng đường dẫn dịch vụ đang dùng, rồi restart dịch vụ.
+   Nếu dịch vụ chạy bằng thư mục classes: biên dịch lại backend/src và thay class trong thư mục dịch vụ như lúc cài server.
+4. Mở http://192.168.1.127:18080/admin, Ctrl+F5 rồi đăng nhập lại.
+
+Không cần SQL mới, không cần cài lại JAR điện thoại. Không thay gunny.env hoặc mật khẩu/khóa đang dùng.
+Gói không chứa file môi trường thật. HTTP mạng nội bộ đúng Origin/Host được hỗ trợ; HTTPS vẫn dùng cookie Secure.
+
+Đã kiểm tra 26 ca cấu hình production (đăng nhập, giữ phiên, đăng xuất LAN và chặn khác Origin), suite admin cũ, quyền cheat và UUID ở HTTP LAN.
+Chưa triển khai lên Pi của bạn.

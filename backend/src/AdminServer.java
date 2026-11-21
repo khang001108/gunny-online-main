@@ -31,7 +31,16 @@ final class AdminServer implements AutoCloseable {
  void json(HttpExchange x,int status,Object body)throws IOException{byte[] b=Json.write(body).getBytes(StandardCharsets.UTF_8);x.getResponseHeaders().set("Content-Type","application/json; charset=utf-8");x.sendResponseHeaders(status,b.length);x.getResponseBody().write(b);}
  Map<String,Object> body(HttpExchange x)throws IOException{int limit=x.getRequestURI().getPath().equals("/admin/api/support-qr")?2100000:16384;byte[] b=x.getRequestBody().readNBytes(limit+1);if(b.length>limit)throw new IllegalArgumentException("Dữ liệu quá dài");return Json.obj(Json.parse(new String(b,StandardCharsets.UTF_8)));}
  String cookie(HttpExchange x){String value=x.getRequestHeaders().getFirst("Cookie");if(value!=null)for(String part:value.split(";")){String[] p=part.trim().split("=",2);if(p.length==2&&p[0].equals("gunny_admin"))return p[1];}return "";}
- boolean sameOrigin(HttpExchange x){String origin=x.getRequestHeaders().getFirst("Origin"),host=x.getRequestHeaders().getFirst("Host");if(origin==null||host==null)return false;try{URI u=URI.create(origin);return (u.getScheme().equals("https")||test&&u.getScheme().equals("http"))&&u.getRawAuthority().equalsIgnoreCase(host);}catch(Exception e){return false;}}
+ static boolean privateHttpHost(String host,InetAddress peer){
+  if(host==null||peer==null||!peer.isSiteLocalAddress()&&!peer.isLoopbackAddress())return false;
+  if(host.equalsIgnoreCase("localhost")||host.equals("[::1]")||host.equals("::1"))return true;
+  String[] parts=host.split("\\.",-1);if(parts.length!=4)return false;int[] octets=new int[4];
+  for(int i=0;i<4;i++){if(!parts[i].matches("0|[1-9][0-9]{0,2}"))return false;octets[i]=Integer.parseInt(parts[i]);if(octets[i]>255)return false;}
+  return octets[0]==10||octets[0]==127||octets[0]==192&&octets[1]==168||octets[0]==172&&octets[1]>=16&&octets[1]<=31;
+ }
+ boolean localHttp(HttpExchange x){try{URI u=URI.create(x.getRequestHeaders().getFirst("Origin"));return "http".equals(u.getScheme())&&privateHttpHost(u.getHost(),x.getRemoteAddress().getAddress());}catch(Exception e){return false;}}
+ boolean sameOrigin(HttpExchange x){String origin=x.getRequestHeaders().getFirst("Origin"),host=x.getRequestHeaders().getFirst("Host");if(origin==null||host==null)return false;try{URI u=URI.create(origin);return u.getUserInfo()==null&&u.getRawQuery()==null&&u.getRawFragment()==null&&(u.getRawPath()==null||u.getRawPath().isEmpty())&&("https".equals(u.getScheme())||localHttp(x))&&u.getRawAuthority().equalsIgnoreCase(host);}catch(Exception e){return false;}}
+ String secureCookie(HttpExchange x){return localHttp(x)&&sameOrigin(x)?"":"; Secure";}
  void handle(HttpExchange x)throws IOException{try{
   Headers h=x.getResponseHeaders();h.set("Cache-Control","no-store");h.set("X-Content-Type-Options","nosniff");h.set("Referrer-Policy","no-referrer");h.set("Content-Security-Policy","default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   if(!enabled){json(x,503,Map.of("error","Trang quản trị chưa được bật. Cấu hình GUNNY_ADMIN_PASSWORD trên máy chủ."));return;}
@@ -46,14 +55,14 @@ final class AdminServer implements AutoCloseable {
   if(path.equals("/admin/api/login")){
    if(!method.equals("POST")){json(x,405,Map.of());return;}if(!s.limit("admin-login:"+ip,8)){json(x,429,Map.of("error","Thử lại sau một phút"));return;}
    String pw=Json.str(body(x),"password");if(pw.length()>256||!MessageDigest.isEqual(passwordHash,digest(pw))){json(x,401,Map.of("error","Mật khẩu không đúng"));return;}
-   byte[] b=new byte[32];random.nextBytes(b);String token=Base64.getUrlEncoder().withoutPadding().encodeToString(b);long now=System.currentTimeMillis();tokens.entrySet().removeIf(e->e.getValue()<now);if(tokens.size()>=64){json(x,429,Map.of("error","Quá nhiều phiên quản trị"));return;}tokens.put(token,now+8*3600000L);h.add("Set-Cookie","gunny_admin="+token+"; HttpOnly; SameSite=Strict; Path=/admin; Max-Age=28800"+(test?"":"; Secure"));json(x,200,Map.of("ok",true));return;
+   byte[] b=new byte[32];random.nextBytes(b);String token=Base64.getUrlEncoder().withoutPadding().encodeToString(b);long now=System.currentTimeMillis();tokens.entrySet().removeIf(e->e.getValue()<now);if(tokens.size()>=64){json(x,429,Map.of("error","Quá nhiều phiên quản trị"));return;}tokens.put(token,now+8*3600000L);h.add("Set-Cookie","gunny_admin="+token+"; HttpOnly; SameSite=Strict; Path=/admin; Max-Age=28800"+secureCookie(x));json(x,200,Map.of("ok",true));return;
   }
   String token=cookie(x);Long expires=tokens.get(token);if(expires==null||expires<System.currentTimeMillis()){json(x,401,Map.of("error","Hãy đăng nhập quản trị"));return;}
   if(path.equals("/admin/api/session")&&method.equals("GET")){json(x,200,Map.of("ok",true));return;}
-  if(path.equals("/admin/api/logout")&&method.equals("POST")){tokens.remove(token);h.add("Set-Cookie","gunny_admin=; HttpOnly; SameSite=Strict; Path=/admin; Max-Age=0"+(test?"":"; Secure"));json(x,200,Map.of("ok",true));return;}
+  if(path.equals("/admin/api/logout")&&method.equals("POST")){tokens.remove(token);h.add("Set-Cookie","gunny_admin=; HttpOnly; SameSite=Strict; Path=/admin; Max-Age=0"+secureCookie(x));json(x,200,Map.of("ok",true));return;}
   String op=path.substring("/admin/api/".length());Map<String,Object> input;
   if(method.equals("GET")&&(op.equals("accounts")||op.equals("announcements")||op.equals("retention-policy")||op.equals("support-list"))){input=new HashMap<>();String query=x.getRequestURI().getRawQuery();if(query!=null)for(String p:query.split("&")){String[] parts=p.split("=",2);if(parts.length==2)input.put(URLDecoder.decode(parts[0],StandardCharsets.UTF_8),URLDecoder.decode(parts[1],StandardCharsets.UTF_8));}}
-  else if(method.equals("POST")&&Set.of("schedule","cancel-delete","delete-now","announcement-save","announcement-delete","wallet-add","retention-save","offline-days","extend-offline","support-qr","support-add","support-comment").contains(op))input=body(x);
+  else if(method.equals("POST")&&Set.of("test-cheats","test-cheats-status","schedule","cancel-delete","delete-now","announcement-save","announcement-delete","wallet-add","retention-save","offline-days","extend-offline","support-qr","support-add","support-comment").contains(op))input=body(x);
   else{json(x,404,Map.of("error","Không tìm thấy"));return;}
   if(op.equals("delete-now")&&!Json.str(input,"confirm").equals("XOA"))throw new IllegalArgumentException("Nhập XOA để xác nhận xoá vĩnh viễn");
   if(op.equals("announcement-save")){String title=Json.str(input,"title").trim(),message=Json.str(input,"body").trim();if(title.isEmpty()||title.length()>80||message.isEmpty()||message.length()>1000)throw new IllegalArgumentException("Tiêu đề tối đa 80, nội dung tối đa 1.000 ký tự");Instant start=Instant.parse(Json.str(input,"starts_at")),end=Instant.parse(Json.str(input,"ends_at"));if(!end.isAfter(start))throw new IllegalArgumentException("Ngày kết thúc phải sau ngày bắt đầu");}
@@ -64,6 +73,7 @@ final class AdminServer implements AutoCloseable {
    if(!inherit)input.put("days",((Number)days).intValue());
    if(!op.equals("retention-save"))UUID.fromString(Json.str(input,"id"));if(op.equals("extend-offline"))UUID.fromString(Json.str(input,"request_key"));
   }
+  if(op.equals("test-cheats")||op.equals("test-cheats-status")){String id=Json.str(input,"id");UUID.fromString(id);if(op.equals("test-cheats")){if(!(input.get("enabled") instanceof Boolean))throw new IllegalArgumentException("Thiếu trạng thái cheat");s.store.testCheat(id,6,Boolean.TRUE.equals(input.get("enabled")));refreshProfile(id);}var profile=s.store.profile(id);json(x,200,Map.of("enabled",profile.testCheats));return;}
   Object result=op.equals("accounts")?accounts(input):op.startsWith("support-")?support.operation(op,input):data.call(op,input);
   if(op.equals("support-add")){
    // The durable transaction has committed. Refresh failures must not make it look rejected.

@@ -1035,8 +1035,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
 
     void openCheats() {
         if (onlineAccount()) {
-            message("Online dùng dữ liệu từ máy chủ.");
-            return;
+            if(!economy.testCheats){message("Admin chưa bật cheat cho tài khoản này");return;}
         }
         returnMode = mode;
         mode = 9;
@@ -1047,8 +1046,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void cheat() {
-        if (onlineAccount())
-            return;
+        if (onlineAccount()){net.request("testcheat");return;}
         if (cheatSelection == 4) {
             if (cheatOptions() == 5) {
                 mode = returnMode;
@@ -1074,10 +1072,12 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     int cheatOptions() {
+        if(onlineAccount())return 6;
         return returnMode == 1 && offlineDungeon.active && !game.over ? 5 : 4;
     }
 
     void drawCheats() {
+        if(onlineAccount()){panel(30,32,260,198);center("CHEAT TÀI KHOẢN TEST",160,42);String[] names={"FULL ĐÁ LV1-5 + BÙA","FULL CƯỜNG HÓA +15","FULL CẤP NHÂN VẬT","FULL TIỀN MUA SẮM","BẤT TỬ: "+(economy.testGod?"BẬT":"TẮT"),"QUA ẢI PHÓ BẢN"};for(int i=0;i<6;i++)button(names[i],40,63+i*25,240,23,cheatSelection==i);return;}
         boolean canSkip = cheatOptions() == 5;
         panel(30, canSkip ? 22 : 42, 260, canSkip ? 214 : 189);
         center("CHEAT • TEST OFFLINE", 160, 50);
@@ -1623,6 +1623,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void resetOnlineTerrain() throws IOException {
+        net.revision=0;
         Image terrain = load("land" + map);
         terrain.getRGB(pixels, 0, terrainWidth, 0, 0, terrainWidth, terrainHeight);
         if (s > 1) {
@@ -3488,6 +3489,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             popup.key(key, dir, ok);
             return;
         }
+        if((key=='g'||key=='G')&&onlineAccount()&&economy.testCheats&&mode!=9){openCheats();return;}
         if (net.chat.opened && !presentation.settings && net.chat.key(net.chat.rawBinding(rawKey,key), dir, ok))
             return;
         if (presentation.key(key, dir, ok))
@@ -4021,6 +4023,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             return;
         }
         if (mode == 9) {
+            if(onlineAccount()){if(y>=63&&y<213&&x>=40&&x<280){cheatSelection=(y-63)/25;cheat();}return;}
             int options = cheatOptions();
             if (x >= 50 && x < 270 && y >= 78 && y < 78 + options * 30 && (y - 78) % 30 < 25) {
                 cheatSelection = (y - 78) / 30;

@@ -9,7 +9,7 @@ final class OnlineChunks {
     int turn=-1, completed=-1, received=-1, id, remaining, kind;
     boolean terminal, resolved, ownPending, resetTerrain, playing;
     DataInputStream frames;
-    byte[] finalFrame;
+    byte[] finalFrame,previousFrame;
     long waitingSince;
 
     static final class Segment {
@@ -20,7 +20,7 @@ final class OnlineChunks {
     OnlineChunks(OnlineClient owner) { net=owner; }
     void reset() {
         turn=completed=received=-1;queued.removeAllElements();
-        frames=null;finalFrame=null;remaining=0;id=-1;kind=0;terminal=resolved=resetTerrain=false;ownPending=false;playing=false;waitingSince=0;
+        frames=null;finalFrame=previousFrame=null;remaining=0;id=-1;kind=0;terminal=resolved=resetTerrain=false;ownPending=false;playing=false;waitingSince=0;
     }
     int requestTurn(int displayedTurn) {
         return net.prefetchCap&&turn>=0 ? turn : displayedTurn;
@@ -33,7 +33,7 @@ final class OnlineChunks {
     void read(DataInputStream in, boolean done, int serverTurn) throws IOException {
         if (turn!=serverTurn) { reset();turn=serverTurn; }
         int stage=in.readUnsignedByte();
-        if (stage==0 || stage==5&&net.liveCap) { net.acceptSnapshot(in,done,serverTurn);return; }
+        if (stage==0 || stage==5&&net.liveCap) { if(net.phase==2){reset();turn=serverTurn;} net.acceptSnapshot(in,done,serverTurn);return; }
         if (stage==3) return;
         if (stage!=4) throw new IOException("Sai đoạn hành động.");
         int next=in.readInt(), size=in.readInt();
@@ -49,15 +49,11 @@ final class OnlineChunks {
         segment.id=next;segment.kind=block.readUnsignedByte();segment.terminal=block.readBoolean();
         segment.count=block.readUnsignedShort();segment.resolved=done;segment.data=data;
         if (segment.count<1 || segment.count>2000) throw new IOException("Sai số khung hình.");
-        for (int i=0;i<segment.count;i++) {
-            int length=block.readUnsignedShort();
-            if (length==0||length>block.available()) throw new IOException("Khung hình không đầy đủ.");
-            block.skipBytes(length);
-        }
+        int decodedSize=0;for(int i=0;i<segment.count;i++)decodedSize=SnapshotDelta.validate(block,decodedSize);
         if (block.available()!=0) throw new IOException("Dữ liệu hành động dư.");
         boolean own=net.predicting&&net.predictedTurn==serverTurn&&net.localTurn();
         if (own) {
-            block=new DataInputStream(new ByteArrayInputStream(data));block.skipBytes(4);
+            previousFrame=null;block=new DataInputStream(new ByteArrayInputStream(data));block.skipBytes(4);
             id=next;resolved=done;terminal=segment.terminal;kind=segment.kind;
             for (int i=0;i<segment.count;i++) finalFrame=frame(block);
             received=next;
@@ -70,16 +66,12 @@ final class OnlineChunks {
         if (frames==null) advance();
         net.resolutionSeen=false;net.c.held=net.c.fireKey=0;
     }
-    byte[] frame(DataInputStream in) throws IOException {
-        int size=in.readUnsignedShort();
-        if (size==0 || size>in.available()) throw new IOException("Khung hình không đầy đủ.");
-        byte[] bytes=new byte[size];in.readFully(bytes);return bytes;
-    }
+    byte[] frame(DataInputStream in)throws IOException {previousFrame=SnapshotDelta.read(in,previousFrame);return previousFrame;}
     void advance() throws IOException {
         if (queued.isEmpty()) return;
         Segment segment=(Segment)queued.elementAt(0);queued.removeElementAt(0);
         id=segment.id;kind=segment.kind;terminal=segment.terminal;resolved=segment.resolved;
-        remaining=segment.count;
+        remaining=segment.count;previousFrame=null;
         frames=new DataInputStream(new ByteArrayInputStream(segment.data));frames.skipBytes(4);resetTerrain=true;
     }
     boolean ready(long now) {
@@ -96,7 +88,7 @@ final class OnlineChunks {
             playing=true;
         }
         try {
-            if (resetTerrain||terminal&&remaining==1) { net.c.resetOnlineTerrain();resetTerrain=false; }
+            resetTerrain=false; // Remote terrain is updated incrementally, never rebuilt per segment.
             net.c.game.ageTrails();
             net.readSnapshot(new DataInputStream(new ByteArrayInputStream(frame(frames))));
             for (int i=0;i<net.c.game.ballCount;i++) net.c.game.stampTrail(net.c.game.balls[i]);

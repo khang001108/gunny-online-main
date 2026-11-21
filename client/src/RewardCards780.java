@@ -9,7 +9,7 @@ final class RewardCards780 {
  long revealAt;
  final boolean[] taken=new boolean[18];
  final int[] amount=new int[18],type=new int[18];
- Image stone,wing;
+ Image stone,wing;final Image[] gradeIcons=new Image[4];
  RewardCards780(OnlineResult result){this.result=result;c=result.c;n=result.net;}
  void reset(){
   selected=offlinePicks=0;revealing=-1;revealAt=0;
@@ -42,7 +42,7 @@ final class RewardCards780 {
     c.img(opened?result.front:result.back,x,y);
     if(opened){
      int reward=result.online()?n.cardCoins[i]:amount[i],kind=result.online()?n.cardTypes[i]:type[i];
-     if(kind<2)c.img(kind==1?stone:result.gold,x+8,y+9);else if(kind==2){if(wing==null)wing=NativeUi.fit(c.combatRoomArt("tribal-wing"),22*c.s,20*c.s,0);c.img(wing,x+8,y+6);}else c.img(c.weapons[8],x+8,y+7);
+     if(kind>=4){int grade=kind-4;if(gradeIcons[grade]==null)gradeIcons[grade]=c.combatRoomArt("craft-material-"+(grade+1));c.img(gradeIcons[grade],x+8,y+7);c.pcCenter("Lv"+(grade+2),x+19,y+25);}else if(kind<2)c.img(kind==1?stone:result.gold,x+8,y+9);else if(kind==2){if(wing==null)wing=NativeUi.fit(c.combatRoomArt("tribal-wing"),22*c.s,20*c.s,0);c.img(wing,x+8,y+6);}else c.img(c.weapons[8],x+8,y+7);
      c.pcCenter("+"+reward,x+19,y+35);
      if(result.online())c.pcCenter(c.pcShort(n.cardNames[i],36),x+19,y+46);
     }
@@ -61,10 +61,10 @@ final class RewardCards780 {
    n.cardDraft=selected;n.request("claim780");
   }else{
    taken[selected]=true;
-   type[selected]=c.offlineDungeon.active?1:c.game.rand(2);
+   type[selected]=c.offlineDungeon.active?StoneDrops.type(StoneDrops.grade(c.offlineDungeon.difficulty,c.game.rand(100))):c.game.rand(2);
    amount[selected]=c.offlineDungeon.active?10+c.game.rand(91):type[selected]==1?1+c.game.rand(10):500+c.game.rand(1501);
-   if(type[selected]==1){
-    c.economy.offlineStones=Math.min(999999,c.economy.offlineStones+amount[selected]);c.economy.save();
+   if(type[selected]==1||type[selected]>=4){
+    if(type[selected]==1)c.economy.offlineStones=Math.min(999999,c.economy.offlineStones+amount[selected]);else{int index=type[selected]-4;c.economy.offlineMaterials[index]=Math.min(999999,c.economy.offlineMaterials[index]+amount[selected]);}c.economy.save();
    }else{
     c.coins=Math.min(999999,c.coins+amount[selected]);c.saveSettings();
    }

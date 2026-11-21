@@ -502,7 +502,7 @@ final class LobbyChat {
         if (!available) return;
         if (launchIcon == null) launchIcon = c.combatRoomArt("chat-launch");
         c.img(launchIcon, 291, 4);
-        c.pcCenter("Chat (G)", 300, 25);
+        c.pcCenter(c.economy.testCheats ? "Chat" : "Chat (G)", 300, 25);
         if (unread) dot(310, 4);
     }
 

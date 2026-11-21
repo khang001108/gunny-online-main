@@ -38,7 +38,7 @@ final class Dungeon780 {
   }
   if(op.equals("dungeonsettings")){var r=server.requireRoom(s);int difficulty=in.readUnsignedByte();int dungeon=s.tribal?in.readUnsignedByte():0;synchronized(r){if(r.kind!=3||r.host!=s||r.phase!=0||r.dungeonStage!=1&&r.dungeonStage!=3)throw new IllegalArgumentException("Chỉ chủ phòng chờ được chọn ải viễn chinh");for(var member:r.members)if(member!=null){if(dungeon==1)TribalDungeon.eligible(member,difficulty);else eligible(member,difficulty);}r.dungeonStage=dungeon==1?3:1;r.difficulty=difficulty;r.clearArmed();server.lobby(out,r,s);}return;}
   if(op.equals("dungeoncreate")||op.equals("dungeonquick")){int difficulty=in.readUnsignedByte();String name=op.equals("dungeoncreate")?GunnyServer.validRoomName(in.readUTF()):"Phó bản vui vẻ";String secret=op.equals("dungeoncreate")?in.readUTF():"";eligible(s,difficulty);if(secret.length()>16)throw new IllegalArgumentException("Mật mã tối đa 16 ký tự");
-   synchronized(server.rooms){GunnyServer.Room room=null;if(op.equals("dungeonquick"))for(var r:server.rooms.values())synchronized(r){if(r.kind==3&&r.phase==0&&r.dungeonStage!=2&&r.difficulty==difficulty&&r.secret.isEmpty()&&r.cardPlayers()<3&&space(r)&&r.host.actors==s.actors&&r.host.live==s.live&&r.host.equipment==s.equipment&&r.host.arsenal==s.arsenal&&r.host.items==s.items&&r.host.itemVersion==s.itemVersion&&r.host.itemFx==s.itemFx){room=r;break;}}
+   synchronized(server.rooms){GunnyServer.Room room=null;if(op.equals("dungeonquick"))for(var r:server.rooms.values())synchronized(r){if(r.kind==3&&r.phase==0&&r.dungeonStage!=2&&r.difficulty==difficulty&&r.secret.isEmpty()&&r.cardPlayers()<3&&space(r)&&r.host.delta==s.delta&&r.host.actors==s.actors&&r.host.live==s.live&&r.host.equipment==s.equipment&&r.host.arsenal==s.arsenal&&r.host.items==s.items&&r.host.itemVersion==s.itemVersion&&r.host.itemFx==s.itemFx){room=r;break;}}
     if(room==null){if(server.rooms.size()>=server.maxRooms)throw new IllegalArgumentException("Hết phòng trống");server.leave(s);room=server.new Room(s,6,2,-1,true);room.kind=3;room.difficulty=difficulty;room.title=name;room.secret=secret;room.strict=true;room.seconds=15;room.mapLimit=8;room.map=6;room.refreshWaiting();server.rooms.put(room.id,room);s.room=room.id;}
     else{synchronized(room){int slot=-1;for(int i=2;i<6;i+=2)if(room.members[i]==null&&room.selectedBots[i]<0&&(room.closedSlots&(1<<i))==0){slot=i;break;}if(slot<0)throw new IllegalArgumentException("Phòng đã đủ người");server.leave(s);room.members[slot]=s;s.room=room.id;room.refreshWaiting();}}
     server.lobby(out,room,s);
@@ -73,7 +73,7 @@ final class Dungeon780 {
  }
 
  private static boolean compatible(GunnyServer.Session host,GunnyServer.Session viewer){
-  return host.flock&&host.expansion==viewer.expansion&&host.actors==viewer.actors
+  return host.delta==viewer.delta&&host.flock&&host.expansion==viewer.expansion&&host.actors==viewer.actors
       &&host.live==viewer.live&&host.equipment==viewer.equipment&&host.arsenal==viewer.arsenal
       &&host.items==viewer.items&&host.itemVersion==viewer.itemVersion&&host.itemFx==viewer.itemFx;
  }

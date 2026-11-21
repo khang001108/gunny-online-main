@@ -1288,7 +1288,8 @@ grant execute on function public.gunny_name_available(text,uuid) to service_role
 notify pgrst,'reload schema';
 commit;
 
--- 7.8.4: probabilistic crafting and Tribal campaign
+
+-- 7.8.5: crafting, tribal dungeon, test-account permission and graded stones
 begin;
 
 alter table public.profiles
@@ -1408,6 +1409,15 @@ notify pgrst,'reload schema';
 commit;
 
 begin;
+create or replace function public.gunny_stone_grade(p_difficulty integer,p_roll integer)
+returns integer language plpgsql immutable set search_path='' as $$
+declare weights integer[];i integer;total integer:=0;
+begin
+ if p_difficulty not between 0 and 2 or p_roll not between 0 and 99 then raise exception 'Invalid stone roll';end if;
+ weights:=case p_difficulty when 0 then array[65,25,8,2,0] when 1 then array[25,35,25,12,3] else array[5,15,30,35,15] end;
+ for i in 1..5 loop total:=total+weights[i];if p_roll<total then return i;end if;end loop;
+ raise exception 'Invalid weights';
+end;$$;
 alter table public.profiles
  add column if not exists wings integer not null default 0 check(wings between 0 and 1),
  add column if not exists wing_equipped boolean not null default false,
@@ -1495,8 +1505,9 @@ begin
  if pick_no=1 and not exists(select 1 from public.gunny_tribal_rewards where match_id=mid and user_id=uid and pick=0) then raise exception 'Pick first card';end if;
  if exists(select 1 from public.gunny_tribal_rewards where match_id=mid and card=slot) then raise exception 'Card already taken';end if;
  kind:=m.deck[slot+1];amount:=1;
- if kind=0 then kind:=1;amount:=m.stone_min+floor(random()*(m.stone_max-m.stone_min+1))::integer;end if;
+ if kind=0 then kind:=public.gunny_stone_grade(m.difficulty,floor(random()*100)::integer);kind:=case when kind=1 then 1 else kind+2 end;amount:=m.stone_min+floor(random()*(m.stone_max-m.stone_min+1))::integer;end if;
  update public.profiles set stones=least(999999,stones+case when kind=1 then amount else 0 end),
+  craft_stones=case when kind>=4 then array[least(999999,craft_stones[1]+case when kind=4 then amount else 0 end),least(999999,craft_stones[2]+case when kind=5 then amount else 0 end),least(999999,craft_stones[3]+case when kind=6 then amount else 0 end),least(999999,craft_stones[4]+case when kind=7 then amount else 0 end)] else craft_stones end,
   lucky_charms=least(999999,lucky_charms+1),wings=wings|case when kind=2 then 1 else 0 end,
   wing_equipped=wing_equipped or kind=2,owned=owned|case when kind=3 then 256 else 0 end,
   vip_spears=least(999999,vip_spears+case when kind=3 then 1 else 0 end) where id=uid;
@@ -1522,5 +1533,73 @@ begin
  update public.profiles set equipped=weapon,skin=skin_id,look=parts,worn_mask=mask,custom_look=((mask&2)=0) where id=p_user;
 end;$$;
 
+notify pgrst,'reload schema';
+commit;
+
+begin;
+alter table public.profiles add column if not exists test_cheats boolean not null default false,
+ add column if not exists test_god boolean not null default false;
+create or replace function public.gunny_test_cheat(p_user uuid,p_action integer,p_enabled boolean default false)
+returns void language plpgsql security definer set search_path='' as $$
+declare p public.profiles%rowtype;k integer;i integer;idx integer;
+begin
+ select * into strict p from public.profiles where id=p_user for update;
+ if p_action=6 then update public.profiles set test_cheats=p_enabled,test_god=test_god and p_enabled where id=p_user;return;end if;
+ if not p.test_cheats then raise exception 'Test cheats disabled';end if;
+ case p_action
+ when 0 then update public.profiles set stones=999999,craft_stones=array_fill(999999,array[4]),lucky_charms=999999,protection_charms=999999 where id=p_user;
+ when 1 then
+  for k in 0..6 loop for i in 0..9 loop
+   if k in(0,2,3,6) and ((k=0 and (p.owned&(1<<i))<>0) or (k>0 and (p.wardrobe[p.gender*6+k]&(1<<i))<>0)) then
+    idx:=case when k=0 then i+1 else 11+p.gender*60+(k-1)*10+i end;
+    update public.profiles set forge_levels[idx]=15,forge_progress[idx]=0 where id=p_user;
+   end if;
+  end loop;end loop;
+ when 2 then update public.profiles set experience=120750 where id=p_user;
+ when 3 then update public.profiles set shopping_money=999999,coins=999999 where id=p_user;
+ when 4 then update public.profiles set test_god=p_enabled where id=p_user;
+ else raise exception 'Invalid test cheat';end case;
+end;$$;
+revoke all on function public.gunny_test_cheat(uuid,integer,boolean) from public,anon,authenticated;
+grant execute on function public.gunny_test_cheat(uuid,integer,boolean) to service_role;
+notify pgrst,'reload schema';
+commit;
+
+begin;
+create or replace function public.gunny_stone_grade(p_difficulty integer,p_roll integer)
+returns integer language plpgsql immutable set search_path='' as $$
+declare weights integer[];i integer;total integer:=0;
+begin
+ if p_difficulty not between 0 and 2 or p_roll not between 0 and 99 then raise exception 'Invalid stone roll';end if;
+ weights:=case p_difficulty when 0 then array[65,25,8,2,0] when 1 then array[25,35,25,12,3] else array[5,15,30,35,15] end;
+ for i in 1..5 loop total:=total+weights[i];if p_roll<total then return i;end if;end loop;
+ raise exception 'Invalid weights';
+end;$$;
+create table if not exists public.gunny_stone_receipts(
+ match_id uuid not null,user_id uuid not null,pick integer not null,grade integer not null check(grade between 1 and 5),
+ primary key(match_id,user_id,pick),foreign key(match_id,user_id,pick) references public.gunny780_card_rewards(match_id,user_id,pick));
+alter table public.gunny_stone_receipts enable row level security;
+revoke all on public.gunny_stone_receipts from public,anon,authenticated;
+create or replace function public.gunny_claim_dungeon_stones(p_match uuid,p_user uuid,p_pick integer,p_card integer,p_difficulty integer)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare result jsonb;grade_no integer;amount integer;old_stones integer;already_claimed boolean;
+begin
+ if p_difficulty not between 0 and 2 then raise exception 'Invalid difficulty';end if;
+ -- Match first, then profile: same lock order as the original claim function.
+ perform 1 from public.match_results where id=p_match for update;
+ select stones into strict old_stones from public.profiles where id=p_user for update;
+ already_claimed:=exists(select 1 from public.gunny780_card_rewards where match_id=p_match and user_id=p_user and pick=p_pick);
+ result:=public.gunny_claim780(p_match,p_user,p_pick,p_card);
+ select grade into grade_no from public.gunny_stone_receipts where match_id=p_match and user_id=p_user and pick=p_pick;
+ if not found then
+  -- Legacy claims keep their original Lv1 reward; never convert it a second time.
+  grade_no:=case when already_claimed then 1 else public.gunny_stone_grade(p_difficulty,floor(random()*100)::integer) end;amount:=(result->>'stones')::integer;
+  if grade_no>1 then update public.profiles set stones=old_stones,craft_stones[grade_no-1]=least(999999,craft_stones[grade_no-1]+amount) where id=p_user;end if;
+  insert into public.gunny_stone_receipts values(p_match,p_user,p_pick,grade_no);
+ end if;
+ return result||jsonb_build_object('grade',grade_no);
+end;$$;
+revoke all on function public.gunny_claim_dungeon_stones(uuid,uuid,integer,integer,integer) from public,anon,authenticated;
+grant execute on function public.gunny_claim_dungeon_stones(uuid,uuid,integer,integer,integer) to service_role;
 notify pgrst,'reload schema';
 commit;

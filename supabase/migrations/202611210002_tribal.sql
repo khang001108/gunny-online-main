@@ -1,4 +1,13 @@
 begin;
+create or replace function public.gunny_stone_grade(p_difficulty integer,p_roll integer)
+returns integer language plpgsql immutable set search_path='' as $$
+declare weights integer[];i integer;total integer:=0;
+begin
+ if p_difficulty not between 0 and 2 or p_roll not between 0 and 99 then raise exception 'Invalid stone roll';end if;
+ weights:=case p_difficulty when 0 then array[65,25,8,2,0] when 1 then array[25,35,25,12,3] else array[5,15,30,35,15] end;
+ for i in 1..5 loop total:=total+weights[i];if p_roll<total then return i;end if;end loop;
+ raise exception 'Invalid weights';
+end;$$;
 alter table public.profiles
  add column if not exists wings integer not null default 0 check(wings between 0 and 1),
  add column if not exists wing_equipped boolean not null default false,
@@ -86,8 +95,9 @@ begin
  if pick_no=1 and not exists(select 1 from public.gunny_tribal_rewards where match_id=mid and user_id=uid and pick=0) then raise exception 'Pick first card';end if;
  if exists(select 1 from public.gunny_tribal_rewards where match_id=mid and card=slot) then raise exception 'Card already taken';end if;
  kind:=m.deck[slot+1];amount:=1;
- if kind=0 then kind:=1;amount:=m.stone_min+floor(random()*(m.stone_max-m.stone_min+1))::integer;end if;
+ if kind=0 then kind:=public.gunny_stone_grade(m.difficulty,floor(random()*100)::integer);kind:=case when kind=1 then 1 else kind+2 end;amount:=m.stone_min+floor(random()*(m.stone_max-m.stone_min+1))::integer;end if;
  update public.profiles set stones=least(999999,stones+case when kind=1 then amount else 0 end),
+  craft_stones=case when kind>=4 then array[least(999999,craft_stones[1]+case when kind=4 then amount else 0 end),least(999999,craft_stones[2]+case when kind=5 then amount else 0 end),least(999999,craft_stones[3]+case when kind=6 then amount else 0 end),least(999999,craft_stones[4]+case when kind=7 then amount else 0 end)] else craft_stones end,
   lucky_charms=least(999999,lucky_charms+1),wings=wings|case when kind=2 then 1 else 0 end,
   wing_equipped=wing_equipped or kind=2,owned=owned|case when kind=3 then 256 else 0 end,
   vip_spears=least(999999,vip_spears+case when kind=3 then 1 else 0 end) where id=uid;

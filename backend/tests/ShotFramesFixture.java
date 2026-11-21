@@ -10,14 +10,16 @@ public final class ShotFramesFixture {
             var host = ReturnRoomCheck.player("shooter");
             var guest = ReturnRoomCheck.player("observer");
             for (var player : new GunnyServer.Session[]{host, guest}) {
-                for (String field : new String[]{"tribal","playerUi", "expansion", "campaign", "flock", "actors", "equipment", "items", "itemFx", "modern", "async", "events", "social", "matchmaking", "roomFix", "waitBot", "chunks", "replay"}) {
+                for (String field : new String[]{"delta","tribal","playerUi", "expansion", "campaign", "flock", "actors", "equipment", "items", "itemFx", "modern", "async", "events", "social", "matchmaking", "roomFix", "waitBot", "chunks", "replay"}) {
                     var property = GunnyServer.Session.class.getDeclaredField(field);
                     property.setBoolean(player, true);
                 }
                 player.itemVersion = 2;
             }
-            var room = server.new Room(host, 0, 0, -1);
-            room.members[1] = guest;
+            boolean tribal=args.length>1&&args[1].equals("tribal");
+            var room = args.length>1?server.new Room(host,tribal?8:0,2,-1,true):server.new Room(host, 0, 0, -1);
+            if(tribal){room.kind=3;room.dungeonStage=3;host.profile.experience=guest.profile.experience=Progression.experienceForLevel(20);}
+            room.members[tribal?2:1] = guest;
             host.room = guest.room = room.id;
             room.start();
             room.phase = 1;
@@ -37,7 +39,9 @@ public final class ShotFramesFixture {
             }
             room.chunkFlush(true);
             var target = Path.of("client/build/"+mode+"-frames.bin");
-            Files.createDirectories(target.getParent());
+            Files.createDirectories(target.getParent());int rawBytes=0,wireBytes=0;
+            for(byte[] segment:room.chunks){wireBytes+=segment.length;rawBytes+=4;var scan=new DataInputStream(new ByteArrayInputStream(segment));scan.skipBytes(2);int frames=scan.readUnsignedShort();for(int i=0;i<frames;i++){int header=scan.readUnsignedShort(),length=header&32767;byte[] data=scan.readNBytes(length);int decoded=(header&32768)==0?length:((data[0]&255)<<8)|(data[1]&255);rawBytes+=decoded+2;}}
+            System.out.println("WIRE "+room.battle.unitCount+" actors: "+rawBytes+" -> "+wireBytes+" bytes ("+(100-wireBytes*100/rawBytes)+"% less)");
             try (var output = new DataOutputStream(Files.newOutputStream(target))) {
                 output.writeUTF(GunnyServer.capabilities(false, true));
                 var bytes = new ByteArrayOutputStream();
