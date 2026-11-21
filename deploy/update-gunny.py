@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Interactive Docker updater for Gunny 7.8.3. Never executes a SQL migration."""
+"""Interactive Docker updater for Gunny 7.8.8. Never executes a SQL migration."""
 import argparse
 import contextlib
 import datetime
@@ -19,7 +19,7 @@ import urllib.request
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "7.8.3"
+VERSION = "7.8.8"
 PROJECT = "mnquwasxacifkktmckdv"
 MIGRATION = ROOT / "supabase/migrations/202611120001_virtual_accounts_retention.sql"
 EXPANSION = ROOT / "supabase/migrations/202611130001_forge_dungeon.sql"

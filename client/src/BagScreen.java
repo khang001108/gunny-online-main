@@ -203,7 +203,7 @@ final class BagScreen {
     void drawBars() {
         int base = Progression.bonus(c.experience);
         int[] gear = ForgeRules.gear(c.wornMask, c.equipped, c.economy.bonuses());
-        int hp = Battle.MAXHP + base + gear[1], energy = 240 + base + gear[2];
+        int hp = Progression.baseHp(c.experience) + gear[1], energy = 240 + base + gear[2];
         int[] colors = { 0xd63832, 0x3bba53 };
         String[] labels = { "HP " + hp, "TL " + energy };
         for (int i = 0; i < 2; i++) {

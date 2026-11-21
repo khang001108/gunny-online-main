@@ -1,7 +1,7 @@
 import javax.microedition.lcdui.*;
 /** Cooperative browser, a three-seat staging room, and its own map/difficulty picker. */
 final class DungeonScreen {
-    void releaseArt(){previewCover=rewardWing=null;previewStage=-1;banner=background=smallCover=seatCard=emptyCard=localPortrait=allyPortrait=closedCard=null;portraitKey="";for(int i=0;i<stageCovers.length;i++)stageCovers[i]=null;}
+    void releaseArt(){for(int i=0;i<3;i++){seatPortraits[i]=null;seatKeys[i]=null;}rewardFrame=null;previewCover=rewardWing=null;previewStage=-1;banner=background=smallCover=seatCard=emptyCard=localPortrait=allyPortrait=closedCard=null;portraitKey="";for(int i=0;i<stageCovers.length;i++)stageCovers[i]=null;}
 
  static final int CONFIRM_SOLO = 6;
  static final String TITLE = "Ải Viễn Chinh";
@@ -249,9 +249,10 @@ final class DungeonScreen {
   drawRewards(stage,online?n.dungeonDifficulty:c.offlineDungeon.difficulty);
  }
 
+ final Image[] seatPortraits=new Image[3];final String[] seatKeys=new String[3];Image rewardFrame;
  Image previewCover;int previewStage=-1;
  Image rewardWing;
- void drawRewards(int stage,int diff){c.rect(7,170,202,24,0x3d3023);boolean tribal=stage>=3,finish=stage==2||stage==6;int factor=tribal&&stage==6?(diff==2?11:diff==1?15:18):18;for(int g=0;g<5;g++){int x=8+g*25;c.img(c.stoneShop.icon(g),x,169);int p=(StoneDrops.WEIGHTS[diff][g]*factor*10+9)/18;c.pcText(p/10+"."+p%10+"%",x,183);}int x=133;if(tribal&&stage==6&&diff>0){c.img(c.weapons[8],x,170);c.pcText(diff==2?"33.3%":"16.7%",x,183);x+=25;if(diff==2){if(rewardWing==null)rewardWing=NativeUi.fit(c.combatRoomArt("tribal-wing"),23*c.s,19*c.s,0);c.img(rewardWing,x,170);c.pcText("5.6%",x,183);x+=25;}}if(finish){c.img(c.gifts.icon(1),x,169);c.pcText("100%",x,183);}}
+ void drawRewards(int stage,int diff){if(rewardFrame==null)rewardFrame=NativeUi.fit(c.combatRoomArt("item752-tooltip"),204*c.s,27*c.s,4*c.s);c.img(rewardFrame,6,168);boolean tribal=stage>=3,finish=stage==2||stage==6;int factor=tribal&&stage==6?(diff==2?11:diff==1?15:18):18;for(int g=0;g<5;g++){int x=8+g*25;c.img(c.stoneShop.icon(g),x,169);int p=(StoneDrops.WEIGHTS[diff][g]*factor*10+9)/18;c.pcText(p/10+"."+p%10+"%",x,183);}int x=133;if(tribal&&stage==6&&diff>0){c.img(c.weapons[8],x,170);c.pcText(diff==2?"33.3%":"16.7%",x,183);x+=25;if(diff==2){if(rewardWing==null)rewardWing=NativeUi.fit(c.combatRoomArt("tribal-wing"),23*c.s,19*c.s,0);c.img(rewardWing,x,170);c.pcText("5.6%",x,183);x+=25;}}if(finish){c.img(c.gifts.icon(1),x,169);c.pcText("100%",x,183);}}
  private void drawSeat(int seat, boolean online) {
   int actor = seat * 2;
   int x = 18 + (seat % 2) * 102;
@@ -265,34 +266,35 @@ final class DungeonScreen {
    if (allyPortraitId != bot) {
     allyPortraitId = bot;
     try {
-     allyPortrait = c.standingPreview(c.botSex(bot),c.botSkin(bot),false,39,52);
+     allyPortrait = c.standingPreview(c.botSex(bot),c.botSkin(bot),false,29,39);
     } catch (java.io.IOException ignored) {
      allyPortrait = null;
     }
    }
-   c.pcText(c.pcShort(PhoneCanvas.BOT_NAMES[bot],88), x+4, y+4);
-   c.img(allyPortrait,x+28,y+13);
+   c.pcText(c.pcShort(PhoneCanvas.BOT_NAMES[bot],72), x+4, y+4);
+   c.clip(x+2,y+14,78,48);c.img(allyPortrait,x+25,y+17);c.all();
    c.img(c.weapons[c.botWeapon(bot)],x+7,y+43);
-   c.drawLevel(Progression.botExperience(bot),x+61,y+16);
+   c.drawLevel(Progression.botExperience(bot),x+54,y+39);
    return;
   }
-  c.pcText(c.pcShort(online ? n.names[actor] : c.playerName, 88), x+4, y+4);
+  c.pcText(c.pcShort(online ? n.names[actor] : c.playerName, 72), x+4, y+4);
   if (online) {
-   n.waiting.portrait(actor, x+22, y+15);
+   try{if(seatPortraits[seat]==null||n.standingKeys[actor]!=null&&!n.standingKeys[actor].equals(seatKeys[seat])){seatPortraits[seat]=n.buildStanding(actor,29,39);seatKeys[seat]=n.standingKeys[actor];}Image person=seatPortraits[seat];c.clip(x+2,y+14,78,48);c.img(person,x+25,y+17);c.all();}catch(java.io.IOException ignored){}
+   n.chat.roomSpeech.head(actor,x+40,y+26);c.drawLevel(n.actorExperience[actor],x+54,y+39);
   } else {
    String key = c.gender + ":" + c.skin + ":" + c.wornMask + ":" + c.customLook;
    for (int i = 0; i < c.look.length; i++) key += ":" + c.look[i];
    if (!key.equals(portraitKey)) {
     portraitKey = key;
     try {
-     localPortrait = c.equipmentPreview(c.gender,c.skin,c.customLook,c.look,c.wornMask,39,52);
+     localPortrait = c.equipmentPreview(c.gender,c.skin,c.customLook,c.look,c.wornMask,29,39);
     } catch (java.io.IOException ignored) {
      localPortrait = null;
     }
    }
-   c.img(localPortrait, x+28, y+13);
+   c.clip(x+2,y+14,78,48);c.img(localPortrait,x+25,y+17);c.all();
    n.chat.roomSpeech.head(0,x+48,y+27);
-   c.drawLevel(c.experience, x+61, y+16);
+   c.drawLevel(c.experience, x+54, y+39);
   }
   if (online ? (n.wornMasks[actor]&1)!=0 : (c.wornMask&1)!=0)
    c.img(c.weapons[online ? n.weapon[actor] : c.equipped], x+7, y+43);
@@ -303,7 +305,7 @@ final class DungeonScreen {
  }
 
  void openPicker(boolean online) {
-  if (online ? n.dungeonStage!=1&&n.dungeonStage!=3 : c.offlineDungeon.stage==2) {c.message("Độ khó đã chọn từ ải 1");return;}
+
   if (online && (n.inBattle || !n.host || n.phase != 0)) {
    c.message("Chỉ chủ phòng được chọn ải viễn chinh trước trận");
    return;

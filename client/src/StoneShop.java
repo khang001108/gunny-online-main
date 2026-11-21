@@ -28,7 +28,7 @@ final class StoneShop {
    c.pcText(""+ForgeRules.price(type),x+43,y+26);
    if(focus==type&&c.shop.focus<6)c.drawItemSelection(x,y,box[2],box[3],false);
   }
-  if(infoType>=0)drawInfo(infoType,c.shop.box(focus%6));
+  c.img(c.shop.previous,151,213);c.img(c.shop.next,284,213);
   c.pcCenter("Có "+c.economy.material(focus)+" • "+(focus/6+1)+"/2",229,214);
  }
  void buy(){
@@ -59,13 +59,17 @@ final class StoneShop {
 
   if(infoType>=0){infoType=-1;if(key==-6||key==-7||ok)return;}
   if(key==-7){c.shop.leave();return;}
-  if(c.shop.focus==14){
-   if(dir!=0)c.shop.focus=focus%6;else if(ok)buy();return;
+  if(c.shop.focus>=6){
+   if((c.shop.focus==12||c.shop.focus==13)&&dir==4){int last=Math.min(5,6-focus/6*6),cell=c.shop.focus==12?last/2*2:last%2==1?last:last-1;if(cell<0)cell=0;focus=focus/6*6+cell;c.shop.focus=cell;return;}
+   if(dir!=0)c.shop.move(dir);
+   else if(ok){if(c.shop.focus==12||c.shop.focus==13){focus=c.shop.focus==12?0:6;}else c.shop.activate();}
+   return;
   }
-  if(dir==1&&focus>0)focus--;
-  else if(dir==2&&focus<6)focus++;
-  else if(dir==4){if(focus%6>=2)focus-=2;else{c.shop.focus=19;return;}}
-  else if(dir==8){if(focus+2<7)focus+=2;else{c.shop.focus=14;return;}}
+  int local=focus%6,page=focus/6;
+  if(dir==1){if(local%2==1)focus--;else if(page>0)focus=(page-1)*6+Math.min(local+1,5);else{c.shop.focus=20+c.bag.nearestWorn(c.shop.box(local))-31;return;}}
+  else if(dir==2){if(local%2==0&&focus+1<7)focus++;else if(page==0&&local%2==1){focus=6;}}
+  else if(dir==4){if(local>=2)focus-=2;else{c.shop.focus=19;return;}}
+  else if(dir==8){if(local+2<6&&focus+2<7)focus+=2;else{c.shop.focus=local%2==0?12:13;return;}}
   else if(ok)buy();
   c.shop.focus=focus%6;
  }

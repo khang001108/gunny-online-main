@@ -179,16 +179,17 @@ final class ShopScreen {
         c.pcText("" + (tab == 3 ? c.stoneShop.price() : total()), 57, 221);
         if(tab==3)c.pcText("Thông tin",4,229);
         if (tab != 2) {
-            c.img(buyArt, 106, 201);
+            c.ui.button("Mua(B)",106,201,37,21,false);
             if (focus == 14 && tab == 3)
                 c.drawItemSelection(106, 201, 37, 21, false);
         }
         int[] b = box(focus);
         boolean tabFocus = focus == 6 || focus == 7 || focus == 18 || focus == 19
                 || focus >= 8 && focus <= 11;
-        if (!tabFocus && tab != 3 && (tab != 2 || focus != 17))
+        if (!tabFocus && (tab != 3 || focus >= 6) && (tab != 2 || focus != 17))
             c.drawItemSelection(b[0], b[1], b[2], b[3], true);
-        if (c.bag.info)
+        if(tab==3&&c.stoneShop.infoType>=0)c.stoneShop.drawInfo(c.stoneShop.infoType,box(c.stoneShop.focus%6));
+        else if (c.bag.info)
             c.bag.drawInfo();
         else if (c.toastTicks > 0) {
             c.panel(16, 27, 288, 17);
@@ -224,9 +225,9 @@ final class ShopScreen {
         if (id == 17)
             return tab == 2;
         if (id < 6)
-            return tab != 2 && page * 6 + id < count();
+            return tab == 3 ? c.stoneShop.focus/6*6+id<7 : tab != 2 && page * 6 + id < count();
         if (id >= 8 && id <= 11)
-            return tab != 2 && id - 8 < categories().length;
+            return tab < 2 && id - 8 < categories().length;
         if (id == 12 || id == 13)
             return tab != 2;
         return true;
@@ -245,8 +246,10 @@ final class ShopScreen {
             int value = categories()[focus - 8];
             if (kind != value)
                 chooseCategory(value);
-        } else if (focus < 6)
-            selected = page * 6 + focus;
+        } else if (focus < 6) {
+            if(tab==3)c.stoneShop.focus=c.stoneShop.focus/6*6+focus;
+            else selected = page * 6 + focus;
+        }
     }
 
     int categoryFocus() {
@@ -400,6 +403,7 @@ final class ShopScreen {
     }
 
     void activate() {
+        if(tab==3&&(focus==12||focus==13)){c.stoneShop.focus=focus==12?0:6;return;}
         if (tab == 3 && focus == 14) {
             c.stoneShop.buy();
             return;
@@ -446,7 +450,8 @@ final class ShopScreen {
     }
 
     void key(int key, int dir, boolean ok) {
-        if (tab == 3 && focus != 19 && focus != 6 && focus != 7 && focus != 18) {
+        if(key=='b'||key=='B'){c.stoneShop.infoType=-1;if(tab==3)c.stoneShop.buy();else checkout();return;}
+        if (tab == 3 && (focus < 6 || focus == 12 || focus == 13 || focus == 14)) {
             c.stoneShop.key(key, dir, ok);
             return;
         }

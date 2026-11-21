@@ -9,21 +9,21 @@ sudo bash /home/khazg/gunny/gunny-online-main/deploy/cap-nhat-gunny.sh
 Nhập mật khẩu hệ thống khi sudo hỏi. Menu có:
 
 1. **Kiểm tra**: xem container/image hiện tại và kiểm tra SQL 7.7.0 và 7.8.0 bằng API chỉ đọc.
-2. **Cập nhật lên 7.8.1**: yêu cầu bạn xác nhận đã tự chạy SQL, xác minh schema,
+2. **Cập nhật lên 7.8.8**: yêu cầu bạn xác nhận đã tự chạy SQL, xác minh schema,
    chạy thử image rồi đổi container.
 3. **Quay lại bản trước**: khôi phục container đã lưu ở lần cập nhật gần nhất.
 0. **Thoát**.
 
 Tool không chạy SQL, không chuyển project Supabase, không xoá hay reset tài khoản.
 Nếu Supabase đang ở schema 7.7.0, chạy một lần
-[supabase/UPDATE-7.7.0-TO-7.8.0.sql](../supabase/UPDATE-7.7.0-TO-7.8.0.sql)
+[supabase/UPDATE-CURRENT.sql](../supabase/UPDATE-CURRENT.sql)
 trong SQL Editor của project hiện tại. Khi tool hỏi, nhập `DA CHAY SQL`.
 Ngay cả khi có xác nhận, tool vẫn chặn cập nhật nếu không xác minh được migration.
 
 ## Tool thực hiện những gì
 
 - Đọc cấu hình trực tiếp từ container cũ, không yêu cầu nhập lại khoá Supabase/admin.
-- Dùng image `gunny-online:7.8.1` đã build. Nếu chưa có, build từ thư mục repo.
+- Dùng image `gunny-online:7.8.8` đã build. Nếu chưa có, build từ thư mục repo.
 - Chạy thử image bằng tài khoản RAM trên các cổng localhost ngẫu nhiên; không đưa
   khoá Supabase vào container thử.
 - Giữ biến môi trường, cổng publish, network và restart policy đang dùng; đổi đường
@@ -59,12 +59,6 @@ Chỉ dùng `--sql-confirmed` sau khi chính bạn đã chạy SQL. Muốn build
 mã hiện tại, thêm `--build` vào lệnh update. Tool chỉ cần Python 3 và Docker CLI;
 không cần cài pip package hay Docker Compose.
 
-Đã kiểm tra cấu hình container thực tế và kiểm thử tự động 13 tình huống:
-thiếu xác nhận SQL, thiếu migration, image thử lỗi, giữ cấu hình, khởi động lỗi,
-tạo container lỗi, rollback lặp, chống ghi đè container khác và từ chối chiếm stack.
-Các kiểm thử phục hồi dùng Docker mô phỏng; chưa chạy đổi container production
-vì chưa có xác nhận SQL.
-
-Bản tool hiện tại chuẩn bị cập nhật **7.8.1**, kiểm tra `actors/live/growth`,
-`expansion/forge/dungeon` và hai JAD 780. Image ARM64 đã được build và chạy thử
-riêng bằng tài khoản RAM; container production vẫn giữ nguyên. Tool không tự chạy SQL.
+Bản tool hiện tại chuẩn bị cập nhật **7.8.8**, kiểm tra `actors/live/growth`,
+`expansion/forge/dungeon` và hai JAD 788. Tool không tự chạy SQL. Với Xubi, đẩy
+Git rồi Deploy trực tiếp, không cần chạy tool này hay tạo ZIP Pi.

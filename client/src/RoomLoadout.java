@@ -64,10 +64,9 @@ final class RoomLoadout {
    int width = row + 1;
    c.part(randomMap,93-width,24+row,width,1,313-width,171+row,false);
   }
-  dungeonMapRow("Dạng phòng", "Ải Viễn Chinh", 151, dungeonMapGreen);
-  dungeonMapRow("Độ khó phòng", c.dungeon.difficultyName(online?c.net.dungeonDifficulty:c.offlineDungeon.difficulty), 160, dungeonMapYellow);
-  dungeonMapRow("Giới thiệu cấp", "15+", 169, dungeonMapGreen);
-  dungeonMapRow("LC đề cử", "100", 178, dungeonMapGreen);
+  dungeonMapRow("Độ khó: ",c.dungeon.difficultyName(online?c.net.dungeonDifficulty:c.offlineDungeon.difficulty),153,dungeonMapYellow);
+  dungeonMapRow("Cấp: ","15+",165,dungeonMapGreen);
+  dungeonMapRow("LC đề cử: ","100",177,dungeonMapGreen);
  }
  private void dungeonMapRow(String label, String value, int y, Image font) {
   c.tooltip.colored(label,231,y,font);

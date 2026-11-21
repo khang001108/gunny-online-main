@@ -42,7 +42,7 @@ final class AdminServer implements AutoCloseable {
  boolean sameOrigin(HttpExchange x){String origin=x.getRequestHeaders().getFirst("Origin"),host=x.getRequestHeaders().getFirst("Host");if(origin==null||host==null)return false;try{URI u=URI.create(origin);return u.getUserInfo()==null&&u.getRawQuery()==null&&u.getRawFragment()==null&&(u.getRawPath()==null||u.getRawPath().isEmpty())&&("https".equals(u.getScheme())||localHttp(x))&&u.getRawAuthority().equalsIgnoreCase(host);}catch(Exception e){return false;}}
  String secureCookie(HttpExchange x){return localHttp(x)&&sameOrigin(x)?"":"; Secure";}
  void handle(HttpExchange x)throws IOException{try{
-  Headers h=x.getResponseHeaders();h.set("X-Gunny-Version","7.8.7");h.set("Cache-Control","no-store");h.set("X-Content-Type-Options","nosniff");h.set("Referrer-Policy","no-referrer");h.set("Content-Security-Policy","default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+  Headers h=x.getResponseHeaders();h.set("X-Gunny-Version","7.8.8");h.set("Cache-Control","no-store");h.set("X-Content-Type-Options","nosniff");h.set("Referrer-Policy","no-referrer");h.set("Content-Security-Policy","default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   if(!enabled){json(x,503,Map.of("error","Trang quản trị chưa được bật. Cấu hình GUNNY_ADMIN_PASSWORD trên máy chủ."));return;}
   String path=x.getRequestURI().getPath(),method=x.getRequestMethod();
   if(!path.startsWith("/admin/api/")){

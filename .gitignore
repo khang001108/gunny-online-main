@@ -16,10 +16,13 @@ __pycache__/
 /docs/docker-*-readiness.json
 /public/review-*.png
 
-# Retired installers (keep the current 7.8.3 release)
-/public/downloads/*-Online-78[012].jar
-/public/downloads/*-Online-78[012].jad
-/public/downloads/*-CaiDat-7.8.[012].zip
+# Keep only the current release in Git.
+/public/downloads/*-Online-*.jar
+/public/downloads/*-Online-*.jad
+!/public/downloads/*-Online-788.jar
+!/public/downloads/*-Online-788.jad
+/public/downloads/*-CaiDat-*.zip
+/deploy/backups/
 
 /client/build/
 /.codex-remote-attachments/

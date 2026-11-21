@@ -32,7 +32,7 @@ config.write_text('\n'.join([
 subprocess.run(['java', '-jar', str(tools/'proguard.jar'), '@'+str(config)], check=True)
 downloads = root.parent/'public/downloads'
 with zipfile.ZipFile(build/'preverified.jar') as code:
-    for name in ('Gunny-E6-Online-787', 'Gunny-E72-2009-Online-787'):
+    for name in ('Gunny-E6-Online-788', 'Gunny-E72-2009-Online-788'):
         jar = downloads/(name+'.jar')
         temp = build/(name+'.jar')
         with zipfile.ZipFile(jar) as original, zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED) as output:
@@ -58,20 +58,4 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
         text = jad.read_text(encoding='utf-8').replace(':22122', ':22123')
         text = re.sub(r'MIDlet-Jar-Size: \d+', 'MIDlet-Jar-Size: '+str(jar.stat().st_size), text)
         jad.write_text(text, encoding='utf-8')
-installer = downloads/'Gunny-E6-Online-CaiDat-7.8.7.zip'
-temp = build/installer.name
-if installer.exists():
-    with zipfile.ZipFile(installer) as original, zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED) as output:
-        for info in original.infolist():
-            replacement = downloads/Path(info.filename).name
-            data = replacement.read_bytes() if info.filename.endswith(('.jar', '.jad')) and replacement.is_file() else original.read(info.filename)
-            if info.filename.endswith('.txt'):
-                data = data.replace(b':22122', b':22123')
-            output.writestr(info, data)
-else:
-    with zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED) as output:
-        for suffix in ('.jar', '.jad'):
-            source = downloads/('Gunny-E6-Online-787'+suffix)
-            output.write(source, source.name)
-installer.write_bytes(temp.read_bytes())
-print('Rebuilt E72/E6 JAR, JAD and E6 installer ZIP.')
+print('Rebuilt current E72/E6 JAR and JAD.')

@@ -11,15 +11,15 @@ public final class Gameplay771Check {
   var s=new GunnyServer.Session();s.profile=store.profile(store.login(email,"test-password-123").userId);s.id=s.profile.id;s.profile.experience=Progression.experienceForLevel(level);s.profile.characterChosen=true;s.actors=s.live=s.equipment=s.async=s.chunks=true;s.lastSeen=System.currentTimeMillis();return s;
  }
  public static void main(String[] args)throws Exception {
-  for(String device:new String[]{"E72-2009","E6"})for(String ext:new String[]{"jar","jad"})check(GunnyServer.downloadFile("Gunny-"+device+"-Online-771."+ext),"Current "+device+" "+ext+" is downloadable");
-  check(!GunnyServer.downloadFile("../gunny.env")&&!GunnyServer.downloadFile("Gunny-E6-Online-771.jar/../../gunny.env"),"Installer allowlist rejects traversal and private files");
+  for(String device:new String[]{"E72-2009","E6"})for(String ext:new String[]{"jar","jad"})check(GunnyServer.downloadFile("Gunny-"+device+"-Online-788."+ext),"Current "+device+" "+ext+" is downloadable");
+  check(!GunnyServer.downloadFile("../gunny.env")&&!GunnyServer.downloadFile("Gunny-E6-Online-788.jar/../../gunny.env"),"Installer allowlist rejects traversal and private files");
   int prior=0;
   for(int level=1;level<=70;level++){
    int exp=Progression.experienceForLevel(level);check(Progression.level(exp)==level&&Progression.bonus(exp)==(level-1)*5,"Level "+level+" has exact cumulative EXP and +5 growth");
    if(level>1)check(Progression.level(exp-1)==level-1,"EXP below level "+level+" remains at previous level");
    var u=new Battle.Unit();u.experience=exp;u.weapon=0;ItemRules.apply(u,3);
    check(u.attackBonus==5+(level-1)*5&&u.defense==45+(level-1)*5&&u.luck==25+(level-1)*5,"Level "+level+" grows attack, defense and luck equally");
-   check(u.maxHp==Battle.MAXHP+u.defense&&u.maxEnergy==240+u.luck,"Level "+level+" growth feeds combat HP and energy");
+   check(u.maxHp==Progression.baseHp(exp)+u.defense-Progression.bonus(exp)&&u.maxEnergy==240+u.luck,"Level "+level+" growth feeds combat HP and energy");
    u.hp=100;u.energy=100;ItemRules.weapon(u,9);check(u.hp==100&&u.energy==100&&u.experience==exp,"Changing weapon preserves EXP and does not heal");
    ItemRules.stats(u,0);check(u.attackBonus==(level-1)*5&&u.defense==u.attackBonus&&u.luck==u.attackBonus,"Removing equipment preserves only level growth");
    check(Progression.power(3,0,exp)-Progression.power(3,0)==3*(level-1)*5,"Rating includes all three level bonuses");
