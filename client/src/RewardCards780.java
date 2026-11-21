@@ -16,20 +16,20 @@ final class RewardCards780 {
   for(int i=0;i<taken.length;i++){taken[i]=false;amount[i]=type[i]=0;}
  }
  int picks(){return result.online()?n.rewardPicks:offlinePicks;}
- int limit(){return result.antStage()?1:2;}
- int columns(){return result.antStage()?3:6;}
+ int limit(){return result.online()?DungeonRewards.picks(n.roomKind,n.dungeonStage):result.antStage()?1:2;}
+ int columns(){return result.smallDeck()?3:6;}
  void reveal(int card){revealing=card;revealAt=System.currentTimeMillis();}
  boolean flipping(){return System.currentTimeMillis()-revealAt<700;}
  boolean open(int card){return result.online()?n.deckRevealed||n.cardNames[card]!=null&&n.cardNames[card].length()>0:offlinePicks>=limit()||taken[card];}
- int left(){return result.antStage()?166:13;}
+ int left(){return result.smallDeck()?166:13;}
  boolean offlineDeck;
  void draw(){
   if(!result.online()&&offlinePicks>=limit()&&!offlineDeck){offlineDeck=true;for(int i=0;i<columns()*3;i++)if(!taken[i]){type[i]=c.offlineDungeon.active?StoneDrops.type(StoneDrops.grade(c.offlineDungeon.difficulty,c.game.rand(100))):c.game.rand(2);amount[i]=type[i]==0?500+c.game.rand(1501):10+c.game.rand(91);}}
 
-  if(stone==null)stone=c.combatRoomArt("stone780");
+  if(stone==null)stone=c.stoneShop.icon(0);
   c.all();c.img(result.background,0,0);
-  c.pcCenter((result.antStage()?"ẢI 1 • ":"")+"BẢNG THẺ • "+picks()+"/"+limit()+" đã chọn",160,13);
-  if(result.antStage()){
+  c.pcCenter((result.smallDeck()?"ẢI "+(n.dungeonStage>=3?DungeonRewards.tribalNumber(n.dungeonStage):1)+" • ":"")+"BẢNG THẺ • "+picks()+"/"+limit()+" đã chọn",160,13);
+  if(result.smallDeck()){
    c.img(result.light,5,39);
    c.img(result.hero,18,49);
    c.pcCenter(c.pcShort(result.name(result.actor()),128),78,175);
@@ -45,7 +45,7 @@ final class RewardCards780 {
     c.img(opened?result.front:result.back,x,y);
     if(opened){
      int reward=result.online()?n.cardCoins[i]:amount[i],kind=result.online()?n.cardTypes[i]:type[i];
-     if(kind>=4){int grade=kind-4;if(gradeIcons[grade]==null)gradeIcons[grade]=c.combatRoomArt("craft-material-"+(grade+1));c.img(gradeIcons[grade],x+8,y+7);c.pcCenter("Lv"+(grade+2),x+19,y+25);}else if(kind<2)c.img(kind==1?stone:result.gold,x+8,y+9);else if(kind==2){if(wing==null)wing=NativeUi.fit(c.combatRoomArt("tribal-wing"),22*c.s,20*c.s,0);c.img(wing,x+8,y+6);}else c.img(c.weapons[8],x+8,y+7);
+     if(kind>=4){int grade=kind-4;if(gradeIcons[grade]==null)gradeIcons[grade]=c.combatRoomArt("craft-material-"+(grade+1));c.img(gradeIcons[grade],x+8,y+7);c.pcCenter("Lv"+(grade+2),x+19,y+25);}else if(kind<2){c.img(kind==1?stone:result.gold,x+8,y+9);if(kind==1)c.pcCenter("Lv1",x+19,y+25);}else if(kind==2){if(wing==null)wing=NativeUi.fit(c.combatRoomArt("tribal-wing"),22*c.s,20*c.s,0);c.img(wing,x+8,y+6);}else c.img(c.weapons[8],x+8,y+7);
      c.pcCenter("+"+reward,x+19,y+35);
      if(result.online())c.pcCenter(c.pcShort(n.cardNames[i]==null?"":n.cardNames[i],36),x+19,y+46);
     }
@@ -53,15 +53,14 @@ final class RewardCards780 {
    if(selected==i)c.drawSelectionGlow(x-2,y-2,42,59);
   }
   c.pcCenter(result.online()&&n.deckCap&&picks()>=limit()&&!n.deckRevealed?"Chờ mọi người chọn xong thẻ":picks()>=limit()?result.antStage()||n.roomKind==3&&n.dungeonStage>=3&&n.dungeonStage<6?"OK: tiếp tục ải sau":"OK: về sảnh"
-          :n.busy?"Đang nhận thưởng...":"Chọn thẻ • OK: lật",160,228);
+          :n.receivingReward()?"Đang nhận thưởng...":"Chọn thẻ • OK: lật",160,228);
  }
  void activate(){
-  if(flipping())return;
-  if(picks()>=limit()){if(result.online()&&n.deckCap&&!n.deckRevealed){c.message("Chờ mọi người chọn xong thẻ");return;}result.leave();return;}
+  if(result.online()&&n.receivingReward())return;
+  if(picks()>=limit()){if(flipping())return;if(result.online()&&n.deckCap&&!n.deckRevealed){c.message("Chờ mọi người chọn xong thẻ");return;}result.leave();return;}
   if(open(selected)){if(result.online())c.message("Thẻ đã có người chọn");return;}
   if(result.online()){
-   if(n.busy||n.pending.length()>0)return;
-   n.cardDraft=selected;n.request("claim780");
+   n.rewardRequest("claim780",selected);
   }else{
    taken[selected]=true;
    type[selected]=c.offlineDungeon.active?StoneDrops.type(StoneDrops.grade(c.offlineDungeon.difficulty,c.game.rand(100))):c.game.rand(2);
@@ -75,7 +74,6 @@ final class RewardCards780 {
   }
  }
  void key(int key,int dir,boolean ok){
-  if(flipping())return;
   if(key==-7){if(picks()>=limit())result.leave();else c.message("Bạn còn "+(limit()-picks())+" lượt chọn thẻ");return;}
   int cols=columns(),cards=cols*3;
   if(dir!=0)selected=(selected+cards+(dir==1?-1:dir==2?1:dir==4?-cols:cols))%cards;

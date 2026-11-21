@@ -247,7 +247,7 @@ final class BagScreen {
     }
 
     void drawInfo() {
-        if(infoKind==GIFT_KIND){String desc=infoItem==0?"Thưởng: hòm Lv"+(c.gifts.value(0)+1)+", xu, đá Lv1 x50–100":infoItem==1?"Thưởng: đá Lv2 x20–70. Thẻ VIP 1 ngày: 10%.":"Kích hoạt VIP 1 ngày. Cộng dồn thời hạn.";c.tooltip.goods(c.gifts.name(infoItem),infoItem==0?"Hòm Lv"+c.gifts.value(0):"Quà",desc,box(focus));return;}
+        if(infoKind==GIFT_KIND){String desc=infoItem==0?"Thưởng: hòm Lv"+(c.gifts.value(0)+1)+", xu, đá Lv1 x50-100":infoItem==1?"Thưởng: đá Lv2 x20-70. Thẻ VIP 1 ngày: 10%.":"Kích hoạt VIP 1 ngày. Cộng dồn thời hạn.";c.tooltip.goods(c.gifts.name(infoItem),infoItem==0?"Hòm Lv"+c.gifts.value(0):"Quà",desc,box(focus));return;}
         if(infoKind==STONE_KIND){c.stoneShop.drawInfo(infoItem,box(focus));return;}
         c.tooltip.draw(infoKind, infoItem, c.mode == 6 ? c.shop.box(c.shop.focus) : box(focus));
     }

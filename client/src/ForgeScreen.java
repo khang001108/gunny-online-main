@@ -5,8 +5,9 @@ import javax.microedition.lcdui.*;
  * forge.
  */
 final class ForgeScreen {
-    void releaseArt(){frame=stone=stoneSmall=left=inventoryPanel=cell=equipTab=equipment=material=percent=on=off=action=fill=success=slotSuccess=continuousText=stoneLabel=hammer=closeButton=luckyIcon=protectIcon=null;for(int i=0;i<strength.length;i++)strength[i]=null;running=false;}
+    void releaseArt(){resultSuccess=resultFailure=glow=star=null;frame=stone=stoneSmall=left=inventoryPanel=cell=equipTab=equipment=material=percent=on=off=action=fill=success=slotSuccess=continuousText=stoneLabel=hammer=closeButton=luckyIcon=protectIcon=null;for(int i=0;i<strength.length;i++)strength[i]=null;running=false;}
 
+    Image resultSuccess,resultFailure,glow,star;int resultKind;long resultUntil;
     final PhoneCanvas c;
     int page, selection, count, kind, item, expected, expectedProgress, focus, confirm, animFrom, animTo, riseRank;
     final int[] kinds = new int[130], items = new int[130];
@@ -27,7 +28,7 @@ final class ForgeScreen {
 
     void open() {
         page = selection = focus = confirm = 0;
-        step=0;quantity=1;continuous = running = false;
+        step=0;resultUntil=successUntil=riseStart=0;quantity=1;continuous = running = false;
         requestKey = "";
         c.mode = 18;
         refresh();
@@ -37,6 +38,8 @@ final class ForgeScreen {
 
     void refresh() {
         gradeCount=0;for(int g=1;g<=5;g++)if(c.economy.material(g-1)>0)ownedGrades[gradeCount++]=g;stoneSelection=Math.min(stoneSelection,Math.max(0,gradeCount-1));
+        previewStone();
+        page=step==1?0:selection/25;
         count = 0;
         for (int k = 0; k < 7; k++)
             if (ForgeRules.allowed(k))
@@ -88,8 +91,8 @@ final class ForgeScreen {
         percent = NativeUi.fit(c.combatRoomArt("forge780-percent"), 82 * c.s, 10 * c.s, 3 * c.s);
         action = NativeUi.fit(c.combatRoomArt("auth714-button"), 78 * c.s, 21 * c.s, 5 * c.s);
         fill = NativeUi.fit(c.combatRoomArt("forge780-fill"), 76 * c.s, 6 * c.s, 2 * c.s);
-        success = c.combatRoomArt("forge780-success");
-        slotSuccess = c.combatRoomArt("forge780-success-slot");
+        resultSuccess=c.combatRoomArt("forge789-success");resultFailure=c.combatRoomArt("forge789-failure");
+        glow=c.combatRoomArt("forge789-glow");star=c.combatRoomArt("forge789-star");
         continuousText = c.combatRoomArt("forge780-continuous");
         stoneLabel = c.combatRoomArt("forge780-stone-label");
         hammer = NativeUi.fit(c.combatRoomArt("forge780-hammer"),
@@ -102,11 +105,13 @@ final class ForgeScreen {
         return count==0||expected>=ForgeRules.MAX_RANK?0:ForgeRules.chance(expected,grade,quantity,lucky)/100;
     }
 
-    int shownPercent() {
-        long now = System.currentTimeMillis();
-        if (animStart > 0 && now - animStart < 900)
-            return animFrom + (animTo - animFrom) * (int) (now - animStart) / 900;
-        return percent();
+    int shownPercent(){return percent();}
+    void previewStone(){if(step==1&&gradeCount>0){grade=ownedGrades[stoneSelection];quantity=1;requestKey="";}}
+    void drawUpgradeFx(long now){
+        if(now>=successUntil)return;
+        int elapsed=(int)(now-animStart),frame=Math.min(5,elapsed*6/1100);
+        c.part(glow,frame*60,0,60,60,20,65,false);
+        for(int i=0;i<4;i++){int p=(elapsed/100+i*2)%8;int x=p<3?21+p*24:p<5?69:p<7?69-(p-4)*24:21;int y=p<3?68:p<5?68+(p-2)*20:p<7?108:88;c.img(star,x,y);}
     }
 
     void draw() {
@@ -122,21 +127,15 @@ final class ForgeScreen {
         c.img(left, 12, 55);
         c.pcText("Trang bị", 22, 57);
         c.pcText("Đá cường hóa", 84, 57);
-        if (now < successUntil && ((now / 140) & 1) == 0)
-            c.img(slotSuccess, 24, 72);
         c.img(equipment, 24, 72);
         c.img(material, 94, 72);
         if (count > 0)
             c.img(c.bag.itemIcon(kind, item), 38, 83);
         if (c.economy.material(grade-1) > 0)
             c.img(c.stoneShop.icon(grade-1), 107, 83);
+        drawUpgradeFx(now);
         c.pcCenter("+" + expected, 51, 108);
         c.pcCenter("x" + c.economy.material(grade-1), 120, 108);
-        if (riseStart > 0 && now - riseStart < 2000 && riseRank > 0) {
-            if (strength[riseRank] == null)
-                strength[riseRank] = c.combatRoomArt("strength780-" + riseRank);
-            c.img(strength[riseRank], 22, 54 - (int) (now - riseStart) * 25 / 2000);
-        }
         c.img(percent, 45, 123);
         int pct = shownPercent(), fw = 76 * pct / 100;
         if (fw > 0)
@@ -161,7 +160,7 @@ final class ForgeScreen {
         if(focus==9)c.drawSelectionGlow(94,72,52,53);
         if (focus == 1)
             c.drawSelectionGlow(48, 198, 78, 21);
-        if(c.toastTicks>0)c.pcCenter(c.pcShort(c.toast,135),80,57);
+        if(c.toastTicks>0&&now>=resultUntil)c.pcCenter(c.pcShort(c.toast,135),80,57);
         c.img(inventoryPanel, 149, 55);
         c.img(c.bag.input, 153, 57);
         c.pcText(c.pcShort(step==1&&gradeCount>0?StoneShop.NAMES[ownedGrades[stoneSelection]-1]:count>0?c.bag.itemName(kind,item):"Trang bị",120),160,62);
@@ -176,9 +175,10 @@ final class ForgeScreen {
         }
         c.img(c.bag.arrow, 155, 207);
         c.pcCenter("<", 165, 210);
-        c.pcCenter((page + 1) + "/" + Math.max(1, (count + 24) / 25), 222, 210);
+        c.pcCenter((page + 1) + "/" + Math.max(1, ((step==1?gradeCount:count) + 24) / 25), 222, 210);
         c.img(c.bag.arrow, 269, 207);
         c.pcCenter(">", 279, 210);
+        if(now<resultUntil)c.img(resultKind>0?resultSuccess:resultFailure,16,54-(int)Math.min(10,(now-animStart)/130));
         if(info&&step==2&&(focus==7||focus==8||focus==9))c.stoneShop.drawInfo(focus==7?5:focus==8?6:grade-1,new int[]{154,90,25,25});
         else if(info&&step==1&&gradeCount>0)c.stoneShop.drawInfo(ownedGrades[stoneSelection]-1,new int[]{154+stoneSelection*26,78,25,25});
         else if (info && count > 0)
@@ -236,11 +236,12 @@ final class ForgeScreen {
         animStart = System.currentTimeMillis();
         nextAt = animStart + 1100;
         if (expected > before) {
-            successUntil = animStart + 2000;
+            successUntil = animStart + 1100;
             riseStart = animStart;
             riseRank = expected;
         }
-        c.message(expected > before ? "Cường hóa thành công +" + expected : expected<before?"Thất bại, giảm xuống +"+expected:"Cường hóa thất bại, giữ cấp");
+        resultKind=expected>before?1:-1;resultUntil=animStart+1800;if(resultKind<0)successUntil=0;
+        c.message(expected > before ? "Trang bị +" + expected : expected<before?"Giảm xuống +"+expected:"Giữ cấp +"+expected);
     }
 
     void failed() {
@@ -277,7 +278,7 @@ final class ForgeScreen {
 
     void key(int key, int dir, boolean ok) {
         if(step==2&&key==-7){step=1;focus=0;info=false;return;}if(step==2&&focus==0&&(dir!=0||ok))step=0;
-        if(step<2){if(key==-7){if(step==1){step=0;info=false;}else leave();return;}if(key==-6){info=!info;return;}if(dir!=0){info=false;if(step==1)stoneSelection=Battle.clamp(stoneSelection+(dir==1||dir==4?-1:1),0,Math.max(0,gradeCount-1));else select(Battle.clamp(selection+(dir==1?-1:dir==2?1:dir==4?-5:5),0,count-1));return;}if(ok){info=false;if(step==0){if(count>0){step=1;focus=0;}}else if(gradeCount>0){grade=ownedGrades[stoneSelection];quantity=1;step=2;focus=7;}else c.message("Chưa có đá cường hóa");}return;}
+        if(step<2){if(key==-7){if(step==1){step=0;info=false;}else leave();return;}if(key==-6){info=!info;return;}if(dir!=0){info=false;if(step==1){stoneSelection=Battle.clamp(stoneSelection+(dir==1||dir==4?-1:1),0,Math.max(0,gradeCount-1));previewStone();}else select(Battle.clamp(selection+(dir==1?-1:dir==2?1:dir==4?-5:5),0,count-1));return;}if(ok){info=false;if(step==0){if(count>0){step=1;focus=0;previewStone();}}else if(gradeCount>0){grade=ownedGrades[stoneSelection];quantity=1;step=2;focus=7;}else c.message("Chưa có đá cường hóa");}return;}
 
         if(!sending()&&!running){
 

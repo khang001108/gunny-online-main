@@ -32,17 +32,23 @@ config.write_text('\n'.join([
 subprocess.run(['java', '-jar', str(tools/'proguard.jar'), '@'+str(config)], check=True)
 downloads = root.parent/'public/downloads'
 with zipfile.ZipFile(build/'preverified.jar') as code:
-    for name in ('Gunny-E6-Online-788', 'Gunny-E72-2009-Online-788'):
+    for name in ('Gunny-E6-Online-789', 'Gunny-E72-2009-Online-789'):
         jar = downloads/(name+'.jar')
         temp = build/(name+'.jar')
+        overlays = {p.name:p.read_bytes() for p in (root/('assets2' if 'E6' in name else 'assets1')).glob('*.png')}
         with zipfile.ZipFile(jar) as original, zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED) as output:
             for info in original.infolist():
-                if info.filename.endswith('.class'):
+                if info.filename.endswith('.class') or info.filename in overlays or info.filename in ('stone780.png','forge780-success.png','forge780-success-slot.png'):
                     continue
                 data = original.read(info.filename)
                 if info.filename.upper() == 'META-INF/MANIFEST.MF':
-                    data = data.replace(b'socket://gunnyjava.xubi.org:22122', b'socket://gunnyjava.xubi.org:22123')
+                    data = data.replace(b'7.8.8',b'7.8.9').replace(b'socket://gunnyjava.xubi.org:22122', b'socket://gunnyjava.xubi.org:22123')
                 output.writestr(info, data)
+            for filename,data in overlays.items():
+                entry=zipfile.ZipInfo(filename,(2000,1,1,0,0,0));entry.create_system=0;entry.extra=b"";entry.flag_bits=0;entry.external_attr=0x20
+                entry.compress_type=zipfile.ZIP_STORED if "E72" in name else zipfile.ZIP_DEFLATED
+                entry.create_version=entry.extract_version=10 if "E72" in name else 20
+                output.writestr(entry,data)
             for info in code.infolist():
                 if info.filename.endswith('.class'):
                     entry=copy.copy(info)
@@ -55,7 +61,7 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
                     output.writestr(entry, code.read(info.filename))
         jar.write_bytes(temp.read_bytes())
         jad = downloads/(name+'.jad')
-        text = jad.read_text(encoding='utf-8').replace(':22122', ':22123')
+        text = jad.read_text(encoding='utf-8').replace(':22122', ':22123').replace('7.8.8','7.8.9').replace('Online-788','Online-789')
         text = re.sub(r'MIDlet-Jar-Size: \d+', 'MIDlet-Jar-Size: '+str(jar.stat().st_size), text)
         jad.write_text(text, encoding='utf-8')
 print('Rebuilt current E72/E6 JAR and JAD.')

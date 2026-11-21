@@ -19,16 +19,16 @@ Cần Java, Python và thư mục công cụ chứa `ecj.jar`, `proguard.jar` (6
 python client/build.py --tools D:/gunny/GunnyNokia/tools
 ```
 
-Script biên dịch CLDC 1.1 / MIDP 2.0, preverify và cập nhật hai JAR/JAD 7.8.8 trong `public/downloads`. Cần giữ các bộ cài hiện tại làm nguồn tài nguyên khi build. `client/build` chỉ chứa file sinh ra.
+Script biên dịch CLDC 1.1 / MIDP 2.0, preverify và cập nhật hai JAR/JAD 7.8.9 trong `public/downloads`. Cần giữ các bộ cài hiện tại làm nguồn tài nguyên khi build. `client/build` chỉ chứa file sinh ra.
 
 ## Kiểm thử màn hình và lưu cấu hình
 
 Cần thêm `microemulator.jar`, `mmapi.jar` trong thư mục công cụ:
 
 ```powershell
-javac --release 17 -encoding UTF-8 -cp 'public/downloads/Gunny-E6-Online-788.jar;D:/gunny/GunnyNokia/tools/microemulator.jar' -d client/build/test client/tests/ServerSettingsCheck.java
-java -Djava.awt.headless=true -cp 'client/build/test;public/downloads/Gunny-E72-2009-Online-788.jar;D:/gunny/GunnyNokia/tools/microemulator.jar;D:/gunny/GunnyNokia/tools/mmapi.jar' ServerSettingsCheck 1
-java -Djava.awt.headless=true -cp 'client/build/test;public/downloads/Gunny-E6-Online-788.jar;D:/gunny/GunnyNokia/tools/microemulator.jar;D:/gunny/GunnyNokia/tools/mmapi.jar' ServerSettingsCheck 2
+javac --release 17 -encoding UTF-8 -cp 'public/downloads/Gunny-E6-Online-789.jar;D:/gunny/GunnyNokia/tools/microemulator.jar' -d client/build/test client/tests/ServerSettingsCheck.java
+java -Djava.awt.headless=true -cp 'client/build/test;public/downloads/Gunny-E72-2009-Online-789.jar;D:/gunny/GunnyNokia/tools/microemulator.jar;D:/gunny/GunnyNokia/tools/mmapi.jar' ServerSettingsCheck 1
+java -Djava.awt.headless=true -cp 'client/build/test;public/downloads/Gunny-E6-Online-789.jar;D:/gunny/GunnyNokia/tools/microemulator.jar;D:/gunny/GunnyNokia/tools/mmapi.jar' ServerSettingsCheck 2
 ```
 
 Cổng client 22123 là cổng bên ngoài của `gunny-xubi`. Cổng lắng nghe bên trong container có thể vẫn là 22122 nếu Docker ánh xạ `22123:22122/tcp`; thay đổi này không sửa cấu hình máy chủ đang chạy.
@@ -36,3 +36,5 @@ Cổng client 22123 là cổng bên ngoài của `gunny-xubi`. Cổng lắng ngh
 ## Về phòng sau trận
 
 Nhận đủ lượt sẽ mở cả bộ thẻ để xem thưởng; không cộng thêm vật phẩm từ các thẻ chưa chọn. Phó bản qua ải trung gian tiếp tục sang ải sau. Server xác nhận mọi phần thưởng và cập nhật HP theo cấp giống client.
+
+Ảnh rèn gốc và ảnh thay thế nằm trong `client/assets1` / `client/assets2`; build chèn các ảnh này vào đúng bộ cài và loại hình đá cũ. Xem `client/ASSETS.json` cho nguồn tài nguyên.

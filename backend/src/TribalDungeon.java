@@ -1,6 +1,6 @@
 import java.io.*;
 import java.util.*;
-/** Room adapter for the shared four-stage campaign. Ant Cave and PvP keep their routes. */
+/** Room adapter for the shared three-encounter campaign (saved stage identities remain stable). Ant Cave and PvP keep their routes. */
 final class TribalDungeon {
  static boolean isRoom(GunnyServer server,int id){var r=server.rooms.get(id);return r!=null&&is(r);}
  static boolean is(GunnyServer.Room r){return r.kind==3&&r.dungeonStage>=3;}

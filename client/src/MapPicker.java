@@ -43,7 +43,7 @@ final class MapPicker {
         if (confirmFocused) c.drawSelectionGlow(CONFIRM_X,CONFIRM_Y,CONFIRM_W,CONFIRM_H);
     }
     private void drawDungeonDescription() {
-        String description=c.onlineAccount()&&c.dungeon.draftDungeon==1?"Bốn ải giữa rừng sâu. Cứu Đậu Thần, hạ hai Bulan và đánh bại Sulan. Tổ đội 1-3 người.":DUNGEON_DESCRIPTION;
+        String description=c.onlineAccount()&&c.dungeon.draftDungeon==1?"Ba ải giữa rừng sâu. Bảo vệ Đậu Thần và đánh bại Sulan. Tổ đội 1-3 người.":DUNGEON_DESCRIPTION;
         if (compactFont == null) {
             Image source = c.combatRoomArt("font-pc");
             compactFont = NativeUi.fit(source, source.getWidth()*3/4, source.getHeight()*7/10, 0);

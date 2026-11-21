@@ -16,7 +16,7 @@ final class TribalArt {
   if(kind==TribalRules.BOMB){c.oval(x-24,y-4,48,5,c.frame%12<6?0xe93622:0xffe95a);c.pcCenter("Nổ sau "+Math.max(1,2-u.power)+" lượt",x,y-size-12);}
   if(actor==(TribalRules.stage(b)==2?6:b.active)&&b.tribalOutcome<0&&b.tribalClock<45){String speech=TribalRules.dialogue(b);if(speech.length()>0)c.drawSpeechBubble(x,y-size-8,new String[]{speech});}
  }
- void hud(){Battle b=c.game;if(!TribalRules.active(b))return;int stage=TribalRules.stage(b);c.pcText("Ải "+stage+": "+TribalRules.STAGES[stage-1],8,34);
+ void hud(){Battle b=c.game;if(!TribalRules.active(b))return;int stage=TribalRules.stage(b);c.pcText("Ải "+DungeonRewards.tribalNumber(b.dungeonStage)+": "+TribalRules.STAGES[stage-1],8,34);
   if(stage>=3){Battle.Unit boss=b.units[1];c.rect(73,48,174,11,0x31231b);c.rect(75,50,170*Math.max(0,boss.hp)/Math.max(1,boss.maxHp),7,0xa9342b);c.pcCenter(TribalRules.name(boss.npc)+" "+boss.hp+"/"+boss.maxHp,160,49);}
   if(stage==3){Battle.Unit other=b.units[3];c.rect(73,61,174,11,0x31231b);c.rect(75,63,170*Math.max(0,other.hp)/Math.max(1,other.maxHp),7,0xb56827);c.pcCenter(TribalRules.name(other.npc)+" "+other.hp+"/"+other.maxHp,160,62);}
   else if(stage==2)c.pcText("Đậu Thần: "+b.units[6].hp+" • Đợt "+b.tribalWave+"/"+b.tribalGoal,65,48);
