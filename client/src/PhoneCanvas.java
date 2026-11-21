@@ -15,7 +15,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     final GiftBag gifts=new GiftBag(this);
     final EconomyInventory economy=new EconomyInventory(this);
     final OfflineDungeon offlineDungeon=new OfflineDungeon(this);
-    final HomeScreen home=new HomeScreen(this);final ForgeScreen forge=new ForgeScreen(this);final StoneShop stoneShop=new StoneShop(this);DungeonScreen dungeon;
+    final HomeScreen home=new HomeScreen(this);final Ranking793 ranking=new Ranking793(this);final ForgeScreen forge=new ForgeScreen(this);final StoneShop stoneShop=new StoneShop(this);DungeonScreen dungeon;
     int economySequence;String nextEconomyKey(){return "g780-"+System.currentTimeMillis()+"-"+(++economySequence)+"-"+Math.abs(game.rand(1000000));}
     OnlineClient net;
 
@@ -291,8 +291,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             img(loadingHeroes[i],center-width/2,145-height);
             img(weapons[game.units[i].weapon],center+width/3-8,127);
             if(loadingReady(i)){
-                if(versusOK!=null)img(versusOK,center-versusOK.getWidth()/(2*s),149);else pcCenter("OK",center,149);
-            }else pcCenter((onlineBattle()&&!net.controls[i]?"Đang tải":Math.min(100,loadTicks*100/60)+"%"),center,151);
+                if(onlineBattle()&&net.clock793)pcCenter("100%",center,151);else if(versusOK!=null)img(versusOK,center-versusOK.getWidth()/(2*s),149);else pcCenter("OK",center,149);
+            }else pcCenter((onlineBattle()&&net.clock793?net.loadingPercent[i]+"%":Math.min(100,loadTicks*100/60)+"%"),center,151);
             pcCenter(pcShort(actorName(i),width+8),center,165);
         }
         pcText(offlineDungeon.active?"Huyệt Ma Kiến • Ải "+offlineDungeon.stage:onlineBattle()&&net.roomKind==3?(net.dungeonStage>=3?"Bộ Lạc Tà Thần • Ải "+DungeonRewards.tribalNumber(net.dungeonStage):"Huyệt Ma Kiến • Ải "+net.dungeonStage):game.unitCount == 6 ? "Tổ đội • 3 đấu 3"
@@ -402,7 +402,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     boolean powCutinLeft, powShotPending;
     Image powCutin, powWorld;
     int[] powWorldPixels, powZoomPixels, powSampleX, powDistanceX, powShade;
-    int powFocusX, powFocusY, powZoomPhase = -1, powZoomDark = -1;
+    int powLightX=160,powLightY=120;int powFocusX, powFocusY, powZoomPhase = -1, powZoomDark = -1;
 
     boolean showingPowCutin() {
         return powCutinTicks > 0 && powCutin != null && game.active == powCutinActor && game.pow && !game.over;
@@ -486,10 +486,10 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         int age = POW_CUTIN_TIME - powCutinTicks;
         if (age < 30)
             return;
-        int x = VipRules.level(vip.actorExp(powCutinActor))>0?120:powCutinX(), effectFrame = Math.min(19, (age - 30) * 20 / Math.max(1, POW_CUTIN_TIME - 42));
-        vip.back(vip.actorExp(powCutinActor),-1,x+40,192,3,true);
+        int x = Battle.clamp(powLightX,72,248)-40, effectFrame = Math.min(19, (age - 30) * 20 / Math.max(1, POW_CUTIN_TIME - 42));
+        vip.back(vip.actorExp(powCutinActor),-1,x+40,Battle.clamp(powLightY,72,168)+72,3,true);
         if (age >= 42 && powCutinTicks > 7)
-            img(powCutin, x, 51);
+            img(powCutin, x, Battle.clamp(powLightY,72,168)-50);
     }
 
     void resetPowWorld() {
@@ -522,6 +522,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                             width - width * 1024 / zoom),
                     top = Battle.clamp(focusY - 133 * s * 1024 / zoom, 0, height - height * 1024 / zoom),
                     base = 255 - dark;
+            powLightX=(powFocusX-left)*zoom/1024/s;powLightY=(powFocusY-top)*zoom/1024/s;
             for (int x = 0; x < width; x++) {
                 int sx = left + x * 1024 / zoom, dx = (sx - focusX) / s;
                 powSampleX[x] = sx;
@@ -1260,6 +1261,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     frame++;
                     presentation.tick();
                     forge.tick();
+                    if(mode==5&&onlineBattle())net.results.tick();
                     tickLoading();
                     if (muzzleTicks > 0)
                         muzzleTicks--;
@@ -1371,7 +1373,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         tribalArt.release();
     }
     void beginMatch(int battleMap) throws IOException {
-        releaseNpcArt();loadout.releaseMenuArt();gifts.releaseArt();home.releaseArt();bag.releaseArt();shop.releaseArt();forge.releaseArt();vip.release();tooltip.releaseArt();popup.releaseArt();ui.releaseArt();
+        releaseNpcArt();loadout.releaseMenuArt();gifts.releaseArt();home.releaseArt();ranking.releaseArt();bag.releaseArt();shop.releaseArt();forge.releaseArt();vip.release();tooltip.releaseArt();popup.releaseArt();ui.releaseArt();
         if(dungeon!=null)dungeon.releaseArt();if(net!=null){net.waiting.releaseArt();net.rooms.releaseArt();for(int i=0;i<net.standing.length;i++)net.standing[i]=null;}
         for(int i=0;i<stoneShop.icons.length;i++)stoneShop.icons[i]=null;
 
@@ -1789,6 +1791,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             else if (mode == 5)
                 drawResult();
         }
+        if(mode==0&&ranking.opened)ranking.draw();
         if (mode == 0 && net.social.opened) net.social.draw();
         if (net.chat.lobby()) net.chat.draw();
         net.chat.roomSpeech.draw();
@@ -3532,6 +3535,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             net.social.key(key, dir, ok);
             return;
         }
+        if(mode==0&&ranking.opened){ranking.key(key,dir,ok);return;}
+        if(!onlineAccount()&&mode!=16){net.loginForm(false);return;}
         if (net.chat.roomSpeech.key(net.chat.rawBinding(rawKey,key),dir,ok)) return;
         if (net.chat.key(net.chat.rawBinding(rawKey,key), dir, ok)) return;
         if (mode == 10 && (key == -6 || key == -7)) {
@@ -3986,6 +3991,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             net.social.pointer(x, y);
             return;
         }
+        if(mode==0&&ranking.opened){ranking.pointer(x,y);return;}
+        if(!onlineAccount()&&mode!=16){net.loginForm(false);return;}
         if (net.chat.roomSpeech.pointer(x,y)) return;
         if (net.chat.pointer(x, y)) return;
         if (mode == 10 && x < 210 && y >= 48 && y < 154)

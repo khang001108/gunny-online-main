@@ -2,9 +2,9 @@
 final class Progression {
  static int level(int exp){return Math.min(70,1+(int)((Math.sqrt(1+Math.max(0,exp)*4.0/25)-1)/2));}
  static int experienceForLevel(int lv){lv=Math.max(1,Math.min(70,lv));return 25*(lv-1)*lv;}
- static int baseHp(int exp){return Battle.MAXHP+(5000-Battle.MAXHP)*(level(exp)-1)/69;}
+ static int baseHp(int exp){return Battle.MAXHP+(30000-Battle.MAXHP)*(level(exp)-1)/69;}
  static int bonus(int exp){return (level(exp)-1)*5;}
- static final int[] BOT_LEVELS={1,5,10,15,20,30,45,60};
+ static final int[] BOT_LEVELS={1,5,10,15,20,60,65,70};
  static int botExperience(int bot){return experienceForLevel(BOT_LEVELS[Math.max(0,Math.min(7,bot))]);}
  static int within(int exp){int lv=level(exp);return lv==70?0:(int)(Math.max(0,exp)-25L*(lv-1)*lv);}
  static int limit(int exp){int lv=level(exp);return lv==70?0:50*lv;}

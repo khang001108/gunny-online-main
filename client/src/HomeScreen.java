@@ -57,7 +57,7 @@ final class HomeScreen {
         } else
             c.img(dungeon, 188, 117);
         c.img(c.lobbyHallLabel, X[2] - c.lobbyHallLabel.getWidth() / (2 * c.s), 141);
-        drawLabel(c.onlineAccount() ? 8 : 6, X[6], 168);
+        c.pcCenter("Xếp hạng",X[6],168);
         drawLabel(7, X[7], 101);
         drawLabel(5, 226, 193);
         int selected = c.lobbySelection;
@@ -157,11 +157,8 @@ final class HomeScreen {
             c.message("Đang chuyển sang Offline.");
             return;
         }
-        if (choice == 6 && c.onlineAccount()) {
-            c.popup.open("Chuyển sang Offline", "Bạn muốn chuyển sang Offline? Tài khoản Online sẽ được đăng xuất.",
-                    new String[] { "Hủy", "Đồng ý" }, CONFIRM_OFFLINE);
-            return;
-        }
+        if(!c.onlineAccount()){c.net.loginForm(false);return;}
+        if(choice==6){c.ranking.open();return;}
         if (choice == 5 && c.onlineAccount()) {
             c.net.openDungeon();
             return;

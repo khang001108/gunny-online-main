@@ -12,9 +12,9 @@ public final class Update788Check {
    int xp=Progression.experienceForLevel(level);var unit=new Battle.Unit();unit.experience=xp;ItemRules.apply(unit,0);
    check(unit.maxHp==Progression.baseHp(xp)&&unit.hp==unit.maxHp&&unit.hp>previous,"Unarmored HP at level "+level);previous=unit.hp;
   }
-  check(Progression.baseHp(0)==2000&&previous==5000,"Level 1 = 2000; level 70 = 5000 before equipment");
+  check(Progression.baseHp(0)==2000&&previous==30000,"Level 1 = 2000; level 70 = 30000 before equipment");
   var unit=new Battle.Unit();unit.experience=Progression.experienceForLevel(70);unit.weapon=0;unit.forgeDefense=195;ItemRules.apply(unit,5);
-  check(unit.maxHp==5000+5+ItemRules.DEFENSE[0]+195,"Equipment and forge add HP separately from level");
+  check(unit.maxHp==30000+5+ItemRules.DEFENSE[0]+195,"Equipment and forge add HP separately from level");
   var store=new CloudStore.Memory();var user=Expansion780Check.session(store,"Dungeon788",70);user.flock=user.tribal=true;user.profile.dungeonClear=true;
   try(var server=new GunnyServer(new InetSocketAddress("127.0.0.1",0),Path.of("backend/assets"),store)){
    server.clock.shutdownNow();var room=server.new Room(user,6,2,-1,true);room.kind=3;room.strict=true;user.room=room.id;server.rooms.put(room.id,room);

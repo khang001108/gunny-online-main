@@ -8,7 +8,7 @@ final class ShopScreen {
     boolean trialCustom;
     final int[] cart = new int[7], sentCart = new int[7], trialLook = new int[5];
     Image frame, card, cartArt, buyArt, previous, next, money, coin, close;
-    Image curtain, subTab, activeSubTab;
+    Image curtain, subTab, activeSubTab, goldBuy, goldTab;
     final Image[][] mainTabs = new Image[4][2];
 
     final Command exchangeOK = new Command("Đổi", Command.OK, 1), exchangeBack = new Command("Hủy", Command.BACK, 2);
@@ -21,7 +21,7 @@ final class ShopScreen {
     }
 
     void open() {
-        tab = kind = page = selected = focus = 0;
+        tab = kind = page = selected = focus = 0;c.vip.trialWing=-2;
         resetTrial();
         if (c.onlineAccount() && c.net.shopCap && !c.net.busy && c.net.pending.length() == 0) {
             c.inventory.onlineLoaded = false;
@@ -135,7 +135,7 @@ final class ShopScreen {
         c.bag.characterFor(trialMask, trialCustom, trialSkin, trialLook, trialWeapon);
         if (tab < 2)
             c.pcCenter(c.pcShort(name(kind, item(selected)), 68), 77, 182);
-        for(int i=0;i<5;i++){int value=TAB_VALUES[i],x=151+i*32;if(value==4){c.img(mainTabs[2][tab==4?1:0],x,38);c.rect(x+3,42,25,12,tab==4?0x9e2911:0x80601d);c.pcCenter("VIP",x+15,45);}else c.img(mainTabs[value==3?2:value==2?3:value][tab==value?1:0],x,38);}
+        for(int i=0;i<5;i++){int value=TAB_VALUES[i],x=151+i*32;if(value==4){if(goldTab==null)goldTab=NativeUi.fit(c.combatRoomArt("popup751-button"),31*c.s,20*c.s,4*c.s);c.img(goldTab,x,38);c.pcCenter("VIP",x+15,45);if(tab==4)c.drawItemSelection(x,38,31,20,false);}else c.img(mainTabs[value==3?2:value==2?3:value][tab==value?1:0],x,38);}
         if(tab==4){c.vip.drawShop();}
         else if (tab == 2) {
             c.exchangePanel.draw();
@@ -178,7 +178,7 @@ final class ShopScreen {
         c.pcText("" + (tab == 4 ? VipRules.WING_PRICE[c.vip.shopFocus] : tab == 3 ? c.stoneShop.price() : total()), 57, 221);
         if(tab==3)c.pcText("Thông tin",4,229);
         if (tab != 2) {
-            c.ui.button("Mua(B)",106,201,37,21,false);
+            if(goldBuy==null)goldBuy=NativeUi.fit(c.combatRoomArt("popup751-button"),37*c.s,21*c.s,4*c.s);c.img(goldBuy,106,201);c.pcCenter("Mua(B)",124,207);
             if (focus == 14 && tab == 3)
                 c.drawItemSelection(106, 201, 37, 21, false);
         }
@@ -475,7 +475,7 @@ final class ShopScreen {
             selectTab(value);
             return;
         }
-        if(tab==4){if(x>=289&&y<33){leave();return;}for(int i=0;i<5;i++){int[] b=box(i);if(x>=b[0]&&x<b[0]+b[2]&&y>=b[1]&&y<b[1]+b[3]){c.vip.shopFocus=i;c.vip.buy();return;}}if(x>=106&&x<143&&y>=201&&y<222)c.vip.buy();return;}
+        if(tab==4){if(x>=289&&y<33){leave();return;}for(int i=0;i<5;i++){int[] b=box(i);if(x>=b[0]&&x<b[0]+b[2]&&y>=b[1]&&y<b[1]+b[3]){c.vip.shopFocus=i;c.vip.trialWing=i;return;}}if(x>=106&&x<143&&y>=201&&y<222)c.vip.buy();return;}
         if (tab == 3 && c.stoneShop.pointer(x, y))
             return;
         if (tab == 3 && x >= 106 && x < 143 && y >= 201 && y < 222) {

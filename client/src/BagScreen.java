@@ -20,7 +20,7 @@ final class BagScreen {
     Image moving;
     int sx, sy, tx, ty, pendingKind, pendingItem;
     boolean pendingRemove;
-    int heldSource = -1;
+    int heldSource = -1, wingHeld=-1;
     long moveAt;
     static final int PAGE = 25;
     static final int[] WORN = { 3, 4, 2, 1, 6, 5, 0 };
@@ -34,7 +34,7 @@ final class BagScreen {
         filter = 0;
         page = selected = focus = 0;
         info = false;
-        heldSource = -1;
+        heldSource = wingHeld = -1;
         list();
     }
 
@@ -117,7 +117,7 @@ final class BagScreen {
                 preview = null;
             }
         }
-        c.vip.back(c.vip.exp(),c.vip.wing(),76,138,0,false);
+        c.vip.back(c.vip.exp(),c.mode==6&&c.shop.tab==4&&c.vip.trialWing>=0?c.vip.trialWing:c.vip.wing(),76,138,0,false);
           c.img(preview, 44, 58);
         for (int i = 0; i < 7; i++) {
             int[] b = box(31 + i);
@@ -253,7 +253,7 @@ final class BagScreen {
     }
 
     void drawInfo() {
-        if(infoKind==VIP_KIND){c.tooltip.goods(VipRules.cardName(infoItem),"Thẻ VIP",infoItem==12?"Dùng: đạt ngay VIP 9. Vật phẩm chỉ do quản trị cấp.":"Dùng: +"+((infoItem+1)*100)+" EXP VIP. Tiêu hao 1 thẻ.",box(focus));return;}
+        if(infoKind==VIP_KIND){c.tooltip.goods(VipRules.cardName(infoItem),"Thẻ VIP",infoItem==12?"Dùng: đạt ngay VIP 9. Vật phẩm chỉ do quản trị cấp.":"Dùng: +"+((infoItem+1)*100)+" EXP VIP. Khi MAX, 100 EXP đổi 100 xu mua sắm; EXP dư cũng đổi xu.",box(focus));return;}
         if(infoKind==WING_KIND){if(infoItem<0)return;c.tooltip.goods(c.vip.wingName(infoItem),"Cánh",infoItem==5?"Cánh thưởng phó bản. Trang bị vĩnh viễn.":"+"+VipRules.WING_HP[infoItem]+" HP khi đeo. Cần VIP "+VipRules.WING_VIP[infoItem]+" để mua. Vĩnh viễn.",box(focus));return;}
 
         if(infoKind==GIFT_KIND){String desc=infoItem==0?"Thưởng: hòm Lv"+(c.gifts.value(0)+1)+", xu, đá Lv1 x50-100":infoItem==1?"Thưởng: đá Lv2 x20-70. Thẻ VIP 1 ngày: 10%.":"Kích hoạt VIP 1 ngày. Cộng dồn thời hạn.";c.tooltip.goods(c.gifts.name(infoItem),infoItem==0?"Hòm Lv"+c.gifts.value(0):"Quà",desc,box(focus));return;}
@@ -388,7 +388,7 @@ final class BagScreen {
     }
 
     void switchTab(int value) {
-        heldSource = -1;
+        heldSource = wingHeld = -1;
         info = false;
         tab = value;
         filter = page = selected = 0;
@@ -486,10 +486,10 @@ final class BagScreen {
 
     void activate() {
         if(focus==41){if(c.vip.wing()>=0)c.vip.submit("vipequip",-1);return;}
-        if(focus<PAGE&&page*PAGE+focus<count){int id=page*PAGE+focus;if(kinds[id]==VIP_KIND){c.vip.submit("vipuse",items[id]);return;}if(kinds[id]==WING_KIND){c.vip.submit("vipequip",c.vip.wing()==items[id]?-1:items[id]);return;}}
+        if(focus<PAGE&&page*PAGE+focus<count){int id=page*PAGE+focus;if(kinds[id]==VIP_KIND){c.vip.submit("vipuse",items[id]);return;}if(kinds[id]==WING_KIND){if(wingHeld!=id){wingHeld=id;selected=id;c.message("OK: mặc/tháo cánh • Mềm trái: thông tin");return;}wingHeld=-1;c.vip.submit("vipequip",c.vip.wing()==items[id]?-1:items[id]);return;}}
 
         if(focus<PAGE&&page*PAGE+focus<count&&kinds[page*PAGE+focus]==GIFT_KIND){heldSource=-1;info=false;c.gifts.use(items[page*PAGE+focus]);return;}
-        if(focus<PAGE&&page*PAGE+focus<count&&kinds[page*PAGE+focus]==STONE_KIND){int m=items[page*PAGE+focus];heldSource=-1;infoKind=STONE_KIND;infoItem=m;info=!info;return;}
+        if(focus<PAGE&&page*PAGE+focus<count&&kinds[page*PAGE+focus]==STONE_KIND){int m=items[page*PAGE+focus];if(m<5&&c.onlineAccount()){c.stoneShop.convert(m);return;}heldSource=-1;infoKind=STONE_KIND;infoItem=m;info=!info;return;}
 
         if (heldSource >= 0 && focus < PAGE) {
             int target = page * PAGE + focus;

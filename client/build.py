@@ -11,6 +11,7 @@ import time
 root = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser()
 parser.add_argument('--tools', type=Path, required=True, help='Directory containing ecj.jar, proguard.jar, cldcapi11.jar, midpapi20.jar')
+parser.add_argument('--code-only', action='store_true', help='Compile and preverify without replacing release installers')
 args = parser.parse_args()
 tools = args.tools.resolve()
 build = root / 'build'
@@ -31,19 +32,23 @@ config.write_text('\n'.join([
     '-microedition', '-target 1.2', '-dontshrink', '-dontoptimize', '-dontobfuscate', '-keepattributes Exceptions,InnerClasses',
 ]), encoding='utf-8')
 subprocess.run(['java', '-jar', str(tools/'proguard.jar'), '@'+str(config)], check=True)
+if args.code_only:
+    print('Compiled and preverified client classes.')
+    raise SystemExit(0)
 downloads = root.parent/'public/downloads'
 with zipfile.ZipFile(build/'preverified.jar') as code:
-    for name in ('Gunny-E6-Online-792', 'Gunny-E72-2009-Online-792'):
+    for name in ('Gunny-E6-Online-793', 'Gunny-E72-2009-Online-793'):
         jar = downloads/(name+'.jar')
         temp = build/(name+'.jar')
         overlays = {p.name:p.read_bytes() for p in (root/('assets2' if 'E6' in name else 'assets1')).glob('*.png')}
-        with zipfile.ZipFile(jar) as original, zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED) as output:
+        seed = jar if jar.exists() else downloads/(name.replace('793','792')+'.jar')
+        with zipfile.ZipFile(seed) as original, zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED) as output:
             for info in original.infolist():
-                if info.filename.endswith('.class') or info.filename in overlays or info.filename in ('stone780.png','forge780-success.png','forge780-success-slot.png'):
+                if info.filename.startswith('wing792-') or info.filename.startswith('vip-progress') or 'vip-ring-' in info.filename and '-216.png' in info.filename or info.filename.endswith('.class') or info.filename in overlays or info.filename in ('stone780.png','forge780-success.png','forge780-success-slot.png'):
                     continue
                 data = original.read(info.filename)
                 if info.filename.upper() == 'META-INF/MANIFEST.MF':
-                    data = data.replace(b'7.9.1',b'7.9.2').replace(b'7.9.0',b'7.9.2').replace(b'7.8.8',b'7.9.2').replace(b'7.8.9',b'7.9.2').replace(b'socket://gunnyjava.xubi.org:22122', b'socket://gunnyjava.xubi.org:22123')
+                    data = data.replace(b'7.9.2',b'7.9.3').replace(b'7.9.1',b'7.9.3').replace(b'7.9.0',b'7.9.3').replace(b'7.8.8',b'7.9.3').replace(b'7.8.9',b'7.9.3').replace(b'socket://gunnyjava.xubi.org:22122', b'socket://gunnyjava.xubi.org:22123')
                 output.writestr(info, data)
             for filename,data in overlays.items():
                 entry=zipfile.ZipInfo(filename,(2000,1,1,0,0,0));entry.create_system=0;entry.extra=b"";entry.flag_bits=0;entry.external_attr=0x20
@@ -70,7 +75,8 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
                 time.sleep(0.3)
 
         jad = downloads/(name+'.jad')
-        text = jad.read_text(encoding='utf-8').replace('7.9.1','7.9.2').replace('Online-791','Online-792').replace('7.9.0','7.9.2').replace('Online-790','Online-792').replace(':22122', ':22123').replace('7.8.8','7.9.2').replace('7.8.9','7.9.2').replace('Online-788','Online-792').replace('Online-789','Online-792')
+        jad_seed = jad if jad.exists() else downloads/(name.replace('793','792')+'.jad')
+        text = jad_seed.read_text(encoding='utf-8').replace('7.9.2','7.9.3').replace('Online-792','Online-793').replace('7.9.1','7.9.3').replace('Online-791','Online-793').replace('7.9.0','7.9.3').replace('Online-790','Online-793').replace(':22122', ':22123').replace('7.8.8','7.9.3').replace('7.8.9','7.9.3').replace('Online-788','Online-793').replace('Online-789','Online-793')
         text = re.sub(r'MIDlet-Jar-Size: \d+', 'MIDlet-Jar-Size: '+str(jar.stat().st_size), text)
         jad.write_text(text, encoding='utf-8')
 print('Rebuilt current E72/E6 JAR and JAD.')

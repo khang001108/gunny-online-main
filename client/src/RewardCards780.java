@@ -35,6 +35,7 @@ final class RewardCards780 {
    c.img(result.hero,18,49);
    c.pcCenter(c.pcShort(result.name(result.actor()),128),78,175);
   }
+  if(result.online()&&n.clock793)c.pcText(""+Math.max(0,(n.rewardDeadline-System.currentTimeMillis()+999)/1000)+"s",286,13);
   int cols=columns();
   for(int i=0;i<cols*3;i++){
    int x=left()+i%cols*51,y=45+i/cols*59;

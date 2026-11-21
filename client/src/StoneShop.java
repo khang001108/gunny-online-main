@@ -12,6 +12,9 @@ final class StoneShop {
  final Image[] icons=new Image[7];
  String requestKey="";
  StoneShop(PhoneCanvas canvas){c=canvas;}
+ int conversion=-1;
+ void convert(int type){conversion=type;c.popup.open("Đổi đá sang xu","Đổi 1 "+NAMES[type]+" lấy "+(100*(1<<type))+" xu mua sắm?",new String[]{"Hủy","Đổi"},31);}
+ void confirmConversion(){if(conversion>=0&&conversion<5&&c.mode==7)c.vip.submit("vipuse",13+conversion);}
  int quantity(){return 1;}
  int price(){return ForgeRules.price(focus);}
  Image icon(int type){
@@ -51,7 +54,7 @@ final class StoneShop {
   }else if(c.economy.buyMaterial(confirmedType,1))c.message("Đã mua "+NAMES[confirmedType]);
  }
  int infoType=-1;
- String description(int type){return (type<5?"Tăng tỉ lệ cường hóa theo cấp đá. Tiêu hao kể cả thất bại.":type==5?"Tăng 25% tỉ lệ gốc. Ví dụ 40% thành 50%. Tiêu hao mỗi lần rèn.":"Không giảm cấp khi rèn thất bại từ +5. Tiêu hao mỗi lần rèn.")+"\nCó: "+c.economy.material(type)+"\nGiá: "+ForgeRules.price(type);}
+ String description(int type){return (type<5?"Tăng tỉ lệ cường hóa theo cấp đá. Tiêu hao kể cả thất bại.":type==5?"Tăng 25% tỉ lệ gốc. Ví dụ 40% thành 50%. Tiêu hao mỗi lần rèn.":"Không giảm cấp khi rèn thất bại từ +5. Tiêu hao mỗi lần rèn.")+(type<5?"\nĐổi 1 đá: "+(100*(1<<type))+" xu mua sắm. OK trong Túi để đổi.":"")+"\nCó: "+c.economy.material(type)+"\nGiá: "+ForgeRules.price(type);}
  void info(int type){infoType=infoType==type?-1:type;}
  void drawInfo(int type,int[] anchor){c.tooltip.goods(NAMES[type],type<5?"Đá Lv"+(type+1):"Bùa",description(type),anchor);}
  void key(int key,int dir,boolean ok){
