@@ -35,6 +35,7 @@ final class OnlineSocial implements CommandListener {
     boolean itemInfo;
     boolean viewing;
     String infoName;
+    int infoVip,infoWing=-1;
     int infoSex, infoSkin, infoMask, infoWeapon, infoExp, infoWins, infoRank;
     final int[] infoForge=new int[3],infoRanks=new int[130];
     final int[] infoLook = new int[5];
@@ -55,6 +56,7 @@ final class OnlineSocial implements CommandListener {
         if(net.expansionCap)for(int i=0;i<3;i++)infoForge[i]=in.readUnsignedShort();
         for(int i=0;i<130;i++)infoRanks[i]=0;
         if(in.available()>=130)for(int i=0;i<130;i++)infoRanks[i]=in.readUnsignedByte();
+        if(net.vipCap){infoVip=in.readInt();infoWing=in.readByte();}
         infoHero = c.equipmentPreview(infoSex, infoSkin, (infoMask & 2) == 0, infoLook, infoMask, 64, 80);
         for (int k = 0; k < 7; k++) {
             infoIcons[k] = null;
@@ -119,7 +121,7 @@ final class OnlineSocial implements CommandListener {
             return;
         }
         c.pcCenter(c.pcShort(infoName, 117), 161, 46);
-        c.img(infoHero, 128, 58);
+        c.vip.back(infoVip,infoWing,160,138,0,false);c.img(infoHero, 128, 58);
         for (int n = 0; n < 7; n++) {
             int k = BagScreen.WORN[n];
             int[] b = infoBox(n);
@@ -188,7 +190,7 @@ final class OnlineSocial implements CommandListener {
             return op;
         }
         if (opened && !offlineInvite && tab != 2 && !viewing && !searching && !actionLoading) {
-            if (!loading && !wantList && now - listPoll > 4000)
+            if (!loading && !wantList && now - listPoll > 2000)
                 wantList = true;
             if (wantList) {
                 wantList = false;
@@ -251,10 +253,10 @@ final class OnlineSocial implements CommandListener {
         listError = "";
         listPoll = System.currentTimeMillis();
         myId = in.readInt();
-        count = in.readUnsignedShort();
-        if (count > 128)
+        int receivedCount = in.readUnsignedShort();
+        if (receivedCount > 128)
             throw new IOException("Sai danh sách.");
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < receivedCount; i++) {
             ids[i] = in.readInt();
             names[i] = in.readUTF();
             online[i] = in.readBoolean();
@@ -265,6 +267,7 @@ final class OnlineSocial implements CommandListener {
                 looks[i][k] = in.readUnsignedByte();
             experience[i] = net.actorsCap ? in.readInt() : 0;
         }
+        count=receivedCount;
         page = Math.min(page, Math.max(0, (count - 1) / rows()));
         for (int i = 0; i < 6; i++)
             heads[i] = null;
@@ -412,7 +415,7 @@ final class OnlineSocial implements CommandListener {
             c.drawLevel(rowExperience(i), 90, y + 2);
             String name = c.pcShort(tab == 2 ? PhoneCanvas.BOT_NAMES[i] : names[i], 68);
             c.pcText(name, 118, y + 8);
-            if (friendsPopup && tab != 2 && online[i]) {
+            if (tab != 2 && online[i]) {
                 int dot = 122 + c.pcWidth(name);
                 c.g.setColor(0x174a18);
                 c.g.fillArc(c.ox + dot * c.s, c.oy + (y + 9) * c.s, 6 * c.s, 6 * c.s, 0, 360);

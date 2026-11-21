@@ -12,6 +12,8 @@ final class ShopScreen {
     final Image[][] mainTabs = new Image[4][2];
 
     final Command exchangeOK = new Command("Đổi", Command.OK, 1), exchangeBack = new Command("Hủy", Command.BACK, 2);
+    static final int[] TAB_VALUES={0,1,3,4,2},TAB_IDS={6,7,19,43,18};
+    boolean headerFocus(){return focus==6||focus==7||focus==19||focus==43||focus==18;}
     static final int[] EQUIPMENT = { 0, 2, 3, 6 }, BEAUTY = { 4, 5, 1 };
 
     ShopScreen(PhoneCanvas owner) {
@@ -67,8 +69,8 @@ final class ShopScreen {
         activeSubTab = c.combatRoomArt("shop-sub-active");
         String[] names = {"equipment", "beauty", "props", "exchange"};
         for (int i = 0; i < names.length; i++) {
-            mainTabs[i][0] = c.combatRoomArt("shop-tab-" + names[i]);
-            mainTabs[i][1] = c.combatRoomArt("shop-tab-" + names[i] + "-active");
+            mainTabs[i][0] = NativeUi.fit(c.combatRoomArt("shop-tab-" + names[i]),31*c.s,20*c.s,0);
+            mainTabs[i][1] = NativeUi.fit(c.combatRoomArt("shop-tab-" + names[i] + "-active"),31*c.s,20*c.s,0);
         }
     }
 
@@ -133,12 +135,9 @@ final class ShopScreen {
         c.bag.characterFor(trialMask, trialCustom, trialSkin, trialLook, trialWeapon);
         if (tab < 2)
             c.pcCenter(c.pcShort(name(kind, item(selected)), 68), 77, 182);
-        for (int i = 0; i < 4; i++) {
-            int value = i == 2 ? 3 : i == 3 ? 2 : i;
-            int x = 151 + i * 40;
-            c.img(mainTabs[i][tab == value ? 1 : 0], x, 38);
-        }
-        if (tab == 2) {
+        for(int i=0;i<5;i++){int value=TAB_VALUES[i],x=151+i*32;if(value==4)c.ui.button("VIP",x,38,31,20,tab==4);else c.img(mainTabs[value==3?2:value==2?3:value][tab==value?1:0],x,38);}
+        if(tab==4){c.vip.drawShop();}
+        else if (tab == 2) {
             c.exchangePanel.draw();
         } else if (tab == 3) {
             c.stoneShop.draw();
@@ -176,7 +175,7 @@ final class ShopScreen {
         c.pcText("" + c.shoppingMoney, 26, 208);
         c.pcText("Tổng", 12, 221);
         c.img(money, 43, 220);
-        c.pcText("" + (tab == 3 ? c.stoneShop.price() : total()), 57, 221);
+        c.pcText("" + (tab == 4 ? VipRules.WING_PRICE[c.vip.shopFocus] : tab == 3 ? c.stoneShop.price() : total()), 57, 221);
         if(tab==3)c.pcText("Thông tin",4,229);
         if (tab != 2) {
             c.ui.button("Mua(B)",106,201,37,21,false);
@@ -184,7 +183,7 @@ final class ShopScreen {
                 c.drawItemSelection(106, 201, 37, 21, false);
         }
         int[] b = box(focus);
-        boolean tabFocus = focus == 6 || focus == 7 || focus == 18 || focus == 19
+        boolean tabFocus = headerFocus()
                 || focus >= 8 && focus <= 11;
         if (!tabFocus && (tab != 3 || focus >= 6) && (tab != 2 || focus != 17))
             c.drawItemSelection(b[0], b[1], b[2], b[3], true);
@@ -200,8 +199,7 @@ final class ShopScreen {
     int[] box(int id) {
         if (id < 6)
             return new int[] { 151 + id % 2 * 80, 87 + id / 2 * 41, 76, 40 };
-        if (id == 6 || id == 7 || id == 18 || id == 19)
-            return new int[] { 151 + (id == 18 ? 3 : id == 19 ? 2 : id - 6) * 40, 38, 39, 20 };
+        for(int i=0;i<5;i++)if(id==TAB_IDS[i])return new int[]{151+i*32,38,31,20};
         if (id >= 8 && id <= 11)
             return new int[] { 151 + (id - 8) * 40, 63, 38, 20 };
         if (id == 12 || id == 13)
@@ -216,6 +214,7 @@ final class ShopScreen {
     }
 
     boolean valid(int id) {
+        if(id==43)return true;
         if (id == 16)
             return false;
         if (id == 19)
@@ -234,12 +233,12 @@ final class ShopScreen {
     }
 
     int header() {
-        return tab == 3 ? 19 : tab == 2 ? 18 : 6 + tab;
+        return tab == 4 ? 43 : tab == 3 ? 19 : tab == 2 ? 18 : 6 + tab;
     }
 
     void hover() {
-        if (focus == 6 || focus == 7 || focus == 18 || focus == 19) {
-            int value = focus == 19 ? 3 : focus == 18 ? 2 : focus - 6;
+        if (headerFocus()) {
+            int value = focus == 43 ? 4 : focus == 19 ? 3 : focus == 18 ? 2 : focus - 6;
             if (tab != value)
                 selectTab(value);
         } else if (focus >= 8 && focus <= 11 && tab < 2) {
@@ -261,20 +260,9 @@ final class ShopScreen {
     }
 
     void move(int dir) {
-        if (focus == 6 || focus == 7 || focus == 18 || focus == 19) {
-            if (dir == 1 || dir == 2) {
-                int at = tab == 2 ? 3 : tab == 3 ? 2 : tab;
-                at = Battle.clamp(at + (dir == 1 ? -1 : 1), 0, 3);
-                int value = at == 2 ? 3 : at == 3 ? 2 : at;
-                focus = value == 3 ? 19 : value == 2 ? 18 : 6 + value;
-                hover();
-            } else if (dir == 8) {
-                if (tab == 3) {
-                    focus = 0;
-                    focus = c.stoneShop.focus%6;
-                } else
-                    focus = tab == 2 ? 17 : categoryFocus();
-            }
+        if (headerFocus()) {
+            if(dir==1||dir==2){int at=0;for(int i=0;i<5;i++)if(TAB_VALUES[i]==tab)at=i;at=Battle.clamp(at+(dir==1?-1:1),0,4);focus=TAB_IDS[at];hover();}
+            else if(dir==8){focus=tab==4?c.vip.shopFocus:tab==3?c.stoneShop.focus%6:tab==2?17:categoryFocus();}
             return;
         }
         if (focus >= 8 && focus <= 11) {
@@ -412,8 +400,8 @@ final class ShopScreen {
             return;
         if (focus < 6)
             trial(page * 6 + focus);
-        else if (focus == 6 || focus == 7 || focus == 18 || focus == 19)
-            selectTab(focus == 19 ? 3 : focus == 18 ? 2 : focus - 6);
+        else if (headerFocus())
+            selectTab(focus==43?4:focus == 19 ? 3 : focus == 18 ? 2 : focus - 6);
         else if (focus >= 8 && focus <= 11)
             chooseCategory(categories()[focus - 8]);
         else if (focus == 12 || focus == 13) {
@@ -450,7 +438,8 @@ final class ShopScreen {
     }
 
     void key(int key, int dir, boolean ok) {
-        if(key=='b'||key=='B'){c.stoneShop.infoType=-1;if(tab==3)c.stoneShop.buy();else checkout();return;}
+        if(tab==4&&!headerFocus()){c.vip.shopKey(key,dir,ok);return;}
+        if(key=='b'||key=='B'){if(tab==4){c.vip.buy();return;}c.stoneShop.infoType=-1;if(tab==3)c.stoneShop.buy();else checkout();return;}
         if (tab == 3 && (focus < 6 || focus == 12 || focus == 13 || focus == 14)) {
             c.stoneShop.key(key, dir, ok);
             return;
@@ -481,12 +470,11 @@ final class ShopScreen {
 
     void pointer(int x, int y) {
         if (y >= 38 && y < 59 && x >= 151) {
-            int at = Math.min(3, (x - 151) / 40);
-            int value = at == 2 ? 3 : at == 3 ? 2 : at;
-            focus = value == 3 ? 19 : value == 2 ? 18 : 6 + value;
+            int at=Math.min(4,(x-151)/32);int value=TAB_VALUES[at];focus=TAB_IDS[at];
             selectTab(value);
             return;
         }
+        if(tab==4){if(x>=289&&y<33){leave();return;}for(int i=0;i<5;i++){int[] b=box(i);if(x>=b[0]&&x<b[0]+b[2]&&y>=b[1]&&y<b[1]+b[3]){c.vip.shopFocus=i;c.vip.buy();return;}}if(x>=106&&x<143&&y>=201&&y<222)c.vip.buy();return;}
         if (tab == 3 && c.stoneShop.pointer(x, y))
             return;
         if (tab == 3 && x >= 106 && x < 143 && y >= 201 && y < 222) {

@@ -31,6 +31,7 @@ final class RewardCards780 {
   c.pcCenter((result.smallDeck()?"ẢI "+(n.dungeonStage>=3?DungeonRewards.tribalNumber(n.dungeonStage):1)+" • ":"")+"BẢNG THẺ • "+picks()+"/"+limit()+" đã chọn",160,13);
   if(result.smallDeck()){
    c.img(result.light,5,39);
+   c.vip.back(c.vip.actorExp(result.actor()),c.vip.actorWing(result.actor()),66,169,0,false);
    c.img(result.hero,18,49);
    c.pcCenter(c.pcShort(result.name(result.actor()),128),78,175);
   }
@@ -52,12 +53,11 @@ final class RewardCards780 {
    }
    if(selected==i)c.drawSelectionGlow(x-2,y-2,42,59);
   }
-  c.pcCenter(result.online()&&n.deckCap&&picks()>=limit()&&!n.deckRevealed?"Chờ mọi người chọn xong thẻ":picks()>=limit()?result.antStage()||n.roomKind==3&&n.dungeonStage>=3&&n.dungeonStage<6?"OK: tiếp tục ải sau":"OK: về sảnh"
-          :n.receivingReward()?"Đang nhận thưởng...":"Chọn thẻ • OK: lật",160,228);
+  c.pcCenter(picks()>=limit()?(result.online()?"OK: về phòng chờ":result.antStage()?"OK: tiếp tục ải sau":"OK: về sảnh"):n.receivingReward()?"Đang nhận thưởng...":"Chọn thẻ • OK: lật",160,228);
  }
  void activate(){
   if(result.online()&&n.receivingReward())return;
-  if(picks()>=limit()){if(flipping())return;if(result.online()&&n.deckCap&&!n.deckRevealed){c.message("Chờ mọi người chọn xong thẻ");return;}result.leave();return;}
+  if(picks()>=limit()){if(flipping())return;result.leave();return;}
   if(open(selected)){if(result.online())c.message("Thẻ đã có người chọn");return;}
   if(result.online()){
    n.rewardRequest("claim780",selected);

@@ -43,3 +43,12 @@ Nếu trang chỉ hiện dấu —, chưa phải kết quả có 0 tài khoản.
 ## Cập nhật lựa chọn tự huỷ lịch xoá
 
 Chạy `supabase/migrations/202611060002_gunny_admin_auto_cancel.sql` để đặt mặc định mới và chuyển các lịch đang chờ sang tự huỷ khi đăng nhập trước hạn. File không xoá tài khoản, không thay đổi ngày hẹn. Sau đó cập nhật web/server và tải lại trang. Tài khoản đã quá hạn vẫn bị xoá; đăng nhập sau hạn không cứu lại tài khoản. Tỷ lệ giữ 100 xu = 1 tiền, các nút nhanh là 2.000 / 5.000 / 10.000 xu.
+
+
+## VIP / cánh 7.9.0
+
+Chọn tài khoản → chọn Thẻ VIP 1–12 hoặc Full VIP → nhập số lượng → Cấp vật phẩm. Thẻ thường cộng 100–1.200 EXP; Full VIP đưa lên 21.200 EXP / VIP 12. Full VIP không có trong Shop. API client không được phép cấp vật phẩm.
+
+Khi bật cheat từ tắt sang bật, tài khoản được cộng 999 thẻ mỗi loại, gồm cả Full VIP (13 loại). Bấm lưu lại khi đã bật không cộng thêm. Tắt rồi bật lại sẽ cộng thêm 999, giới hạn 999.999 mỗi loại. Đây là đồ dùng thử có thể tiêu hao bình thường. Game tự cập nhật túi qua TCP khi đang ở sảnh/phòng.
+
+Cấp vật phẩm có mã giao dịch; gửi lại cùng yêu cầu không cộng trùng. EXP, mua và trang bị cánh lưu trên Supabase. Phải chạy migration VIP 202611220001 trước khi dùng chức năng này. Không đổi mật khẩu Admin hoặc secret Supabase trong đợt cập nhật.

@@ -17,10 +17,10 @@ final class Expansion780 {
   if(op.equals("claim780")){int pick=in.readUnsignedByte(),card=in.readUnsignedByte();var room=server.requireRoom(s);String match;synchronized(room){if(!room.host.expansion||room.kind<2||room.phase!=2||!room.settled||!room.cardsOpen())throw new IllegalArgumentException("Chờ bộ thẻ mở");if(pick>=DungeonRewards.picks(room.kind,room.dungeonStage)||card>=DungeonRewards.cards(room.kind,room.dungeonStage))throw new IllegalArgumentException("Sai lượt hoặc vị trí thẻ thưởng của ải");match=room.match;}
    // Storage can take seconds. Never hold the room lock across HTTPS: the shared
    // simulation clock also visits finished rooms while other matches are running.
-   if(TribalDungeon.is(room)){int[] reward=TribalDungeon.claim(server,room,s.id,pick,card);s.profile=server.store.profile(s.id);synchronized(room){room.cardNames[reward[0]]=s.profile.name;room.cardCoins[reward[0]]=reward[2];room.cardTypes[reward[0]]=reward[1];room.cardPicks.merge(s.id,pick+1,Math::max);}out.writeByte(reward[0]);out.writeByte(reward[1]);out.writeShort(reward[2]);out.writeByte(reward[3]);GunnyServer.profile(out,s.profile);write(out,s.profile);return;}
+   if(TribalDungeon.is(room)){int[] reward=TribalDungeon.claim(server,room,s.id,pick,card);s.profile=server.store.profile(s.id);synchronized(room){room.cardNames[reward[0]]=s.profile.name;room.cardCoins[reward[0]]=reward[2];room.cardTypes[reward[0]]=reward[1];room.cardPicks.merge(s.id,pick+1,Math::max);}server.events.signal();out.writeByte(reward[0]);out.writeByte(reward[1]);out.writeShort(reward[2]);out.writeByte(reward[3]);GunnyServer.profile(out,s.profile);write(out,s.profile);return;}
    int[] r=room.kind==3?server.store.claimDungeon(match,s.id,pick,card,room.difficulty):server.store.claim780(match,s.id,pick,card);int type=r[2]>0?StoneDrops.type(r.length>4?r[4]:1):0;s.profile=server.store.profile(s.id);
    synchronized(room){if(match.equals(room.match)){room.cardNames[r[0]]=s.profile.name;room.cardCoins[r[0]]=r[1]>0?r[1]:r[2];room.cardTypes[r[0]]=type;room.cardPicks.merge(s.id,pick+1,Math::max);}}
-   out.writeByte(r[0]);out.writeByte(type);out.writeShort(r[1]>0?r[1]:r[2]);out.writeByte(r[3]);GunnyServer.profile(out,s.profile);write(out,s.profile);return;
+   server.events.signal();out.writeByte(r[0]);out.writeByte(type);out.writeShort(r[1]>0?r[1]:r[2]);out.writeByte(r[3]);GunnyServer.profile(out,s.profile);write(out,s.profile);return;
   }
 
   Dungeon780.handle(server,op,s,in,out);

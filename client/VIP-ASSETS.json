@@ -1,0 +1,18 @@
+{
+  "vip_badges": "coreiconandtip.swf: asset.vipIcon.levelBig1..9",
+  "rings": "Resource/image/equip/circlelight/1..3.swf; compose tiers from native rings, no invented original 12-tier set",
+  "wings": [
+    "wing027",
+    "wing006",
+    "wing007",
+    "wing005",
+    "wing030",
+    "wing002"
+  ],
+  "cards": "Resource/image/unfrightprop/vipcard and vippack",
+  "missing": [
+    "Original VIP10, VIP11, VIP12 icons",
+    "Twelve separate original VIP ring animations",
+    "Twelve distinct VIP EXP-card icons (native common VIP-card icon used with level labels)"
+  ]
+}

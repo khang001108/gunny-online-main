@@ -185,6 +185,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     int pcWidth(String value) {
+        if(value==null)return 0;
         int w = 0;
         for (int i = 0; i < value.length(); i++)
             w += (widths[glyph(value.charAt(i))] * 8 + 5) / 11;
@@ -192,6 +193,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void pcText(String value, int x, int y) {
+        if(value==null)return;
         if (pcFont == null)
             pcFont = combatRoomArt("font-pc");
         for (int n = 0; n < value.length(); n++) {
@@ -206,6 +208,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     String pcShort(String name, int width) {
+        if(name==null)return "";
         if (pcWidth(name) <= width)
             return name;
         while (name.length() > 1 && pcWidth(name + "...") > width)
@@ -284,6 +287,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     loadingWidths[i]=width;
                 }catch(IOException ignored){}
             }
+            vip.back(vip.actorExp(i),vip.actorWing(i),center,145,width>=52?0:1,false);
             img(loadingHeroes[i],center-width/2,145-height);
             img(weapons[game.units[i].weapon],center+width/3-8,127);
             if(loadingReady(i)){
@@ -305,6 +309,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     final Image[] dungeonLoadActors=new Image[3], dungeonLoadCompact=new Image[3];
     final Image[] dungeonLoadingCovers = new Image[2];
     Image roomLayout, roomWaiting, roomClosed, roomCheckOn, roomCheckOff, roomRandom, botListFrame;
+    final VipSystem vip=new VipSystem(this);
     final Image[] roomControl = new Image[3], botPortrait = new Image[8];
     final Image[] roomMaps = new Image[12];
     int roomSelection = 5, infoReturnMode, bagReturnMode, shopReturnMode;
@@ -424,8 +429,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         resetPowWorld();
         powCutinActor = game.active;
         powCutinLeft = game.units[powCutinActor].x - cameraX < 160;
-        if (fxPowRing == null)
-            fxPowRing = combatEffect("pow-ring");
+
         if (fxRadial == null)
             fxRadial = combatEffect("pow-radial");
         try {
@@ -483,12 +487,13 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         if (age < 30)
             return;
         int x = powCutinX(), effectFrame = Math.min(19, (age - 30) * 20 / Math.max(1, POW_CUTIN_TIME - 42));
-        part(fxPowRing, effectFrame % 4 * 144, effectFrame / 4 * 144, 144, 144, x - 32, 28, false);
+        vip.back(vip.actorExp(powCutinActor),vip.actorWing(powCutinActor),x+40,150,0,true);
         if (age >= 42 && powCutinTicks > 7)
             img(powCutin, x, 51);
     }
 
     void resetPowWorld() {
+        vip.releaseLargeEffects();
         powWorld = null;
         powWorldPixels = powZoomPixels = powSampleX = powDistanceX = powShade = null;
         powZoomPhase = powZoomDark = -1;
@@ -1366,7 +1371,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         tribalArt.release();
     }
     void beginMatch(int battleMap) throws IOException {
-        releaseNpcArt();loadout.releaseMenuArt();gifts.releaseArt();home.releaseArt();bag.releaseArt();shop.releaseArt();forge.releaseArt();tooltip.releaseArt();popup.releaseArt();ui.releaseArt();
+        releaseNpcArt();loadout.releaseMenuArt();gifts.releaseArt();home.releaseArt();bag.releaseArt();shop.releaseArt();forge.releaseArt();vip.release();tooltip.releaseArt();popup.releaseArt();ui.releaseArt();
         if(dungeon!=null)dungeon.releaseArt();if(net!=null){net.waiting.releaseArt();net.rooms.releaseArt();for(int i=0;i<net.standing.length;i++)net.standing[i]=null;}
         for(int i=0;i<stoneShop.icons.length;i++)stoneShop.icons[i]=null;
 
@@ -1717,11 +1722,23 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             }
     }
 
+    boolean portraitViewport;Image portraitSurface;
+    int pointerX(int x,int y){return portraitViewport?y-(getHeight()-320*s)/2:x;}
+    int pointerY(int x,int y){return portraitViewport?240*s-1-(x-(getWidth()-240*s)/2):y;}
     protected synchronized void paint(Graphics graphics) {
+        portraitViewport=getWidth()<320*s&&getWidth()>=240*s&&getHeight()>=320*s;
+        if(portraitViewport){
+            if(portraitSurface==null)portraitSurface=Image.createImage(320*s,240*s);
+            paintGame(portraitSurface.getGraphics());
+            graphics.setClip(0,0,getWidth(),getHeight());graphics.setColor(0x10182a);graphics.fillRect(0,0,getWidth(),getHeight());
+            graphics.drawRegion(portraitSurface,0,0,320*s,240*s,Sprite.TRANS_ROT90,(getWidth()-240*s)/2,(getHeight()-320*s)/2,Graphics.TOP|Graphics.LEFT);
+        }else{portraitSurface=null;paintGame(graphics);}
+    }
+    void paintGame(Graphics graphics) {
         g = graphics;
         net.chat.roomSpeech.beginFrame();
-        ox = (getWidth() - 320 * s) / 2;
-        oy = (getHeight() - 240 * s) / 2;
+        ox = portraitViewport?0:(getWidth() - 320 * s) / 2;
+        oy = portraitViewport?0:(getHeight() - 240 * s) / 2;
         g.setColor(0x10182a);
         g.fillRect(0, 0, getWidth(), getHeight());
         if(mode==19){offlineDungeon.draw();}else if(mode==18){forge.draw();}else if (mode == 17) {
@@ -1759,6 +1776,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             if (toastTicks > 0)
                 drawBattleNotice();
         }
+        else if (mode == 5)
+            drawResult();
         else if (mode == 6)
             drawShop();
         else {
@@ -2763,6 +2782,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         }
         int x = u.x - cameraX, y = u.y - cameraY;
 
+        if(!(showingPowCutin()&&powCutinActor==index))vip.back(vip.actorExp(index),vip.actorWing(index),x,y,1,false);
         if (u.rage >= 100)
             part(hudPowAura, frame / 3 % 5 * 64, 0, 64, 54, x - 32, y - 50, false);
         if(onlineBattle()&&net.actorWings[index])tribalArt.wings(x,y);
@@ -3095,7 +3115,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             }
             img(npcHud780[type],x+1,y+1);
         } else {
-            actorAppearance(index,0,x-4,y-7,false);
+            vip.back(vip.actorExp(index),vip.actorWing(index),x+12,y+25,2,false);actorAppearance(index,0,x-4,y-7,false);
         }
         g.setClip(cx, cy, cw, ch);
         int color = index == game.active ? 0xffd455 : 0xc5d1d9;
@@ -3949,6 +3969,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     protected synchronized void pointerPressed(int px, int py) {
+        int mappedX=pointerX(px,py),mappedY=pointerY(px,py);px=mappedX;py=mappedY;
         if (typing.pointer((px-ox)/s,(py-oy)/s)) { repaint(); return; }
         if (mode == 1 && powShotPending)
             return;
@@ -4189,6 +4210,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     protected synchronized void pointerDragged(int x, int y) {
+        int mappedX=pointerX(x,y),mappedY=pointerY(x,y);x=mappedX;y=mappedY;
         if (mode == 16 && !net.logged && net.auth.footerTouch) {
             net.auth.footerDrag((x - ox) / s, (y - oy) / s);
             return;
@@ -4212,6 +4234,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     protected synchronized void pointerReleased(int x, int y) {
+        int mappedX=pointerX(x,y),mappedY=pointerY(x,y);x=mappedX;y=mappedY;
         if (mode == 16 && !net.logged && net.auth.footerTouch) {
             net.auth.footerRelease((x - ox) / s, (y - oy) / s);
             return;

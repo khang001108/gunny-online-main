@@ -1,0 +1,27 @@
+import java.io.*;import java.net.*;import java.net.http.*;import java.nio.file.*;import java.util.*;import java.util.concurrent.*;
+public final class Vip790Check {
+ static int checks;static void check(boolean v,String text){if(!v)throw new AssertionError(text);checks++;}
+ static void denied(Runnable r){try{r.run();throw new AssertionError("Expected denial");}catch(IllegalArgumentException good){checks++;}}
+ static int xp(int level){int x=0;for(int i=0;i<level;i++)x+=VipRules.COST[i];return x;}
+ public static void main(String[] args)throws Exception{
+  check(xp(12)==21200,"Exact sum");for(int lv=0;lv<=12;lv++){check(VipRules.level(xp(lv))==lv,"Each exact VIP level");if(lv>0)check(VipRules.level(xp(lv)-1)==lv-1,"Previous level boundary");}
+  var store=new CloudStore.Memory();var user=Expansion780Check.session(store,"VipTest",70);user.vip=true;var p=user.profile;
+  store.vip(user.id,"grant",0,999,"grant100");for(int i=1;i<=212;i++)store.vip(user.id,"use",0,1,"exp"+i);check(p.vipExp==21200&&VipRules.level(p.vipExp)==12&&p.vipCards[0]==787,"All twelve levels through real item consumption");
+  store.vip(user.id,"use",0,1,"exp212");check(p.vipCards[0]==787,"Retry at MAX does not consume another card");denied(()->store.vip(user.id,"use",0,1,"max-new"));
+  p.vipExp=500;store.vip(user.id,"grant",1,1,"grant200");store.vip(user.id,"use",1,1,"carry");check(VipRules.level(p.vipExp)==1&&VipRules.within(p.vipExp)==200,"Surplus is carried");
+  p.vipExp=0;store.vip(user.id,"grant",12,1,"full-card");store.vip(user.id,"use",12,1,"full-use");check(p.vipExp==21200&&p.vipCards[12]==0,"Full VIP is consumed and reaches 12");
+  for(int wing=0;wing<5;wing++){int item=wing;p.vipExp=xp(VipRules.WING_VIP[item])-1;denied(()->store.vip(user.id,"buy",item,1,"locked"+item));p.vipExp=xp(VipRules.WING_VIP[item]);int money=p.shoppingMoney;store.vip(user.id,"buy",item,1,"wing"+item);check(p.shoppingMoney==money-VipRules.WING_PRICE[item],"Exact wing price");store.vip(user.id,"buy",item,1,"wing"+item);check(p.shoppingMoney==money-VipRules.WING_PRICE[item],"Wing purchase retry stable");denied(()->store.vip(user.id,"buy",item,1,"owned"+item));store.vip(user.id,"equip",item,1,"equip"+item);check(p.equippedWing==item,"Only one selected wing");}
+  String id=store.login("VipTest@780.test","test-password-123").userId;check(store.profile(id).vipExp==21200&&store.profile(id).equippedWing==4,"Re-authentication preserves state");
+  var unit=new Battle.Unit();unit.experience=Progression.experienceForLevel(70);unit.weapon=0;unit.wingHp=VipRules.hp(4);ItemRules.apply(unit,3);check(unit.maxHp==9045,"HP only includes equipped wing once");unit.wingHp=0;ItemRules.apply(unit,3);check(unit.maxHp==5045,"Removing wing removes HP");
+  var pool=Executors.newFixedThreadPool(6);p.vipExp=0;store.vip(id,"grant",1,1,"race-grant");List<Future<?>> futures=new ArrayList<>();for(int i=0;i<10;i++)futures.add(pool.submit(()->store.vip(id,"use",1,1,"same-race")));for(var f:futures)f.get();pool.shutdownNow();check(p.vipExp==200&&p.vipCards[1]==0,"Concurrent use applies exactly once");denied(()->store.vip(id,"grant",2,1,"same-race"));
+  p.testCheats=false;int before=p.vipCards[12];store.vip(id,"cheats",1,1,"on");store.vip(id,"cheats",1,1,"on-again");check(p.vipCards[12]==before+999&&p.testCheats,"Enable grants 999 of each once");store.vip(id,"cheats",0,1,"off");check(!p.testCheats&&!p.testGod,"Revocation");
+  try(var server=new GunnyServer(new InetSocketAddress("127.0.0.1",0),Path.of("backend/assets"),store,new Admin750Check.Records(store),Admin750Check.PASSWORD,true)){
+   server.clock.shutdownNow();user.profile=p;server.sessions.put("vip",user);String base="http://127.0.0.1:"+server.port();var http=HttpClient.newHttpClient();
+   var denied=http.send(HttpRequest.newBuilder(URI.create(base+"/admin/api/vip-grant")).header("Origin",base).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString("{}")).build(),HttpResponse.BodyHandlers.ofString());check(denied.statusCode()==401,"Admin grant requires session");
+   var login=http.send(HttpRequest.newBuilder(URI.create(base+"/admin/api/login")).header("Origin",base).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(Json.write(Map.of("password",Admin750Check.PASSWORD)))).build(),HttpResponse.BodyHandlers.ofString());String cookie=login.headers().firstValue("Set-Cookie").orElseThrow().split(";")[0];String key=UUID.randomUUID().toString();int amount=p.vipCards[12];
+   for(int i=0;i<2;i++){var reply=http.send(HttpRequest.newBuilder(URI.create(base+"/admin/api/vip-grant")).header("Cookie",cookie).header("Origin",base).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(Json.write(Map.of("id",id,"item",12,"quantity",5,"request_key",key)))).build(),HttpResponse.BodyHandlers.ofString());check(reply.statusCode()==200,"Authenticated grant");}check(p.vipCards[12]==amount+5,"Admin duplicate receipt grants once");
+   var bytes=new ByteArrayOutputStream();var out=new DataOutputStream(bytes);out.writeByte(12);out.writeUTF("forged");try{VipServer.handle(server,user,"vipgrant",new DataInputStream(new ByteArrayInputStream(bytes.toByteArray())),new DataOutputStream(new ByteArrayOutputStream()));throw new AssertionError("Client created full VIP");}catch(IllegalArgumentException good){checks++;}
+  }
+  System.out.println("PASS: "+checks+" VIP progression, item receipts, wing HP, persistence, concurrency and admin checks");
+ }
+}

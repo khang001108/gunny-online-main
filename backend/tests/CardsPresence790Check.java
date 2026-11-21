@@ -1,0 +1,30 @@
+import java.io.*;import java.net.*;import java.nio.file.*;import java.util.*;import java.util.concurrent.*;
+public final class CardsPresence790Check {
+ static int checks;static void check(boolean v,String text){if(!v)throw new AssertionError(text);checks++;}
+ static void settle(GunnyServer server,GunnyServer.Room room)throws Exception{room.phase=2;room.battle.over=true;room.battle.winner=0;room.battle.damage[1]=30;server.queueSettlement(room);long end=System.currentTimeMillis()+3000;while(!room.settled&&System.currentTimeMillis()<end)Thread.sleep(10);check(room.settled&&room.cardsOpen(),"Settlement and cards do not wait for acknowledgements or cardsready");}
+ public static void main(String[] args)throws Exception{
+  var store=new CloudStore.Memory();String[] email={"p790a@tcp.test","p790b@tcp.test"};for(int i=0;i<2;i++){store.register(email[i],"test-password-123","Player "+i);store.profile(store.login(email[i],"test-password-123").userId).experience=Progression.experienceForLevel(20);}
+  try(var server=new GunnyServer(new InetSocketAddress("127.0.0.1",0),Path.of("backend/assets"),store)){
+   server.clock.shutdownNow();server.startTcp("127.0.0.1",0,8);var a=new TribalTcpCheck.Player(server.tcpPort(),email[0]);var b=new TribalTcpCheck.Player(server.tcpPort(),email[1]);
+   try{var sa=server.sessions.get(a.token);var sb=server.sessions.get(b.token);check(server.social.isOnline(sa)&&server.social.isOnline(sb),"Two authenticated command sockets are online");
+    b.close();long end=System.currentTimeMillis()+2000;while(server.social.isOnline(sb)&&System.currentTimeMillis()<end)Thread.sleep(10);check(!server.social.isOnline(sb),"Disconnect immediately removes green-dot presence");b=new TribalTcpCheck.Player(server.tcpPort(),email[1]);sb=server.sessions.get(b.token);check(server.social.isOnline(sb),"Reconnect restores online presence");
+    var room=server.new Room(sa,1,0,-1);room.members[1]=sb;sa.room=sb.room=room.id;server.rooms.put(room.id,room);room.refreshWaiting();room.start();settle(server,room);
+    a.call("claim",o->o.writeByte(0));int balance=sa.profile.coins;a.call("returnroom",null);check(room.phase==2&&room.viewerPhase(sa)==0&&room.viewerPhase(sb)==2,"P1 waits in room while P2 still has unopened rewards");
+    sa.vip=true;var bytes=new ByteArrayOutputStream();server.lobby(new DataOutputStream(bytes),room,sa);check((bytes.toByteArray()[bytes.size()-1]&255)==2,"Waiting mask identifies P2 receiving rewards");
+    b.close();sb.lastSeen=System.currentTimeMillis()-120000;sb.expiry=System.currentTimeMillis()-1;room.lastActive=System.currentTimeMillis()-240000;server.tick();check(server.rooms.get(room.id)==room&&room.members[1]==sb,"Pending reward survives silent disconnect, old 3-minute cleanup and expired auth token");b=new TribalTcpCheck.Player(server.tcpPort(),email[1]);sb=server.sessions.get(b.token);check(sb.room==room.id&&room.members[1]==sb,"Reconnect rebinds the pending reward room");check(b.call("resultresume",null).readBoolean(),"Client can resume the result screen");
+    b.call("claim",o->o.writeByte(1));int guest=sb.profile.coins;b.call("claim",o->o.writeByte(1));check(sb.profile.coins==guest&&sa.profile.coins==balance,"Retry after reconnection never duplicates rewards");b.call("returnroom",null);check(room.phase==0,"Room resets only after everyone returns");
+    room.start();settle(server,room);var peer=b;var pool=Executors.newFixedThreadPool(2);try{var one=pool.submit(()->{try{return a.call("claim",o->o.writeByte(0)).readUnsignedByte();}catch(Exception e){throw new RuntimeException(e);}});var two=pool.submit(()->{try{return peer.call("claim",o->o.writeByte(1)).readUnsignedByte();}catch(Exception e){throw new RuntimeException(e);}});check(one.get(3,TimeUnit.SECONDS)==0&&two.get(3,TimeUnit.SECONDS)==1,"P1 and P2 claim independently and concurrently");}finally{pool.shutdownNow();}
+    a.call("returnroom",null);b.call("returnroom",null);
+    var dungeon=server.new Room(sa,6,2,-1,true);dungeon.kind=3;dungeon.dungeonStage=1;dungeon.strict=true;dungeon.members[2]=sb;sa.room=sb.room=dungeon.id;server.rooms.put(dungeon.id,dungeon);dungeon.refreshWaiting();sb.armed=true;dungeon.start();settle(server,dungeon);
+    a.call("claim780",o->{o.writeByte(0);o.writeByte(0);});a.call("returnroom",null);check(dungeon.dungeonStage==1&&dungeon.phase==2,"Crossing does not advance while peer is receiving rewards");b.call("claim780",o->{o.writeByte(0);o.writeByte(1);});b.call("returnroom",null);check(dungeon.dungeonStage==2&&dungeon.phase==0&&dungeon.map==7,"Both returns advance the team exactly once to the boss staging room");
+    var home=server.new Room(sa,0,2,-1,true);home.kind=2;home.awaitingParty=true;home.members[2]=sb;home.refreshWaiting();server.rooms.put(home.id,home);
+    var merged=server.new Room(sa,0,2,-1,true);merged.kind=2;merged.members[2]=sb;sa.room=sb.room=merged.id;server.rooms.put(merged.id,merged);merged.refreshWaiting();merged.start();merged.returnRooms.put(sa,home);merged.returnRooms.put(sb,home);settle(server,merged);
+    a.call("claim780",o->{o.writeByte(0);o.writeByte(0);});a.call("claim780",o->{o.writeByte(1);o.writeByte(1);});a.call("returnroom",null);
+    check(sa.room==home.id&&sb.room==merged.id&&!home.canStart(),"Matched party home cannot restart before peer returns");sa.vip=true;bytes.reset();server.lobby(new DataOutputStream(bytes),home,sa);check((bytes.toByteArray()[bytes.size()-1]&255)==4,"Home roster shows teammate still receiving in matched battle");
+    b.close();b=new TribalTcpCheck.Player(server.tcpPort(),email[1]);sb=server.sessions.get(b.token);check(home.members[2]==sb&&merged.members[2]==sb,"Reconnect rebinds both battle and original party seat");
+    b.call("claim780",o->{o.writeByte(0);o.writeByte(2);});b.call("claim780",o->{o.writeByte(1);o.writeByte(3);});b.call("returnroom",null);check(sb.room==home.id&&home.members[2]==sb&&home.members[0]==sa,"Both players return to the same original party with usable sessions");
+   }finally{a.close();b.close();}
+  }
+  System.out.println("PASS: "+checks+" actual TCP parallel-card, independent return, presence and reconnect checks");
+ }
+}

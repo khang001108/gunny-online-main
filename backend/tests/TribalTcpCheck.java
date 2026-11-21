@@ -4,9 +4,10 @@ public class TribalTcpCheck {
  static int checks;static void check(boolean value,String message){if(!value)throw new AssertionError(message);checks++;}
  static final int FLAGS=67108864|33554432|16777216|8388608|4194304|0x3fffff;
  static class Player implements AutoCloseable {
-  Socket socket;DataInputStream in;DataOutputStream out;String token="";
-  Player(int port,String email)throws Exception{socket=new Socket("127.0.0.1",port);socket.setSoTimeout(5000);in=new DataInputStream(socket.getInputStream());out=new DataOutputStream(socket.getOutputStream());token=call("login",o->{o.writeUTF(email);o.writeUTF("test-password-123");}).readUTF();}
-  DataInputStream call(String op,Tcp768Check.Writer writer)throws Exception {byte[] body=Tcp768Check.body(op,writer);out.writeInt(TcpGameServer.MAGIC);out.writeByte(1);out.writeInt(FLAGS);out.writeUTF(token);out.write(new byte[]{0,1,2});out.writeInt(body.length);out.write(body);out.flush();check(in.readInt()==200,"TCP transport");int size=in.readInt();return Tcp768Check.ok(in.readNBytes(size));}
+  int flags=FLAGS;Socket socket;DataInputStream in;DataOutputStream out;String token="";
+  Player(int port,String email)throws Exception{this(port,email,FLAGS);}
+  Player(int port,String email,int flags)throws Exception{this.flags=flags;socket=new Socket("127.0.0.1",port);socket.setSoTimeout(5000);in=new DataInputStream(socket.getInputStream());out=new DataOutputStream(socket.getOutputStream());token=call("login",o->{o.writeUTF(email);o.writeUTF("test-password-123");}).readUTF();}
+  DataInputStream call(String op,Tcp768Check.Writer writer)throws Exception {byte[] body=Tcp768Check.body(op,writer);out.writeInt(TcpGameServer.MAGIC);out.writeByte(1);out.writeInt(flags);out.writeUTF(token);out.write(new byte[]{0,1,2});out.writeInt(body.length);out.write(body);out.flush();check(in.readInt()==200,"TCP transport");int size=in.readInt();return Tcp768Check.ok(in.readNBytes(size));}
   public void close()throws IOException{socket.close();}
  }
  public static void main(String[] args)throws Exception {

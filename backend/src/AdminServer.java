@@ -42,7 +42,7 @@ final class AdminServer implements AutoCloseable {
  boolean sameOrigin(HttpExchange x){String origin=x.getRequestHeaders().getFirst("Origin"),host=x.getRequestHeaders().getFirst("Host");if(origin==null||host==null)return false;try{URI u=URI.create(origin);return u.getUserInfo()==null&&u.getRawQuery()==null&&u.getRawFragment()==null&&(u.getRawPath()==null||u.getRawPath().isEmpty())&&("https".equals(u.getScheme())||localHttp(x))&&u.getRawAuthority().equalsIgnoreCase(host);}catch(Exception e){return false;}}
  String secureCookie(HttpExchange x){return localHttp(x)&&sameOrigin(x)?"":"; Secure";}
  void handle(HttpExchange x)throws IOException{try{
-  Headers h=x.getResponseHeaders();h.set("X-Gunny-Version","7.8.9");h.set("Cache-Control","no-store");h.set("X-Content-Type-Options","nosniff");h.set("Referrer-Policy","no-referrer");h.set("Content-Security-Policy","default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+  Headers h=x.getResponseHeaders();h.set("X-Gunny-Version","7.9.0");h.set("Cache-Control","no-store");h.set("X-Content-Type-Options","nosniff");h.set("Referrer-Policy","no-referrer");h.set("Content-Security-Policy","default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   if(!enabled){json(x,503,Map.of("error","Trang quản trị chưa được bật. Cấu hình GUNNY_ADMIN_PASSWORD trên máy chủ."));return;}
   String path=x.getRequestURI().getPath(),method=x.getRequestMethod();
   if(!path.startsWith("/admin/api/")){
@@ -62,7 +62,7 @@ final class AdminServer implements AutoCloseable {
   if(path.equals("/admin/api/logout")&&method.equals("POST")){tokens.remove(token);h.add("Set-Cookie","gunny_admin=; HttpOnly; SameSite=Strict; Path=/admin; Max-Age=0"+secureCookie(x));json(x,200,Map.of("ok",true));return;}
   String op=path.substring("/admin/api/".length());Map<String,Object> input;
   if(method.equals("GET")&&(op.equals("accounts")||op.equals("announcements")||op.equals("retention-policy")||op.equals("support-list"))){input=new HashMap<>();String query=x.getRequestURI().getRawQuery();if(query!=null)for(String p:query.split("&")){String[] parts=p.split("=",2);if(parts.length==2)input.put(URLDecoder.decode(parts[0],StandardCharsets.UTF_8),URLDecoder.decode(parts[1],StandardCharsets.UTF_8));}}
-  else if(method.equals("POST")&&Set.of("test-cheats","test-cheats-status","schedule","cancel-delete","delete-now","announcement-save","announcement-delete","wallet-add","retention-save","offline-days","extend-offline","support-qr","support-add","support-comment").contains(op))input=body(x);
+  else if(method.equals("POST")&&Set.of("vip-grant","test-cheats","test-cheats-status","schedule","cancel-delete","delete-now","announcement-save","announcement-delete","wallet-add","retention-save","offline-days","extend-offline","support-qr","support-add","support-comment").contains(op))input=body(x);
   else{json(x,404,Map.of("error","Không tìm thấy"));return;}
   if(op.equals("delete-now")&&!Json.str(input,"confirm").equals("XOA"))throw new IllegalArgumentException("Nhập XOA để xác nhận xoá vĩnh viễn");
   if(op.equals("announcement-save")){String title=Json.str(input,"title").trim(),message=Json.str(input,"body").trim();if(title.isEmpty()||title.length()>80||message.isEmpty()||message.length()>1000)throw new IllegalArgumentException("Tiêu đề tối đa 80, nội dung tối đa 1.000 ký tự");Instant start=Instant.parse(Json.str(input,"starts_at")),end=Instant.parse(Json.str(input,"ends_at"));if(!end.isAfter(start))throw new IllegalArgumentException("Ngày kết thúc phải sau ngày bắt đầu");}
@@ -73,7 +73,13 @@ final class AdminServer implements AutoCloseable {
    if(!inherit)input.put("days",((Number)days).intValue());
    if(!op.equals("retention-save"))UUID.fromString(Json.str(input,"id"));if(op.equals("extend-offline"))UUID.fromString(Json.str(input,"request_key"));
   }
-  if(op.equals("test-cheats")||op.equals("test-cheats-status")){String id=Json.str(input,"id");UUID.fromString(id);if(op.equals("test-cheats")){if(!(input.get("enabled") instanceof Boolean))throw new IllegalArgumentException("Thiếu trạng thái cheat");s.store.testCheat(id,6,Boolean.TRUE.equals(input.get("enabled")));refreshProfile(id);}var profile=s.store.profile(id);json(x,200,Map.of("enabled",profile.testCheats));return;}
+   if(op.equals("vip-grant")){
+    String id=Json.str(input,"id"),key=Json.str(input,"request_key");UUID.fromString(id);UUID.fromString(key);
+    int item=Json.num(input,"item",-1),quantity=Json.num(input,"quantity",0);
+    if(!(input.get("item") instanceof Number)||!(input.get("quantity") instanceof Number)||((Number)input.get("item")).doubleValue()!=item||((Number)input.get("quantity")).doubleValue()!=quantity||item<0||item>12||quantity<1||quantity>999999)throw new IllegalArgumentException("Chọn loại thẻ và số lượng nguyên 1-999999");
+    s.store.vip(id,"grant",item,quantity,key);refreshProfile(id);json(x,200,Map.of("ok",true));return;
+   }
+  if(op.equals("test-cheats")||op.equals("test-cheats-status")){String id=Json.str(input,"id");UUID.fromString(id);if(op.equals("test-cheats")){if(!(input.get("enabled") instanceof Boolean))throw new IllegalArgumentException("Thiếu trạng thái cheat");s.store.vip(id,"cheats",Boolean.TRUE.equals(input.get("enabled"))?1:0,1,UUID.randomUUID().toString());refreshProfile(id);}var profile=s.store.profile(id);json(x,200,Map.of("enabled",profile.testCheats));return;}
   Object result=op.equals("accounts")?accounts(input):op.startsWith("support-")?support.operation(op,input):data.call(op,input);
   if(op.equals("support-add")){
    // The durable transaction has committed. Refresh failures must not make it look rejected.
@@ -83,7 +89,7 @@ final class AdminServer implements AutoCloseable {
   json(x,200,result);
  }catch(IllegalArgumentException e){json(x,400,Map.of("error",e.getMessage()==null?"Dữ liệu không hợp lệ":e.getMessage()));}
  catch(Exception e){System.err.println("Admin request failed: "+e.getClass().getSimpleName());json(x,503,Map.of("error",x.getRequestURI().getPath().contains("/support-")?"Chưa xử lý được. Kiểm tra migration 202611160001_support.sql và kết nối Supabase.":"Chưa xử lý được. Kiểm tra dữ liệu nhập, migration quản trị 7.5.0 và kết nối Supabase."));}finally{x.close();}}
- void refreshProfile(String id)throws Exception{CloudStore.Profile fresh=s.store.profile(id);for(var user:s.sessions.values())if(user.id.equals(id))synchronized(user){user.profile=fresh;}}
+ void refreshProfile(String id)throws Exception{CloudStore.Profile fresh=s.store.profile(id);for(var user:s.sessions.values())if(user.id.equals(id))synchronized(user){user.profile=fresh;}s.events.signal();}
  Map<String,Object> accounts(Map<String,Object> input)throws Exception{
   int offset=Integer.parseInt(input.getOrDefault("offset","0").toString());
   if(offset<0||offset>1000000)throw new IllegalArgumentException("Trang tài khoản không hợp lệ");

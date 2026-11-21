@@ -279,7 +279,7 @@ final class DungeonScreen {
   }
   c.pcText(c.pcShort(online ? n.names[actor] : c.playerName, 72), x+4, y+4);
   if (online) {
-   try{if(seatPortraits[seat]==null||n.standingKeys[actor]!=null&&!n.standingKeys[actor].equals(seatKeys[seat])){seatPortraits[seat]=n.buildStanding(actor,29,39);seatKeys[seat]=n.standingKeys[actor];}Image person=seatPortraits[seat];c.clip(x+2,y+14,78,48);c.img(person,x+25,y+17);c.all();}catch(java.io.IOException ignored){}
+   try{if(seatPortraits[seat]==null||n.standingKeys[actor]!=null&&!n.standingKeys[actor].equals(seatKeys[seat])){seatPortraits[seat]=n.buildStanding(actor,29,39);seatKeys[seat]=n.standingKeys[actor];}Image person=seatPortraits[seat];c.clip(x+2,y+14,78,48);c.vip.back(n.actorVip[actor],n.actorWing[actor],x+40,y+56,1,false);c.img(person,x+25,y+17);c.all();}catch(java.io.IOException ignored){}
    n.chat.roomSpeech.head(actor,x+40,y+26);c.drawLevel(n.actorExperience[actor],x+54,y+39);
   } else {
    String key = c.gender + ":" + c.skin + ":" + c.wornMask + ":" + c.customLook;
@@ -292,12 +292,13 @@ final class DungeonScreen {
      localPortrait = null;
     }
    }
-   c.clip(x+2,y+14,78,48);c.img(localPortrait,x+25,y+17);c.all();
+   c.clip(x+2,y+14,78,48);c.vip.back(c.vip.exp(),c.vip.wing(),x+40,y+56,1,false);c.img(localPortrait,x+25,y+17);c.all();
    n.chat.roomSpeech.head(0,x+48,y+27);
    c.drawLevel(c.experience, x+54, y+39);
   }
   if (online ? (n.wornMasks[actor]&1)!=0 : (c.wornMask&1)!=0)
    c.img(c.weapons[online ? n.weapon[actor] : c.equipped], x+7, y+43);
+  if(online&&n.rewardWaitingMask!=0){c.pcCenter((n.rewardWaitingMask&(1<<actor))!=0?"Nhận thưởng":"Đã xong",x+41,y+57);return;}
   if (!online || actor == n.hostActor)
    c.img(c.roomHost, x+4, y+55);
   else if ((n.readyMask & (1 << actor)) != 0)
@@ -406,6 +407,7 @@ final class DungeonScreen {
  void start(boolean online, boolean confirmed) {
   if (online != c.onlineAccount()) return;
   if (online && (n.roomId <= 0 || n.roomKind != 3 || !n.host || n.phase != 0)) return;
+  if(online&&n.rewardWaitingMask!=0){c.message("Chờ đồng đội nhận thưởng và về phòng");return;}
   if (Progression.level(c.experience) < 15) {
    c.popup.notice(DungeonScreen.TITLE, "Ải Viễn Chinh yêu cầu Lv 15 trở lên");
    return;

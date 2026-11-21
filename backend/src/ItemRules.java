@@ -8,7 +8,7 @@ final class ItemRules {
  static int defense(int kind,int item){return kind==0?DEFENSE[item]:5;}
  static int luck(int kind,int item){return kind==0?LUCK[item]:5;}
  static int maskAfter(int mask,int kind,boolean remove){if(remove)return mask&~(1<<kind);if(kind==1)return(mask&1)|2;if(kind>=2)return(mask&~2)|(1<<kind);return mask|1;}
- static void stats(Battle.Unit u,int mask){u.statsEnabled=true;u.wornMask=mask;int growth=Progression.bonus(u.experience);u.attackBonus=clothes(mask)*5+growth+u.forgeAttack;u.defense=clothes(mask)*5+growth+u.forgeDefense+((mask&1)!=0?DEFENSE[u.weapon]:0);u.luck=clothes(mask)*5+growth+u.forgeLuck+((mask&1)!=0?LUCK[u.weapon]:0);u.maxHp=Progression.baseHp(u.experience)+u.defense-growth;u.maxEnergy=240+u.luck;}
+ static void stats(Battle.Unit u,int mask){u.statsEnabled=true;u.wornMask=mask;int growth=Progression.bonus(u.experience);u.attackBonus=clothes(mask)*5+growth+u.forgeAttack;u.defense=clothes(mask)*5+growth+u.forgeDefense+((mask&1)!=0?DEFENSE[u.weapon]:0);u.luck=clothes(mask)*5+growth+u.forgeLuck+((mask&1)!=0?LUCK[u.weapon]:0);u.maxHp=Progression.baseHp(u.experience)+u.defense-growth+u.wingHp;u.maxEnergy=240+u.luck;}
  static void apply(Battle.Unit u,int mask){stats(u,mask);u.hp=u.maxHp;u.energy=u.maxEnergy;}
  static void weapon(Battle.Unit u,int id){u.forgeAttack+=u.weaponForge[id]-u.forgeWeaponBonus;u.forgeWeaponBonus=u.weaponForge[id];u.weapon=id;if(u.statsEnabled){stats(u,u.wornMask);u.hp=Math.min(u.hp,u.maxHp);u.energy=Math.min(u.energy,u.maxEnergy);}}
 }

@@ -1,0 +1,161 @@
+Gunny Java 7.9.0 — git working tree changes (M modified, ?? new, D old release removed)
+ M .dockerignore
+ M .gitignore
+ M Dockerfile
+ M README.md
+ M backend/src/AdminServer.java
+ M backend/src/Battle.java
+ M backend/src/CloudStore.java
+ M backend/src/Expansion780.java
+ M backend/src/GunnyServer.java
+ M backend/src/ItemRules.java
+ M backend/src/LongPollServer.java
+ M backend/src/SocialServer.java
+ M backend/src/TcpGameServer.java
+ M backend/tests/Gameplay771Check.java
+ M backend/tests/Protocol630Check.java
+ M backend/tests/RoomFix693ServerCheck.java
+ M backend/tests/Social670ServerCheck.java
+ M backend/tests/TribalTcpCheck.java
+ M backend/tests/updater_check.py
+ M client/README.md
+ M client/build.py
+ M client/src/BagScreen.java
+ M client/src/Battle.java
+ M client/src/DungeonScreen.java
+ M client/src/ItemRules.java
+ M client/src/OnlineClient.java
+ M client/src/OnlineResult.java
+ M client/src/OnlineSocial.java
+ M client/src/OnlineWaitingRoom.java
+ M client/src/PhoneCanvas.java
+ M client/src/RewardCards780.java
+ M client/src/ShopScreen.java
+ M deploy/CAP-NHAT-DOCKER.md
+ M deploy/portainer/README.md
+ M deploy/portainer/compose.yaml
+ M deploy/update-gunny.py
+ D docs/BAO-CAO-7.8.9.md
+ D docs/BUILD-7.8.9.json
+ M docs/QUAN-TRI.md
+ M public/admin/app.js
+ M public/admin/index.html
+ D public/downloads/Gunny-E6-Online-789.jad
+ D public/downloads/Gunny-E6-Online-789.jar
+ D public/downloads/Gunny-E72-2009-Online-789.jad
+ D public/downloads/Gunny-E72-2009-Online-789.jar
+ M public/index.html
+ M supabase/GUNNY-ALL.sql
+ M supabase/UPDATE-CURRENT.sql
+ M verify.ps1
+ M verify.sh
+?? backend/src/ResultResume.java
+?? backend/src/VipRules.java
+?? backend/src/VipServer.java
+?? backend/tests/CardsPresence790Check.java
+?? backend/tests/Vip790Check.java
+?? backend/tests/VipTcp790Check.java
+?? client/VIP-ASSETS.json
+?? client/assets1/vip-card-0.png
+?? client/assets1/vip-card-1.png
+?? client/assets1/vip-icon-1.png
+?? client/assets1/vip-icon-2.png
+?? client/assets1/vip-icon-3.png
+?? client/assets1/vip-icon-4.png
+?? client/assets1/vip-icon-5.png
+?? client/assets1/vip-icon-6.png
+?? client/assets1/vip-icon-7.png
+?? client/assets1/vip-icon-8.png
+?? client/assets1/vip-icon-9.png
+?? client/assets1/vip-progress-fill.png
+?? client/assets1/vip-progress.png
+?? client/assets1/vip-ring-0-24.png
+?? client/assets1/vip-ring-0-44.png
+?? client/assets1/vip-ring-0-72.png
+?? client/assets1/vip-ring-1-24.png
+?? client/assets1/vip-ring-1-44.png
+?? client/assets1/vip-ring-1-72.png
+?? client/assets1/vip-ring-2-24.png
+?? client/assets1/vip-ring-2-44.png
+?? client/assets1/vip-ring-2-72.png
+?? client/assets1/vip-wing-0-24.png
+?? client/assets1/vip-wing-0-44.png
+?? client/assets1/vip-wing-0-72.png
+?? client/assets1/vip-wing-1-24.png
+?? client/assets1/vip-wing-1-44.png
+?? client/assets1/vip-wing-1-72.png
+?? client/assets1/vip-wing-2-24.png
+?? client/assets1/vip-wing-2-44.png
+?? client/assets1/vip-wing-2-72.png
+?? client/assets1/vip-wing-3-24.png
+?? client/assets1/vip-wing-3-44.png
+?? client/assets1/vip-wing-3-72.png
+?? client/assets1/vip-wing-4-24.png
+?? client/assets1/vip-wing-4-44.png
+?? client/assets1/vip-wing-4-72.png
+?? client/assets1/vip-wing-5-24.png
+?? client/assets1/vip-wing-5-44.png
+?? client/assets1/vip-wing-5-72.png
+?? client/assets1/vip-wing-icon-0.png
+?? client/assets1/vip-wing-icon-1.png
+?? client/assets1/vip-wing-icon-2.png
+?? client/assets1/vip-wing-icon-3.png
+?? client/assets1/vip-wing-icon-4.png
+?? client/assets1/vip-wing-icon-5.png
+?? client/assets2/vip-card-0.png
+?? client/assets2/vip-card-1.png
+?? client/assets2/vip-icon-1.png
+?? client/assets2/vip-icon-2.png
+?? client/assets2/vip-icon-3.png
+?? client/assets2/vip-icon-4.png
+?? client/assets2/vip-icon-5.png
+?? client/assets2/vip-icon-6.png
+?? client/assets2/vip-icon-7.png
+?? client/assets2/vip-icon-8.png
+?? client/assets2/vip-icon-9.png
+?? client/assets2/vip-progress-fill.png
+?? client/assets2/vip-progress.png
+?? client/assets2/vip-ring-0-24.png
+?? client/assets2/vip-ring-0-44.png
+?? client/assets2/vip-ring-0-72.png
+?? client/assets2/vip-ring-1-24.png
+?? client/assets2/vip-ring-1-44.png
+?? client/assets2/vip-ring-1-72.png
+?? client/assets2/vip-ring-2-24.png
+?? client/assets2/vip-ring-2-44.png
+?? client/assets2/vip-ring-2-72.png
+?? client/assets2/vip-wing-0-24.png
+?? client/assets2/vip-wing-0-44.png
+?? client/assets2/vip-wing-0-72.png
+?? client/assets2/vip-wing-1-24.png
+?? client/assets2/vip-wing-1-44.png
+?? client/assets2/vip-wing-1-72.png
+?? client/assets2/vip-wing-2-24.png
+?? client/assets2/vip-wing-2-44.png
+?? client/assets2/vip-wing-2-72.png
+?? client/assets2/vip-wing-3-24.png
+?? client/assets2/vip-wing-3-44.png
+?? client/assets2/vip-wing-3-72.png
+?? client/assets2/vip-wing-4-24.png
+?? client/assets2/vip-wing-4-44.png
+?? client/assets2/vip-wing-4-72.png
+?? client/assets2/vip-wing-5-24.png
+?? client/assets2/vip-wing-5-44.png
+?? client/assets2/vip-wing-5-72.png
+?? client/assets2/vip-wing-icon-0.png
+?? client/assets2/vip-wing-icon-1.png
+?? client/assets2/vip-wing-icon-2.png
+?? client/assets2/vip-wing-icon-3.png
+?? client/assets2/vip-wing-icon-4.png
+?? client/assets2/vip-wing-icon-5.png
+?? client/src/VipRules.java
+?? client/src/VipSystem.java
+?? client/tests/Ui790Check.java
+?? docs/BAO-CAO-7.9.0.md
+?? docs/BUILD-7.9.0.json
+?? docs/FILES-CURRENT.txt
+?? public/downloads/Gunny-E6-Online-790.jad
+?? public/downloads/Gunny-E6-Online-790.jar
+?? public/downloads/Gunny-E72-2009-Online-790.jad
+?? public/downloads/Gunny-E72-2009-Online-790.jar
+?? supabase/migrations/202611220001_vip_wings.sql

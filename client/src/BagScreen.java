@@ -3,7 +3,7 @@ import javax.microedition.lcdui.Image;
 final class BagScreen {
     void releaseArt(){frame=cell=slot=equipOn=equipOff=fashionOn=fashionOff=arrow=input=close=preview=propsOn=propsOff=stoneIcon=statsPanel=female=male=moving=null;previewKey="";for(int i=0;i<icons.length;i++)icons[i]=null;for(int i=0;i<worn.length;i++)worn[i]=null;}
 
-    static final int STONE_KIND = -2,GIFT_KIND=-3;
+    static final int STONE_KIND = -2,GIFT_KIND=-3,VIP_KIND=-4,WING_KIND=-5;
     final PhoneCanvas c;
     int tab, filter, page, focus, selected, count;
     final int[] kinds = new int[90], items = new int[90];
@@ -42,6 +42,8 @@ final class BagScreen {
         count = c.bagLayout.fill(tab, filter, kinds, items);
         if(tab==0)for(int type=0;type<3;type++)if(c.gifts.visible(type)&&count<kinds.length){kinds[count]=GIFT_KIND;items[count++]=type;}
         if (tab == 0)for(int type=0;type<7;type++)if(c.economy.material(type)>0&&count<kinds.length){kinds[count]=STONE_KIND;items[count++]=type;}
+        if(tab==0&&c.onlineAccount())for(int type=0;type<13&&count<kinds.length;type++)if(c.vip.cards[type]>0){kinds[count]=VIP_KIND;items[count++]=type;}
+        if(tab==1&&c.onlineAccount())for(int type=0;type<6&&count<kinds.length;type++)if(type==5?c.economy.wings>0:(c.vip.owned&(1<<type))!=0){kinds[count]=WING_KIND;items[count++]=type;}
         page = Math.min(page, lastPage());
         selected = Math.min(selected, Math.max(0, count - 1));
         if (iconSex != c.gender) {
@@ -89,7 +91,7 @@ final class BagScreen {
         return kind == 0 ? PhoneCanvas.WEAPON_NAMES[item] : PhoneCanvas.BAG_TABS[kind] + " " + (item + 1);
     }
 
-    String entryName(int id){return kinds[id]==STONE_KIND?StoneShop.NAMES[items[id]]:kinds[id]==GIFT_KIND?c.gifts.name(items[id]):kinds[id]>=0?itemName(kinds[id],items[id]):"Vật phẩm";}
+    String entryName(int id){if(kinds[id]==VIP_KIND)return VipRules.cardName(items[id]);if(kinds[id]==WING_KIND)return c.vip.wingName(items[id]);return kinds[id]==STONE_KIND?StoneShop.NAMES[items[id]]:kinds[id]==GIFT_KIND?c.gifts.name(items[id]):kinds[id]>=0?itemName(kinds[id],items[id]):"Vật phẩm";}
     String itemName(int id) {
         return itemName(kinds[id], items[id]);
     }
@@ -115,7 +117,7 @@ final class BagScreen {
                 preview = null;
             }
         }
-        if(c.onlineAccount()&&c.economy.wingEquipped)c.tribalArt.wings(76,130);
+        c.vip.back(c.vip.exp(),c.vip.wing(),76,138,0,false);
           c.img(preview, 44, 58);
         for (int i = 0; i < 7; i++) {
             int[] b = box(31 + i);
@@ -141,9 +143,9 @@ final class BagScreen {
         c.img(frame, 3, 8);
         c.pcText("Túi (B)", 14, 17);
         if(c.gifts.vipUntil()>System.currentTimeMillis()/1000)c.pcText("VIP "+((c.gifts.vipUntil()-System.currentTimeMillis()/1000+3599)/3600)+"h",76,17);
-        if(c.onlineAccount()&&c.economy.wings>0)c.pcText(c.economy.wingEquipped?"W: Tháo cánh":"W: Mặc cánh",165,17);
+
         c.img(close, 289, 12);
-        c.pcCenter(c.pcShort(c.playerName, 117), 77, 46);
+        c.pcCenter(c.pcShort(c.playerName, 62), 46, 46);
         character();
         c.img(input, 153, 43);
         c.pcText(c.pcShort(heldSource >= 0 ? "OK: đặt • 0: mặc • R: huỷ"
@@ -152,7 +154,9 @@ final class BagScreen {
             int x = 154 + i % 5 * 26, y = 64 + i / 5 * 26;
             c.img(cell, x, y);
             int id = page * PAGE + i;
-            if(id<count&&kinds[id]==GIFT_KIND){c.img(c.gifts.icon(items[id]),x+1,y+1);c.pcText(items[id]==0?"Lv"+c.gifts.value(0):GiftBag.quantity(c.gifts.value(items[id])),x+1,y+16);
+            if(id<count&&kinds[id]==VIP_KIND){c.img(c.vip.cardIcon(items[id]),x+1,y+1);c.pcText(items[id]==12?"MAX":"V"+(items[id]+1),x+1,y);c.pcText(GiftBag.quantity(c.vip.cards[items[id]]),x+1,y+16);}
+            else if(id<count&&kinds[id]==WING_KIND){c.img(c.vip.wingIcon(items[id]),x+1,y+1);if(c.vip.wing()==items[id])c.pcText("Đeo",x+1,y+16);}
+            else if(id<count&&kinds[id]==GIFT_KIND){c.img(c.gifts.icon(items[id]),x+1,y+1);c.pcText(items[id]==0?"Lv"+c.gifts.value(0):GiftBag.quantity(c.gifts.value(items[id])),x+1,y+16);
             }else if (id < count && kinds[id] == STONE_KIND) {
                 c.img(c.stoneShop.icon(items[id]), x + 1, y + 1);
                 if(items[id]<5)c.pcText("L"+(items[id]+1),x+12,y+1);
@@ -161,7 +165,8 @@ final class BagScreen {
                     && !(moving != null && pendingRemove && kinds[id] == pendingKind && items[id] == pendingItem))
                 c.img(itemIcon(kinds[id], items[id]), x + 1, y + 1);
         }
-        drawStats();
+        c.img(slot,16,168);if(c.vip.wing()>=0)c.img(c.vip.wingIcon(c.vip.wing()),17,169);else c.pcCenter("Cánh",28,177);
+        c.vip.progress();drawStats();
         drawTabs();
         c.img(female, 17, 203); // cao thấp thanh chọn giới tính
         c.img(male, 43, 203);
@@ -203,7 +208,7 @@ final class BagScreen {
     void drawBars() {
         int base = Progression.bonus(c.experience);
         int[] gear = ForgeRules.gear(c.wornMask, c.equipped, c.economy.bonuses());
-        int hp = Progression.baseHp(c.experience) + gear[1], energy = 240 + base + gear[2];
+        int hp = Progression.baseHp(c.experience) + gear[1]+c.vip.hp(), energy = 240 + base + gear[2];
         int[] colors = { 0xd63832, 0x3bba53 };
         String[] labels = { "HP " + hp, "TL " + energy };
         for (int i = 0; i < 2; i++) {
@@ -227,6 +232,7 @@ final class BagScreen {
 
     void showInfo() {
         if(focus<PAGE&&page*PAGE+focus<count&&kinds[page*PAGE+focus]<-1){infoKind=kinds[page*PAGE+focus];infoItem=items[page*PAGE+focus];info=true;return;}
+        if(focus==41){if(c.vip.wing()>=0){infoKind=WING_KIND;infoItem=c.vip.wing();info=true;}return;}
         int kind = -1, item = 0;
         if (focus < PAGE && page * PAGE + focus < count && kinds[page * PAGE + focus] >= 0
                 && !isWorn(page * PAGE + focus)) {
@@ -247,6 +253,9 @@ final class BagScreen {
     }
 
     void drawInfo() {
+        if(infoKind==VIP_KIND){c.tooltip.goods(VipRules.cardName(infoItem),"Thẻ VIP",infoItem==12?"Dùng: đạt ngay VIP 12. Vật phẩm chỉ do quản trị cấp.":"Dùng: +"+((infoItem+1)*100)+" EXP VIP. Tiêu hao 1 thẻ.",box(focus));return;}
+        if(infoKind==WING_KIND){if(infoItem<0)return;c.tooltip.goods(c.vip.wingName(infoItem),"Cánh",infoItem==5?"Cánh thưởng phó bản. Trang bị vĩnh viễn.":"+"+VipRules.WING_HP[infoItem]+" HP khi đeo. Cần VIP "+VipRules.WING_VIP[infoItem]+" để mua. Vĩnh viễn.",box(focus));return;}
+
         if(infoKind==GIFT_KIND){String desc=infoItem==0?"Thưởng: hòm Lv"+(c.gifts.value(0)+1)+", xu, đá Lv1 x50-100":infoItem==1?"Thưởng: đá Lv2 x20-70. Thẻ VIP 1 ngày: 10%.":"Kích hoạt VIP 1 ngày. Cộng dồn thời hạn.";c.tooltip.goods(c.gifts.name(infoItem),infoItem==0?"Hòm Lv"+c.gifts.value(0):"Quà",desc,box(focus));return;}
         if(infoKind==STONE_KIND){c.stoneShop.drawInfo(infoItem,box(focus));return;}
         c.tooltip.draw(infoKind, infoItem, c.mode == 6 ? c.shop.box(c.shop.focus) : box(focus));
@@ -254,12 +263,14 @@ final class BagScreen {
 
     boolean isWorn(int id) {
         int kind = kinds[id];
+        if(kind==WING_KIND)return c.vip.wing()==items[id];
         if (kind < 0)
             return false;
         return (c.wornMask & (1 << kind)) != 0 && items[id] == wornItem(kind);
     }
 
     int[] box(int id) {
+        if(id==41)return new int[]{16,168,25,27};
         if (id == 39 || id == 40)
             return new int[] { id == 39 ? 17 : 43, 203, 23, 16 }; // cao thấp thanh chọn giới tính
         if (id < PAGE)
@@ -279,11 +290,11 @@ final class BagScreen {
     boolean valid(int id) {
         if (id == 29)
             return false;
-        return id >= 0 && id <= 40;
+        return id >= 0 && id <= 41;
     }
 
     void choose(int id) {
-        focus = id;
+        focus = id;if(id==41){infoKind=WING_KIND;infoItem=c.vip.wing();return;}
         if (id < PAGE && page * PAGE + id < count) {
             selected = page * PAGE + id;
             infoKind = kinds[selected];
@@ -474,6 +485,9 @@ final class BagScreen {
     }
 
     void activate() {
+        if(focus==41){if(c.vip.wing()>=0)c.vip.submit("vipequip",-1);return;}
+        if(focus<PAGE&&page*PAGE+focus<count){int id=page*PAGE+focus;if(kinds[id]==VIP_KIND){c.vip.submit("vipuse",items[id]);return;}if(kinds[id]==WING_KIND){c.vip.submit("vipequip",c.vip.wing()==items[id]?-1:items[id]);return;}}
+
         if(focus<PAGE&&page*PAGE+focus<count&&kinds[page*PAGE+focus]==GIFT_KIND){heldSource=-1;info=false;c.gifts.use(items[page*PAGE+focus]);return;}
         if(focus<PAGE&&page*PAGE+focus<count&&kinds[page*PAGE+focus]==STONE_KIND){int m=items[page*PAGE+focus];heldSource=-1;infoKind=STONE_KIND;infoItem=m;info=!info;return;}
 
@@ -577,7 +591,7 @@ final class BagScreen {
     }
 
     void key(int key, int dir, boolean ok) {
-        if((key=='w'||key=='W')&&c.onlineAccount()&&c.economy.wings>0){c.net.request("tribalwing");return;}
+        if((key=='w'||key=='W')&&c.onlineAccount()&&c.economy.wings>0){c.vip.submit("vipequip",c.vip.wing()==5?-1:5);return;}
         if (key == 'l' || key == 'L' || key == 'p' || key == 'P') {
             switchTab(key == 'p' || key == 'P' ? 0 : 1);
             return;
@@ -638,7 +652,7 @@ final class BagScreen {
             info = false;
             return;
         }
-        for (int id = 40; id >= 0; id--)
+        for (int id = 41; id >= 0; id--)
             if (valid(id)) {
                 int[] b = box(id);
                 if (x >= b[0] && x < b[0] + b[2] && y >= b[1] && y < b[1] + b[3]) {
