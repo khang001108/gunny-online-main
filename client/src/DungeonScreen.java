@@ -243,8 +243,8 @@ final class DungeonScreen {
    drawSeat(seat, online);
 
   int stage = online ? n.dungeonStage : c.offlineDungeon.stage;
-  if(previewStage!=stage||previewCover==null){previewStage=stage;previewCover=NativeUi.fit(stageCover(stage),82*c.s,68*c.s,0);}
-  c.img(previewCover,120,99);
+  if(previewStage!=stage||previewCover==null){previewStage=stage;previewCover=NativeUi.fit(stageCover(stage),(stage>=3?54:82)*c.s,68*c.s,0);}
+  c.img(previewCover,stage>=3?134:120,99);
   c.loadout.draw(online, true);
   drawRewards(stage,online?n.dungeonDifficulty:c.offlineDungeon.difficulty);
  }

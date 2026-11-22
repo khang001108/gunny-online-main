@@ -2,7 +2,7 @@ import java.io.*;import java.net.*;import java.nio.file.*;import java.util.*;
 /** Actual framed TCP room lifecycle with three independent account connections. */
 public class TribalTcpCheck {
  static int checks;static void check(boolean value,String message){if(!value)throw new AssertionError(message);checks++;}
- static final int FLAGS=67108864|33554432|16777216|8388608|4194304|0x3fffff;
+ static final int FLAGS=536870912|67108864|33554432|16777216|8388608|4194304|0x3fffff;
  static class Player implements AutoCloseable {
   int flags=FLAGS;Socket socket;DataInputStream in;DataOutputStream out;String token="";
   Player(int port,String email)throws Exception{this(port,email,FLAGS);}

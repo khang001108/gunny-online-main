@@ -260,8 +260,9 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             versusTime = combatRoomArt("room-loading-time");
             versusDigits = combatRoomArt("room-loading-digits");
         }
-        img(versusBg, 0, 0);
+        if(TribalRules.active(game)){if(tribalArt.loadingBackground==null)tribalArt.loadingBackground=combatRoomArt("tribal797-loading-bg");img(tribalArt.loadingBackground,0,0);}else img(versusBg, 0, 0);
         img(versusLogo, 124, 15);
+        if(TribalRules.active(game)){pcCenter("Your Team",72,8);pcCenter("Enemy Team",264,8);}
         img(versusTime, 137, 110);
         int seconds = Math.max(0, 60 - loadTicks / 30);
         part(versusDigits, seconds / 10 * 17, 0, 17, 21, 143, 120, false);
@@ -270,7 +271,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 : onlineBattle() && net.roomKind == 3 ? net.dungeonStage : 0;
         if (dungeonStage > 0) pcCenter("Ải Viễn Chinh", 160, 74);
         else img(versusMode, 139, 73);
-        if(dungeonStage>=3)img(tribalArt.cover(dungeonStage-2),220,48);
+        if(dungeonStage>=3)img(tribalArt.cover(dungeonStage-2),224,48);
         else if (dungeonStage > 0) {
             int stageIndex = dungeonStage == 2 ? 1 : 0;
             if (dungeonLoadingCovers[stageIndex] == null)
@@ -632,7 +633,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     Graphics g;
     static final int PVP_MAP_COUNT = 6;
     static final String[] MAPS = { "Đu Quay", "Rừng Nhiệt Đới", "Lớp Học Ma Thuật", "Phố Nấm Lùn", "Mộc Diệp Trấn",
-            "Đáy Biển", "Huyệt Ma Kiến • Ải 1", "Huyệt Ma Kiến • Nữ Vương", "Rừng nguyên sinh", "Bảo vệ Đậu Thần", "Bulan Anh và Em", "Đền thờ Sulan" };
+            "Đáy Biển", "Huyệt Ma Kiến • Ải 1", "Huyệt Ma Kiến • Nữ Vương", "Tà Thần 1", "Tà Thần 2 • Bulan", "Tà Thần 2 • Bulan", "Tà Thần 3 • Sulan" };
     static final String[] PROPS = { "+2 đợt bắn", "Đạn 3 tia", "Sát thương +50%", "Hồi 500 HP", "Bay đến điểm đáp",
             "POW đặc biệt" };
     static final String[] PROP_KEYS = { "Q", "W", "E", "R", "T", "B" };
@@ -1423,6 +1424,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         System.gc();
         aimSector = null;
         aimSectorMin = aimSectorMax = -1;
+        tribalArt.release();
         map = battleMap;
         background = load("bg" + map);
         Image terrain = load("land" + map);
@@ -1597,11 +1599,14 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             return;
         }
         int tx, ty;
-        boolean queenDialogue = AntCaveRules.introducing(game) && game.botPhase < AntCaveRules.GUARD_ENTRY
+        boolean queenDialogue = !TribalRules.active(game)&&(AntCaveRules.introducing(game) && game.botPhase < AntCaveRules.GUARD_ENTRY
                 || AntCaveRules.dying(game) || AntCaveRules.summoning(game) && game.botPhase<AntCaveRules.REINFORCEMENTS+45
                 || game.botPhase == AntCaveRules.QUEEN_THREAT || game.botPhase==AntCaveRules.QUEEN_HIT
-                || game.botPhase==AntCaveRules.QUEEN_SUCCESS;
-        if(AntCaveRules.antOpening(game)||AntCaveRules.introducing(game)&&game.botPhase<AntCaveRules.QUEEN_SPEECH){
+                || game.botPhase==AntCaveRules.QUEEN_SUCCESS);
+        if(TribalRules.active(game)&&game.tribalState==TribalRules.OPENING&&game.tribalFx>0){
+            int elapsed=120-game.tribalFx,slot=elapsed<25?0:TribalRules.twins(game)&&elapsed>72?1:game.active;
+            tx=game.units[slot].x-160;ty=game.units[slot].y-(slot==0?135:170);
+        } else if(AntCaveRules.antOpening(game)||AntCaveRules.introducing(game)&&game.botPhase<AntCaveRules.QUEEN_SPEECH){
             boolean ants=AntCaveRules.antOpening(game);
             int elapsed=game.botPhase-(ants?AntCaveRules.ANT_INTRO:AntCaveRules.QUEEN_INTRO);
             int slot=elapsed<12?0:elapsed<23?2:4;
@@ -2217,6 +2222,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             drawAimRay();
             loadout.preview();
             for (int i = 0; presentation.effects && i < game.trailCount; i++) {
+                if(TribalRules.payload(game.trailWeapon[i])){tribalArt.trail(game.trailX[i]/256-cameraX,game.trailY[i]/256-cameraY,game.trailWeapon[i],game.trailAge[i]);continue;}
                 if(game.trailWeapon[i]==AntCaveRules.QUEEN_ARROW){
                     int x=game.trailX[i]/256-cameraX,y=game.trailY[i]/256-cameraY;
                     int radius=Math.max(1,3-game.trailAge[i]/5);
@@ -2232,6 +2238,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 Battle.Ball b = game.balls[i];
                 int x = b.x / 256 - cameraX, y = b.y / 256 - cameraY;
                 int size = projectileArtSize(b.weapon);
+                if(TribalRules.payload(b.weapon)){tribalArt.projectile(b);continue;}
                 if (b.freeze) {
                     if (iceDirections == null)
                         iceDirections = combatRoomArt("ice762-directions");
@@ -2248,6 +2255,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             for (int i = 0; presentation.effects && i < game.blastCount; i++) {
                 Battle.Blast b = game.blasts[i];
                 int x = b.x - cameraX, y = b.y - cameraY;
+                if(TribalRules.payload(b.weapon)){tribalArt.impact(b);continue;}
                 if (b.freeze) {
                     loadout.impact(b.time, x, y);
                     continue;
@@ -2264,7 +2272,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         if(AntCaveRules.titleVisible(game))drawQueenTitle();
         drawTop();
         drawHud();
-        if(!TribalRules.active(game))drawDungeonSpeech();
+        if(!TribalRules.active(game))drawDungeonSpeech();else tribalArt.overlay();
         drawPowCutin();
         if (training && !game.busy()) {
             panel(52, 149, 208, 42);
@@ -2626,13 +2634,13 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         int y=tailUp?Math.max(top,tip+9):tip-h-9;
         int tail = Battle.clamp(x, left + 14, left + w - 14);
         int px = ox + left*s, py = oy + y*s;
-        g.setColor(0x302d2e);
+        g.setColor(TribalRules.active(game)?0x87511a:0x302d2e);
         g.fillRoundRect(px,py,w*s,h*s,12*s,12*s);
         g.fillTriangle(ox+(tail-9)*s,py+(tailUp?4:h-4)*s,ox+(tail+10)*s,py+(tailUp?4:h-4)*s,ox+x*s,oy+tip*s);
-        g.setColor(0xc6cfee);
+        g.setColor(TribalRules.active(game)?0xffb926:0xc6cfee);
         g.fillRoundRect(px+s,py+s,(w-2)*s,(h-2)*s,11*s,11*s);
         g.fillTriangle(ox+(tail-7)*s,py+(tailUp?5:h-5)*s,ox+(tail+8)*s,py+(tailUp?5:h-5)*s,ox+x*s,oy+(tailUp?tip+2:tip-2)*s);
-        g.setColor(0xffffff);
+        g.setColor(TribalRules.active(game)?0xffe668:0xffffff);
         g.fillRoundRect(px+3*s,py+3*s,(w-6)*s,(h-6)*s,8*s,8*s);
         g.fillTriangle(ox+(tail-5)*s,py+(tailUp?6:h-6)*s,ox+(tail+6)*s,py+(tailUp?6:h-6)*s,ox+x*s,oy+(tailUp?tip+5:tip-5)*s);
         if (speechFont == null) speechFont = combatRoomArt("font-dungeon-speech");

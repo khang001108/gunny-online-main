@@ -37,18 +37,18 @@ if args.code_only:
     raise SystemExit(0)
 downloads = root.parent/'public/downloads'
 with zipfile.ZipFile(build/'preverified.jar') as code:
-    for name in ('Gunny-E6-Online-796', 'Gunny-E72-2009-Online-796'):
+    for name in ('Gunny-E6-Online-797', 'Gunny-E72-2009-Online-797'):
         jar = downloads/(name+'.jar')
         temp = build/(name+'.jar')
-        overlays = {p.name:p.read_bytes() for p in (root/('assets2' if 'E6' in name else 'assets1')).glob('*.png')}
-        seed = jar if jar.exists() else downloads/(name.replace('796','795')+'.jar')
+        overlays = {p.name:p.read_bytes() for p in (root/('assets2' if 'E6' in name else 'assets1')).iterdir() if p.is_file() and p.suffix in ('.png','.dat')}
+        seed = jar if jar.exists() else downloads/(name.replace('797','796')+'.jar')
         with zipfile.ZipFile(seed) as original, zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED) as output:
             for info in original.infolist():
-                if (info.filename.startswith(('wing792-','wing793-','wing795-show-')) or re.match(r'vip-wing-[0-5]-(24|44|72)\.png$', info.filename)) or info.filename.startswith('vip-progress') or 'vip-ring-' in info.filename and '-216.png' in info.filename or info.filename.endswith('.class') or info.filename in overlays or info.filename in ('stone780.png','forge780-success.png','forge780-success-slot.png'):
+                if (info.filename.startswith(('tribal-npc-', 'tribal-cover-')) or info.filename.startswith(('wing792-','wing793-','wing795-show-')) or re.match(r'vip-wing-[0-5]-(24|44|72)\.png$', info.filename)) or info.filename.startswith('vip-progress') or 'vip-ring-' in info.filename and '-216.png' in info.filename or info.filename.endswith('.class') or info.filename in overlays or info.filename in ('stone780.png','forge780-success.png','forge780-success-slot.png'):
                     continue
                 data = original.read(info.filename)
                 if info.filename.upper() == 'META-INF/MANIFEST.MF':
-                    data = data.replace(b'7.9.5',b'7.9.6').replace(b'7.9.4',b'7.9.6').replace(b'7.9.3',b'7.9.6').replace(b'7.9.2',b'7.9.6').replace(b'7.9.1',b'7.9.6').replace(b'7.9.0',b'7.9.6').replace(b'7.8.8',b'7.9.6').replace(b'7.8.9',b'7.9.6').replace(b'socket://gunnyjava.xubi.org:22122', b'socket://gunnyjava.xubi.org:22123')
+                    data = data.replace(b'7.9.6',b'7.9.7').replace(b'7.9.5',b'7.9.7').replace(b'7.9.4',b'7.9.7').replace(b'7.9.3',b'7.9.7').replace(b'7.9.2',b'7.9.7').replace(b'7.9.1',b'7.9.7').replace(b'7.9.0',b'7.9.7').replace(b'7.8.8',b'7.9.7').replace(b'7.8.9',b'7.9.7').replace(b'socket://gunnyjava.xubi.org:22122', b'socket://gunnyjava.xubi.org:22123')
                 output.writestr(info, data)
             for filename,data in overlays.items():
                 entry=zipfile.ZipInfo(filename,(2000,1,1,0,0,0));entry.create_system=0;entry.extra=b"";entry.flag_bits=0;entry.external_attr=0x20
@@ -75,8 +75,8 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
                 time.sleep(0.3)
 
         jad = downloads/(name+'.jad')
-        jad_seed = jad if jad.exists() else downloads/(name.replace('796','795')+'.jad')
-        text = jad_seed.read_text(encoding='utf-8').replace('7.9.5','7.9.6').replace('7.9.4','7.9.6').replace('7.9.3','7.9.6').replace('7.9.2','7.9.6').replace('Online-795','Online-796').replace('Online-794','Online-796').replace('Online-793','Online-796').replace('Online-792','Online-796').replace('7.9.1','7.9.6').replace('Online-791','Online-796').replace('7.9.0','7.9.6').replace('Online-790','Online-796').replace(':22122', ':22123').replace('7.8.8','7.9.6').replace('7.8.9','7.9.6').replace('Online-788','Online-796').replace('Online-789','Online-796')
+        jad_seed = jad if jad.exists() else downloads/(name.replace('797','796')+'.jad')
+        text = jad_seed.read_text(encoding='utf-8').replace('7.9.6','7.9.7').replace('Online-796','Online-797').replace('7.9.5','7.9.7').replace('7.9.4','7.9.7').replace('7.9.3','7.9.7').replace('7.9.2','7.9.7').replace('Online-795','Online-797').replace('Online-794','Online-797').replace('Online-793','Online-797').replace('Online-792','Online-797').replace('7.9.1','7.9.7').replace('Online-791','Online-797').replace('7.9.0','7.9.7').replace('Online-790','Online-797').replace(':22122', ':22123').replace('7.8.8','7.9.7').replace('7.8.9','7.9.7').replace('Online-788','Online-797').replace('Online-789','Online-797')
         text = re.sub(r'MIDlet-Jar-Size: \d+', 'MIDlet-Jar-Size: '+str(jar.stat().st_size), text)
         jad.write_text(text, encoding='utf-8')
 print('Rebuilt current E72/E6 JAR and JAD.')
