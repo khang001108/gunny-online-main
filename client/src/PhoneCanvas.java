@@ -2225,7 +2225,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             drawAimRay();
             loadout.preview();
             for (int i = 0; presentation.effects && i < game.trailCount; i++) {
-                if(TribalRules.payload(game.trailWeapon[i])){tribalArt.trail(game.trailX[i]/256-cameraX,game.trailY[i]/256-cameraY,game.trailWeapon[i],game.trailAge[i]);continue;}
+                if(TribalRules.payload(game.trailWeapon[i])){tribalArt.trail(game.trailX[i]/256-cameraX,game.trailY[i]/256-cameraY,game.trailWeapon[i],game.trailAge[i],game.trailFrame[i]);continue;}
                 if(game.trailWeapon[i]==AntCaveRules.QUEEN_ARROW){
                     int x=game.trailX[i]/256-cameraX,y=game.trailY[i]/256-cameraY;
                     int radius=Math.max(1,3-game.trailAge[i]/5);

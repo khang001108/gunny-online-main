@@ -60,7 +60,7 @@ final class TribalRules {
   Battle.Unit chief=b.units[1];int placed=0;
   for(int k=1;k<ENEMIES.length&&placed<amount;k++){
    int slot=ENEMIES[k];if(b.units[slot].hp>0)continue;
-   int x=chief.x-chief.face*(46+placed*18);
+   int x=Battle.clamp(chief.x-chief.face*(46+placed*18),18,Battle.W-18);while(x>36&&b.occupied(x,slot,15))x-=18;
    spawn(b,slot,SPEAR,x);placed++;b.tribalDead3++;
   }
   if(placed>0)b.tribalWave++;
@@ -100,7 +100,7 @@ final class TribalRules {
  static void heal(Battle b,Battle.Unit u,int amount){if(u.hp<=0)return;u.hp=Math.min(u.maxHp,u.hp+amount);u.flashTicks=36;u.lastBuff=13;}
  static void round(Battle b){
   b.tribalRound++;
-  if(stage(b)==1)wave(b);
+  if(stage(b)==1){if(b.tribalGoal>0&&b.units[1].hp<=0)spawn(b,1,ELITE,310);if(!alive(b,SPEAR))wave(b);}
   if(twins(b)){
    if(b.units[1].hp<=0&&b.units[3].hp>0&&b.tribalRound-b.tribalDead1>=reviveRounds){spawn(b,1,BROTHER,88);b.units[1].hp=b.units[1].maxHp/2;}
    if(b.units[3].hp<=0&&b.units[1].hp>0&&b.tribalRound-b.tribalDead3>=reviveRounds){spawn(b,3,SISTER,408);b.units[3].hp=b.units[3].maxHp/2;}
@@ -115,10 +115,13 @@ final class TribalRules {
    else if(b.tribalRound>=b.tribalDead3)b.tribalBeanSaved=false;
   }
  }
- static void beginTurn(Battle b){b.tribalClock=0;if(b.tribalFx==0)b.tribalState=IDLE;else if(b.tribalState==SPECIAL)b.botPhase=BEAN_POWER;
+ static void beginTurn(Battle b){if(stage(b)==1&&b.units[b.active].npc==SPEAR)wave(b);b.tribalClock=0;if(b.tribalFx==0)b.tribalState=IDLE;else if(b.tribalState==SPECIAL)b.botPhase=BEAN_POWER;
   if(b.units[b.active].npc==0&&alive(b,FATIGUE))b.units[b.active].energy=Math.max(0,b.units[b.active].energy-fatigue(b));
  }
+ static void march(Battle b,int actor,int dir){Battle.Unit u=b.units[actor];int nx=u.x+dir;if(u.hp<=0||nx<18||nx>Battle.W-18)return;for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].team!=u.team&&Math.abs(nx-b.units[i].x)<20)return;int rise=0;while(rise<6&&(b.ground.solid(nx-2,u.y-rise-1)||b.ground.solid(nx+2,u.y-rise-1)))rise++;if(rise>=6)return;u.face=dir;u.x=nx;u.y-=rise;u.walk++;b.refreshAim(u);}
+ static void openingStep(Battle b,int actor,int dir){int old=b.active,fx=b.tribalFx;boolean acting=b.botActing;try{b.active=actor;b.tribalFx=0;b.botActing=true;march(b,actor,dir);}finally{b.active=old;b.tribalFx=fx;b.botActing=acting;}}
  static void tickEffect(Battle b){
+  if(stage(b)==1&&b.tribalState==OPENING){int elapsed=120-b.tribalFx;int old=b.active;if(elapsed==36)b.units[1].walk=0;if(elapsed==90)for(int i=0;i<b.unitCount;i++)if(b.units[i].npc==SPEAR)b.units[i].walk=0;if(elapsed<36){openingStep(b,1,1);b.units[1].walk=elapsed+1;}else if(elapsed<90){for(int i=0;i<b.unitCount;i++)if(b.units[i].npc==SPEAR&&b.units[i].hp>0){openingStep(b,i,-1);b.units[i].walk=elapsed-35;}}b.active=old;}
   if(twins(b)&&b.tribalState==OPENING){int elapsed=BULAN_INTRO_END-b.tribalFx+1;b.botPhase=elapsed<BULAN_LEFT_AT||elapsed>=BULAN_TITLE_AT?0:elapsed<BULAN_RIGHT_AT?BULAN_LEFT:BULAN_INTRO;}
   if(--b.tribalFx>0)return;
   if(b.tribalState==DEAD){check(b);return;}
@@ -197,7 +200,7 @@ final class TribalRules {
  static void tickAI(Battle b){
   if(twins(b)&&floats(b.units[b.active])){tickBulan(b);return;}
   Battle.Unit u=b.units[b.active];if(u.hp<=0){b.next();return;}
-  int t=++b.tribalClock;b.botWait=t;u.walk=t;b.botActing=true;
+  int elapsed=++b.tribalClock;int t=stage(b)==1&&elapsed>46?Math.max(46,elapsed-12):elapsed;b.botWait=t;u.walk=elapsed;b.botActing=true;
   try{
    int victim=target(b,b.active);Battle.Unit v=b.units[victim];u.face=v.x<u.x?-1:1;
    int action=action(b,u);
@@ -205,9 +208,9 @@ final class TribalRules {
    if(t==13){b.tribalState=SELECT_TARGET;b.botPhase=action==2?FATIGUE_LINE:action==3?CHAIN_LINE:action==4?CALL_LINE:action==5?HEAL_LINE:action==6?BOMB_LINE:action==7?BORROW_LINE:u.npc>=SULAN?BOMB_LINE:u.npc==BROTHER||u.npc==SISTER?BULAN_THROW:(b.tribalRound%2==0?MASK_LINE:CHICKEN_LINE);}
    if(t<=46){
     if(action==0){b.tribalState=MOVE;int leader=b.active;
-     for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].npc==SPEAR){Battle.Unit ally=b.units[i];int enemy=target(b,i);ally.face=b.units[enemy].x<ally.x?-1:1;ally.walk=t;b.active=i;if(Math.abs(ally.x-b.units[enemy].x)>30)b.move(ally.face);}
+     for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].npc==SPEAR){Battle.Unit ally=b.units[i];int enemy=target(b,i);ally.face=b.units[enemy].x<ally.x?-1:1;ally.walk=elapsed;b.active=i;if(Math.abs(ally.x-b.units[enemy].x)>30)march(b,i,ally.face);}
      b.active=leader;}
-    else b.tribalState=action>=2&&action<=7?SUMMON:AIM;
+    else if(stage(b)==1&&u.npc==ELITE){b.tribalState=MOVE;march(b,b.active,b.tribalRound%2==0?u.face:-u.face);}else b.tribalState=action>=2&&action<=7?SUMMON:AIM;
     return;
    }
    if(t==47){u.attackTicks=action==0&&!meleeRange(u,v)?0:36;if(action==0)for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].npc==SPEAR){Battle.Unit ally=b.units[i];ally.attackTicks=meleeRange(ally,b.units[target(b,i)])?36:0;}b.tribalState=action>=2&&action<=7?SUMMON:action==9?SPECIAL:ATTACK;}

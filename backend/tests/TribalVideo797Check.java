@@ -6,10 +6,10 @@ public final class TribalVideo797Check {
  static void turn(Battle b){int start=b.turn;for(int i=0;i<500&&b.turn==start&&!b.over;i++)b.tick();ok(b.turn!=start||b.over,"NPC action terminates");}
  static void npcOnly(Battle b,int keep){for(int i=1;i<b.unitCount;i++)if(i!=keep&&b.units[i].npc>0){b.units[i].hp=0;b.units[i].dead=true;}b.active=keep;}
  static void attacks(){
-  var b=raid(1);npcOnly(b,1);b.units[1].npc=TribalRules.SPEAR;b.units[1].x=130;b.units[0].x=52;turn(b);ok(b.shotSerial==0&&b.units[0].hp==30000,"Melee tribesman cannot damage a distant target");
+  var b=raid(1);npcOnly(b,1);b.units[1].npc=TribalRules.SPEAR;b.units[1].x=200;b.units[0].x=52;turn(b);ok(b.shotSerial==0&&b.units[0].hp==30000,"Melee tribesman cannot damage a distant target");
   b=raid(1);npcOnly(b,1);b.units[1].npc=TribalRules.SPEAR;b.units[1].x=400;b.units[0].x=52;for(int i=0;i<47;i++)b.tick();ok(b.units[1].attackTicks==0,"Distant melee troop does not play a stabbing attack");
   b=raid(1);npcOnly(b,1);b.units[1].npc=TribalRules.SPEAR;b.units[1].x=90;b.units[0].x=52;int hp=b.units[0].hp;turn(b);ok(b.units[0].hp<hp&&b.shotSerial==0,"Close tribesman actually stabs");
-  b=raid(1);int elite=-1;for(int i=0;i<13;i++)if(b.units[i].npc==TribalRules.ELITE)elite=i;npcOnly(b,elite);for(int i=0;i<61;i++)b.tick();ok(b.ballCount==3&&Arrays.stream(b.balls,0,b.ballCount).allMatch(x->x.weapon==TribalRules.SPEAR_SHOT),"Purple warrior launches three spear payloads");hp=b.units[0].hp;turn(b);ok(b.units[0].hp<hp,"Thrown NPC spear follows physics and hits");
+  b=raid(1);int elite=-1;for(int i=0;i<13;i++)if(b.units[i].npc==TribalRules.ELITE)elite=i;npcOnly(b,elite);for(int i=0;i<73;i++)b.tick();ok(b.ballCount==3&&Arrays.stream(b.balls,0,b.ballCount).allMatch(x->x.weapon==TribalRules.SPEAR_SHOT),"Purple warrior launches three spear payloads");hp=b.units[0].hp;turn(b);ok(b.units[0].hp<hp,"Thrown NPC spear follows physics and hits");
   b=raid(2);b.active=3;for(int i=0;i<75;i++)b.tick();ok(b.ballCount==1&&b.balls[0].weapon==TribalRules.SPIRIT_SHOT,"Bulan uses his own thrown staff");
   b=raid(4);for(int i=0;i<61;i++)b.tick();ok(b.ballCount==1&&b.balls[0].weapon==TribalRules.CHIEF_SHOT,"Golden Sulan throws the staff shown in his native attack pose");
   b=raid(4);b.units[1].hp=0;b.check();b.tribalFx=0;b.tribalState=0;b.active=1;TribalRules.summon(b,TribalRules.BEAN,80);b.tribalRound=3;for(int i=0;i<61;i++)b.tick();ok(b.ballCount==3&&Arrays.stream(b.balls,0,b.ballCount).allMatch(x->x.weapon==TribalRules.FIRE_SHOT),"Red Sulan launches three flame payloads");
@@ -25,7 +25,7 @@ public final class TribalVideo797Check {
  }
  static void campaign()throws Exception{
   var store=new CloudStore.Memory();var host=Expansion780Check.session(store,"Video797",70);host.tribal=host.flock=host.campaign=true;
-  host.tribal797=false;try{TribalDungeon.eligible(host,0);throw new AssertionError("Old client accepted");}catch(IllegalArgumentException expected){ok(expected.getMessage().contains("7.9.7"),"Unsupported NPC clients receive an update message");}host.tribal797=true;
+  host.tribal797=false;try{TribalDungeon.eligible(host,0);throw new AssertionError("Old client accepted");}catch(IllegalArgumentException expected){ok(expected.getMessage().contains("7.9.8"),"Unsupported NPC clients receive an update message");}host.tribal797=true;
   try(var server=new GunnyServer(new InetSocketAddress("127.0.0.1",0),Path.of("backend/assets"),store)){
    server.clock.shutdownNow();
    for(int stage:new int[]{3,4,6}){

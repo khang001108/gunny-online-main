@@ -1,6 +1,6 @@
-> Bản 7.9.7 đã build và kiểm tra cục bộ; chưa triển khai. Xem docs/BAO-CAO-7.9.7.md.
+> Bản 7.9.8 đã build và kiểm tra cục bộ; chưa triển khai. Xem docs/BAO-CAO-7.9.8.md.
 
-# Gunny Java Online 7.9.7
+# Gunny Java Online 7.9.8
 
 Source hiện tại để đẩy Git và deploy trực tiếp bằng Xubi. Không cần ZIP Pi 5.
 
@@ -13,18 +13,18 @@ Source hiện tại để đẩy Git và deploy trực tiếp bằng Xubi. Khôn
 
 ## Cập nhật bằng Xubi
 
-Đẩy toàn bộ thay đổi của repo này lên nhánh `main`, gồm cả việc xóa file cũ và bốn JAR/JAD 796. Trong Xubi chọn đúng repo/nhánh rồi Deploy. Trang `/health` và `/download/` phải hiện 7.9.7; tải lại JAR/JAD để cập nhật điện thoại.
+Đẩy toàn bộ thay đổi của repo này lên nhánh `main`, gồm cả việc xóa file cũ và bốn JAR/JAD 798. Trong Xubi chọn đúng repo/nhánh rồi Deploy. Trang `/health` và `/download/` phải hiện 7.9.8; tải lại JAR/JAD để cập nhật điện thoại.
 
 Không sửa `gunny.env` khi cập nhật. Cổng container: 8080 HTTP, 22122 TCP; Xubi có thể ánh xạ 18080:8080 và 22123:22122. Địa chỉ client mặc định `socket://gunnyjava.xubi.org:22123`.
 
-**Nếu đã chạy SQL7.9.3 thì7.9.7 không cần SQL mới. Nếu chưa có7.9.3, cần chạy thêm `202611230001_stats793.sql` và `202611230002_conversion793.sql` trong `supabase/migrations` trước khi cập nhật server. Không có env/secret mới.**
+**Nếu đã chạy SQL7.9.3 thì7.9.8 không cần SQL mới. Nếu chưa có7.9.3, cần chạy thêm `202611230001_stats793.sql` và `202611230002_conversion793.sql` trong `supabase/migrations` trước khi cập nhật server. Không có env/secret mới.**
 
 **9 VIP gốc: chạy riêng supabase/migrations/202611220002_vip9.sql nếu đã có SQL VIP. Không có env mới.** Nếu còn dùng 7.8.x, chạy [migration VIP/cánh](supabase/migrations/202611220001_vip_wings.sql) trong Supabase SQL Editor trước khi cập nhật server. Thao tác chỉ thêm dữ liệu/cột/hàm, không xóa hay đặt lại tài khoản. Nếu còn schema 7.7.0, dùng [SQL cập nhật gộp](supabase/UPDATE-CURRENT.sql); cài mới dùng [GUNNY-ALL.sql](supabase/GUNNY-ALL.sql). Các migration trong `supabase/migrations` được giữ làm source schema. Không có thao tác tự chạy SQL khi khởi động server.
 
 ## Build và kiểm tra
 
 ```sh
-docker build -t gunny-online:7.9.7 .
+docker build -t gunny-online:7.9.8 .
 bash verify.sh
 ```
 
@@ -34,6 +34,6 @@ Windows chạy `./verify.ps1`. Build client:
 python client/build.py --tools D:/gunny/GunnyNokia/tools
 ```
 
-Xem [báo cáo hiện tại](docs/BAO-CAO-7.9.7.md), [hướng dẫn client](client/README.md), [quản trị](docs/QUAN-TRI.md), [Pi/systemd](deploy/pi5/README.md) và [Portainer](deploy/portainer/README.md).
+Xem [báo cáo hiện tại](docs/BAO-CAO-7.9.8.md), [hướng dẫn client](client/README.md), [quản trị](docs/QUAN-TRI.md), [Pi/systemd](deploy/pi5/README.md) và [Portainer](deploy/portainer/README.md).
 
 Các bản phát hành, ZIP, ảnh kiểm thử và backup cũ đã được dọn. Git vẫn giữ lịch sử commit; bản clone nhẹ có thể dùng `git clone --depth 1 <URL-repo>`.

@@ -7,8 +7,8 @@ public class TribalCheck {
  static void testRules(){
   for(int diff=0;diff<3;diff++){
    var b=battle(1,diff);check(b.tribalGoal==20,"First encounter requires 20 real knockouts");int killed=0;
-   while(b.tribalOutcome<0){int amount=0;for(var u:b.units)if(u.hp>0&&u.team==1)amount++;enemiesDead(b);killed+=amount;if(b.tribalGoal>0)TribalRules.round(b);if(killed<21)check(!b.over&&b.tribalGoal==21-killed,"Reinforcements preserve remaining kill goal");}
-   check(killed==21&&!b.over,"20 troops and one warrior, then a death/result delay");b.tribalFx=0;b.check();check(b.over&&b.winner==0,"First encounter win");
+   while(b.tribalOutcome<0){int amount=0;for(var u:b.units)if(u.hp>0&&u.team==1&&u.npc==TribalRules.SPEAR)amount++;enemiesDead(b);killed+=amount;if(b.tribalGoal>0)TribalRules.round(b);if(killed<20)check(!b.over&&b.tribalGoal==20-killed,"Reinforcements preserve remaining kill goal");}
+   check(killed==20&&!b.over,"20 troops; repeated warrior kills do not change the goal");b.tribalFx=0;b.check();check(b.over&&b.winner==0,"First encounter win");
    b=battle(2,diff);check(b.units[1].npc==TribalRules.BROTHER&&b.units[3].npc==TribalRules.SISTER&&!TribalRules.alive(b,TribalRules.BEAN),"Second encounter is Bulan, not bean protection");
    b.units[1].hp=0;b.check();for(int round=0;round<TribalRules.reviveRounds;round++)TribalRules.round(b);check(b.units[1].hp==b.units[1].maxHp/2,"Surviving sibling can revive the other");
    b.units[1].hp=b.units[3].hp=0;b.check();b.tribalFx=0;b.check();check(b.over&&b.winner==0,"Both Bulan dead wins");

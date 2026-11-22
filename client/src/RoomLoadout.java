@@ -51,9 +51,9 @@ final class RoomLoadout {
  }
  Image dungeonMapCover, dungeonMapGreen, dungeonMapYellow;int dungeonCoverStage=-1;
  private void drawDungeonMap(boolean online) {
-  int selectedStage=online?c.net.dungeonStage:Math.max(1,c.offlineDungeon.stage);
+  int selectedStage=online?(c.net.dungeonStage>=3?3:1):(c.offlineDungeon.stage>=3?3:1);
   if (dungeonMapCover == null||dungeonCoverStage!=selectedStage) {
-   dungeonCoverStage=selectedStage;dungeonMapCover = NativeUi.fit(c.dungeon.stageCover(selectedStage), 82*c.s, 37*c.s, 0);
+   dungeonCoverStage=selectedStage;dungeonMapCover = NativeUi.fit(c.dungeon.mapCover(selectedStage>=3?1:0), 82*c.s, 37*c.s, 0);
    dungeonMapGreen = c.combatRoomArt("font-pc-green");
    dungeonMapYellow = c.combatRoomArt("font-pc-yellow");
   }
@@ -66,7 +66,7 @@ final class RoomLoadout {
   }
   dungeonMapRow("Độ khó: ",c.dungeon.difficultyName(online?c.net.dungeonDifficulty:c.offlineDungeon.difficulty),153,dungeonMapYellow);
   dungeonMapRow("Cấp: ","15+",165,dungeonMapGreen);
-  dungeonMapRow("LC đề cử: ","100",177,dungeonMapGreen);
+  dungeonMapRow("Ải: ",c.net.dungeonStage>=3?"1-3":"1-2",177,dungeonMapGreen);
  }
  private void dungeonMapRow(String label, String value, int y, Image font) {
   c.tooltip.colored(label,231,y,font);

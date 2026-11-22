@@ -20,7 +20,7 @@ final class TribalArt {
   else if(kind==TribalRules.RAGE&&b.tribalState==TribalRules.TRANSFORM){row=7;tick=Math.min(7,(75-b.tribalFx)*8/75);}
   else if(u.flashTicks>0&&u.lastBuff==14){row=7;tick=Math.min(7,(30-Math.min(30,u.flashTicks))*8/30);}
   else if(u.flashTicks>0&&u.lastBuff!=13){row=5;tick=Math.min(7,(36-Math.min(36,u.flashTicks))*8/36);}
-  else if(acting&&b.tribalState==TribalRules.MOVE){row=1;tick=u.walk/3%8;}
+  else if(acting&&b.tribalState==TribalRules.MOVE||b.dungeonStage==3&&b.tribalState==TribalRules.OPENING&&u.walk>0){row=1;tick=u.walk/3%8;}
   else if(acting&&(b.tribalState==TribalRules.SUMMON||b.tribalState==TribalRules.SPECIAL||u.attackTicks>0)){
    row=b.tribalState==TribalRules.SUMMON?3:b.tribalState==TribalRules.SPECIAL?4:2;
    tick=u.attackTicks>0?Math.min(7,(36-u.attackTicks)*8/36):u.walk/4%8;
@@ -38,7 +38,8 @@ final class TribalArt {
   int frame=ball.weapon==TribalRules.FIRE_SHOT?ball.age/6%8:c.flightDirection(ball.vx,ball.vy)/2;
   c.part(missiles,frame*32,row*32,32,32,ball.x/256-c.cameraX-16,ball.y/256-c.cameraY-16,false);
  }
- void trail(int x,int y,int weapon,int age){if(weapon==TribalRules.SPEAR_SHOT){int length=age<5?5:age<10?3:1;c.rect(x-length/2,y-1,length,2,age<5?0xc4fff0:age<10?0x8adcca:0x6cb6ac);return;}int r=age<5?2:1;c.oval(x-r,y-r,r*2,r*2,weapon==TribalRules.FIRE_SHOT?0xffbd4d:0x9ce9f7);}
+ void trail(int x,int y,int weapon,int age,int frame){int id=weapon==TribalRules.FIRE_SHOT?0:8;int size=c.projectileArtSize(id),fade=Math.min(5,age*6/Math.max(1,18));c.part(c.trailArt[id],frame*size,fade*size,size,size,x-size/2,y-size/2,false);}
+
  void impact(Battle.Blast blast){int frame=Math.min(11,blast.time*12/25),weapon=blast.weapon==TribalRules.FIRE_SHOT?0:5;c.part(c.impactArt(weapon),frame%4*96,frame/4*96,96,96,blast.x-c.cameraX-48,blast.y-c.cameraY-48,false);}
  void boss(int actor,int y){
   Battle.Unit u=c.game.units[actor];if(healthFrame==null){healthFrame=c.combatRoomArt("npc780-boss-frame");healthBar=c.combatRoomArt("npc780-boss-hp");}
