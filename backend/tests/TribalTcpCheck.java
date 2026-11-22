@@ -2,7 +2,7 @@ import java.io.*;import java.net.*;import java.nio.file.*;import java.util.*;
 /** Actual framed TCP room lifecycle with three independent account connections. */
 public class TribalTcpCheck {
  static int checks;static void check(boolean value,String message){if(!value)throw new AssertionError(message);checks++;}
- static final int FLAGS=536870912|67108864|33554432|16777216|8388608|4194304|0x3fffff;
+ static final int FLAGS=1073741824|536870912|67108864|33554432|16777216|8388608|4194304|0x3fffff;
  static class Player implements AutoCloseable {
   int flags=FLAGS;Socket socket;DataInputStream in;DataOutputStream out;String token="";
   Player(int port,String email)throws Exception{this(port,email,FLAGS);}
@@ -11,7 +11,7 @@ public class TribalTcpCheck {
   public void close()throws IOException{socket.close();}
  }
  public static void main(String[] args)throws Exception {
-  var store=new CloudStore.Memory();String[] emails={"tribal1@tcp.test","tribal2@tcp.test","tribal3@tcp.test"};for(int i=0;i<3;i++){store.register(emails[i],"test-password-123","Raid "+i);store.profile(store.login(emails[i],"test-password-123").userId).experience=Progression.experienceForLevel(20);}
+  var store=new CloudStore.Memory();String[] emails={"tribal1@tcp.test","tribal2@tcp.test","tribal3@tcp.test"};for(int i=0;i<3;i++){store.register(emails[i],"test-password-123","Raid "+i);store.profile(store.login(emails[i],"test-password-123").userId).experience=Progression.experienceForLevel(30);}
   try(var server=new GunnyServer(new InetSocketAddress("127.0.0.1",0),Path.of("backend/assets"),store)){server.clock.shutdownNow();server.startTcp("127.0.0.1",0,8);Player[] p=new Player[3];try{
    for(int i=0;i<3;i++)p[i]=new Player(server.tcpPort(),emails[i]);
    int id=p[0].call("tribalcreate",o->{o.writeByte(2);o.writeUTF("Bộ Lạc Tà Thần");o.writeUTF("");}).readInt();

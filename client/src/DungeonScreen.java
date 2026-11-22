@@ -1,13 +1,15 @@
 import javax.microedition.lcdui.*;
 /** Cooperative browser, a three-seat staging room, and its own map/difficulty picker. */
 final class DungeonScreen {
-    void releaseArt(){for(int i=0;i<3;i++){seatPortraits[i]=null;seatKeys[i]=null;}rewardFrame=pickerPanel=rewardCell=null;for(int i=0;i<8;i++)rewardIcons[i]=null;for(int i=0;i<2;i++)pickerCards[i]=null;previewCover=rewardWing=null;previewStage=-1;banner=background=smallCover=seatCard=emptyCard=localPortrait=allyPortrait=closedCard=null;portraitKey="";for(int i=0;i<stageCovers.length;i++)stageCovers[i]=null;}
+    void releaseArt(){for(int i=0;i<3;i++){seatPortraits[i]=null;seatKeys[i]=null;}rewardFrame=pickerPanel=rewardCell=portraitFrame=null;for(int i=0;i<8;i++)rewardIcons[i]=null;for(int i=0;i<2;i++)pickerCards[i]=portraitCards[i]=null;previewCover=rewardWing=null;previewStage=-1;banner=background=smallCover=seatCard=emptyCard=localPortrait=allyPortrait=closedCard=null;portraitKey="";for(int i=0;i<stageCovers.length;i++)stageCovers[i]=null;}
 
  static final int CONFIRM_SOLO = 6;
  static final String TITLE = "Ải Viễn Chinh";
  final PhoneCanvas c;final OnlineClient n;int focus,page;boolean picker;Image banner,background;
  DungeonScreen(PhoneCanvas canvas){c=canvas;n=c.net;}
  void load(){if(banner==null)banner=c.combatRoomArt("dungeon780-banner");}
+ int minimumLevel(int family){return family==1?TribalRules.MIN_LEVEL:15;}
+ boolean levelAllowed(int family){int level=Progression.level(c.experience),need=minimumLevel(family);if(level>=need)return true;c.popup.notice("Chưa đủ cấp",(family==1?"Bộ Lạc Tà Thần":"Huyệt Ma Kiến")+" yêu cầu Lv "+need+". Nhân vật hiện ở Lv "+level+".");return false;}
  String difficultyName(int value){return value==0?"Dễ":value==1?"Thường":"Khó";}
  private final Image[] stageCovers = new Image[2];
  private Image smallCover, seatCard, emptyCard, localPortrait;
@@ -252,8 +254,8 @@ final class DungeonScreen {
  Image previewCover;int previewStage=-1;
  Image rewardWing;
  Image rewardCell;final Image[] rewardIcons=new Image[8];
- void rewardItem(int index,Image icon,String percent){int x=124+index%3*25,y=124+index/3*21;if(rewardCell==null)rewardCell=NativeUi.fit(c.combatRoomArt("bag715-cell"),23*c.s,20*c.s,3*c.s);c.img(rewardCell,x,y);c.img(icon,x+3,y);c.pcCenter(percent,x+11,y+13);}
- void drawRewards(int stage,int diff){if(rewardFrame==null)rewardFrame=NativeUi.fit(c.loadout.art("toolbar"),82*c.s,80*c.s,5*c.s);c.img(rewardFrame,120,111);c.pcCenter("Quà ải "+(stage>=3?DungeonRewards.tribalNumber(stage):stage),161,114);int factor=stage==6?(diff==2?11:diff==1?15:18):18;for(int g=0;g<5;g++){if(rewardIcons[g]==null)rewardIcons[g]=NativeUi.fit(c.stoneShop.icon(g),16*c.s,16*c.s,0);int p=(StoneDrops.WEIGHTS[diff][g]*factor*10+9)/18;rewardItem(g,rewardIcons[g],p/10+"."+p%10+"%");}int index=5;if(stage==6&&diff>0){if(rewardIcons[5]==null)rewardIcons[5]=NativeUi.fit(c.weapons[8],16*c.s,16*c.s,0);rewardItem(index++,rewardIcons[5],diff==2?"33.3%":"16.7%");if(diff==2){if(rewardIcons[6]==null)rewardIcons[6]=NativeUi.fit(c.combatRoomArt("tribal-wing"),16*c.s,16*c.s,0);rewardItem(index++,rewardIcons[6],"5.6%");}}if(stage==2||stage==6){if(rewardIcons[7]==null)rewardIcons[7]=NativeUi.fit(c.gifts.icon(1),16*c.s,16*c.s,0);rewardItem(index,rewardIcons[7],"100%");}}
+ void rewardItem(int index,Image icon,String percent){int x=125+index%3*24,y=116+index/3*23;c.clip(x,y,23,23);c.img(icon,x+4,y+1);c.maps.smallText(percent,x+11,y+15);c.all();}
+ void drawRewards(int stage,int diff){if(rewardFrame==null)rewardFrame=NativeUi.fit(c.combatRoomArt("item752-tooltip"),82*c.s,80*c.s,5*c.s);c.img(rewardFrame,120,111);int factor=stage==6?(diff==2?11:diff==1?15:18):18;for(int g=0;g<5;g++){if(rewardIcons[g]==null)rewardIcons[g]=NativeUi.fit(c.stoneShop.icon(g),14*c.s,14*c.s,0);int p=(StoneDrops.WEIGHTS[diff][g]*factor*10+9)/18;rewardItem(g,rewardIcons[g],p/10+"."+p%10+"%");}int index=5;if(stage==6&&diff>0){if(rewardIcons[5]==null)rewardIcons[5]=NativeUi.fit(c.weapons[8],14*c.s,14*c.s,0);rewardItem(index++,rewardIcons[5],diff==2?"33.3%":"16.7%");if(diff==2){if(rewardIcons[6]==null)rewardIcons[6]=NativeUi.fit(c.combatRoomArt("tribal-wing"),14*c.s,14*c.s,0);rewardItem(index++,rewardIcons[6],"5.6%");}}if(stage==2||stage==6){if(rewardIcons[7]==null)rewardIcons[7]=NativeUi.fit(c.gifts.icon(1),14*c.s,14*c.s,0);rewardItem(index,rewardIcons[7],"100%");}}
  private void drawSeat(int seat, boolean online) {
   int actor = seat * 2;
   int x = 18 + (seat % 2) * 102;
@@ -329,9 +331,12 @@ final class DungeonScreen {
 
  Image pickerPanel;final Image[] pickerCards=new Image[2];
  Image mapCover(int family){if(pickerCards[family]==null)pickerCards[family]=NativeUi.fit(family==1?c.tribalArt.smallCover():smallCover(),128*c.s,64*c.s,0);return pickerCards[family];}
- void drawPicker(){c.all();if(pickerPanel==null)pickerPanel=NativeUi.fit(c.combatRoomArt("settings743-popup"),308*c.s,226*c.s,5*c.s);c.img(pickerPanel,6,7);c.pcCenter("Chọn ải viễn chinh",160,15);for(int i=0;i<2;i++){int x=18+i*146;c.img(mapCover(i),x,39);c.pcCenter(i==0?"Huyệt Ma Kiến":"Bộ Lạc Tà Thần",x+64,108);c.pcCenter(i==0?"Ải: 1-2":"Ải: 1-3",x+64,123);if(draftDungeon==i)c.drawSelectionGlow(x-2,37,132,99);}for(int i=0;i<3;i++)c.ui.button(difficultyName(i),24+i*94,150,84,24,pickerStep==1&&draftDifficulty==i);c.ui.button("Xác nhận",109,187,102,25,pickerStep==2);c.pcCenter(pickerStep==0?"Chọn thẻ • OK: mức độ":pickerStep==1?"Chọn mức độ • OK: tiếp":"OK: xác nhận • Phím phải: quay lại",160,220);}
+ Image portraitFrame;final Image[] portraitCards=new Image[2];
+ Image portraitCard(int family){if(portraitCards[family]==null)portraitCards[family]=NativeUi.fit(c.combatRoomArt(family==0?"dungeon-picker-cover":"tribal-picker-cover"),78*c.s,98*c.s,0);return portraitCards[family];}
+ void drawPicker(){c.maps.drawDungeon(draftDifficulty,pickerStep==2);}
 
  private void confirmPicker(boolean online) {
+  if(!levelAllowed(draftDungeon))return;
   if (draftDungeon==0&&draftDifficulty == 2 && !c.economy.clear()) {
    c.maps.notice("Vượt Thường để mở Khó");
    return;
@@ -357,7 +362,7 @@ final class DungeonScreen {
 
  void keyRoom(boolean online, int key, int dir, boolean ok) {
   if (online ? picker : c.offlineDungeon.picker) {
-   if(key==-7){if(pickerStep>0)pickerStep--;else setPicker(online,false);}else if(dir==1||dir==2){if(pickerStep==0)draftDungeon=1-draftDungeon;else if(pickerStep==1)draftDifficulty=(draftDifficulty+(dir==1?2:1))%3;}else if(dir==4&&pickerStep>0)pickerStep--;else if(ok||key==-6){if(pickerStep<2)pickerStep++;else confirmPicker(online);}
+   if(key==-7){if(pickerStep>0)pickerStep--;else setPicker(online,false);}else if(dir==1||dir==2){if(pickerStep==0)draftDungeon=1-draftDungeon;else if(pickerStep==1)draftDifficulty=(draftDifficulty+(dir==1?2:1))%3;}else if(dir==4&&pickerStep>0)pickerStep--;else if(ok||key==-6){if(pickerStep==0&&!levelAllowed(draftDungeon))return;if(pickerStep<2)pickerStep++;else confirmPicker(online);}
 
    return;
   }
@@ -401,10 +406,7 @@ final class DungeonScreen {
   if (online != c.onlineAccount()) return;
   if (online && (n.roomId <= 0 || n.roomKind != 3 || !n.host || n.phase != 0)) return;
   if(online&&n.rewardWaitingMask!=0){c.message("Chờ đồng đội nhận thưởng và về phòng");return;}
-  if (Progression.level(c.experience) < 15) {
-   c.popup.notice(DungeonScreen.TITLE, "Ải Viễn Chinh yêu cầu Lv 15 trở lên");
-   return;
-  }
+  if(!levelAllowed(online&&n.dungeonStage>=3?1:0))return;
   int difficulty = online ? n.dungeonDifficulty : c.offlineDungeon.difficulty;
   if ((!online||n.dungeonStage<3)&&difficulty == 2 && !c.economy.clear()) {
    c.popup.notice(DungeonScreen.TITLE, "Vượt Thường để mở Khó");
@@ -465,7 +467,7 @@ final class DungeonScreen {
 
  void pointerRoom(boolean online, int x, int y) {
   if (online ? picker : c.offlineDungeon.picker) {
-   if(y>=37&&y<137){draftDungeon=x<160?0:1;pickerStep=1;}else if(y>=150&&y<175){draftDifficulty=Battle.clamp((x-24)/94,0,2);pickerStep=2;}else if(y>=187&&y<213)confirmPicker(online);else if(x>=295&&y<30)setPicker(online,false);
+   if(x>=14&&x<194&&y>=29&&y<205){draftDungeon=x<106?0:1;if(levelAllowed(draftDungeon))pickerStep=1;}else if(x>=212&&x<311&&y>=53&&y<74){draftDifficulty=Battle.clamp((x-213)/33,0,2);pickerStep=2;}else if(c.maps.hitConfirm(x,y)){if(pickerStep==0&&!levelAllowed(draftDungeon))return;if(pickerStep<2)pickerStep++;else confirmPicker(online);}else if(x>=295&&y<30)setPicker(online,false);
 
    return;
   }

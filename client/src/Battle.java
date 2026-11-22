@@ -38,6 +38,9 @@ final class Battle {
     int trailCount;
     int windLimit=30;
     int ballCount,blastCount,active,turn,wind,lastWind,countdown,bursts,burstDelay,settle,botWait;
+    boolean sulanExternalClock;
+    int sulanLine,sulanSpeaker,sulanTalk,sulanStory,sulanStoryClock,sulanFireCount;
+    final int[] sulanFireX=new int[9],sulanFireLife=new int[9],sulanBurn=new int[7];
     int tribalOutcome=-1,tribalGoal;int tribalRound,tribalPhase,tribalWave,tribalState,tribalClock,tribalFx,tribalDead1,tribalDead3;boolean tribalBeanSaved;
     int turnLimit=600,dungeonDifficulty,dungeonStage,queenShots,lastDungeonAlly;boolean deferNext,pendingNext;
     final int[] damage=new int[MAX_UNITS],kills=new int[MAX_UNITS];int extra,boost,weapon,shotSerial,hitSerial,winSerial;
@@ -181,6 +184,7 @@ final class Battle {
         tickVisuals();
         if(over||pendingNext)return;
         if(TribalRules.active(this)&&tribalFx>0){TribalRules.tickEffect(this);return;}
+        if(SulanRules.active(this)&&!sulanExternalClock)SulanRules.ambient(this);
         if(AntCaveRules.antOpening(this)){if(++botPhase>=AntCaveRules.ANT_INTRO_END)botPhase=0;return;}
         if(AntCaveRules.introducing(this)){AntCaveRules.tickQueenIntro(this);return;}
         if(AntCaveRules.summoning(this)){AntCaveRules.tickReinforcements(this);return;}
@@ -202,14 +206,14 @@ final class Battle {
         for(int sub=0;sub<FLIGHT_SUBSTEPS;sub++)for(int i=ballCount-1;i>=0;i--){
             Ball b=balls[i];if(sub==0&&!b.fly&&!b.freeze)stampTrail(b);b.age++;if(b.homing){Unit target=units[enemyOf(b.owner)];int dx=target.x*256-b.x,dy=targetY(target)*256-b.y;int len=Math.max(1,(int)Math.sqrt((double)dx*dx+(double)dy*dy));b.vx=dx*1800/len;b.vy=dy*1800/len;}else{b.vx+=windStep(wind,b);b.vy+=gravity(b);if(b.guided)guide(b);}b.x+=b.vx/4;b.y+=b.vy/4;
             int x=b.x/256,y=b.y/256;boolean hit=!b.homing&&ground.solid(x,y);
-            if(!b.fly)for(int n=0;n<unitCount;n++){Unit u=units[n];if(u.hp>0&&(n!=b.owner||b.age>24)&&hitsUnit(u,x,y))hit=true;}
+            if(!b.fly)for(int n=0;n<unitCount;n++){Unit u=units[n];if(u.hp>0&&(n!=b.owner||b.age>24)&&!(SulanRules.active(this)&&TribalRules.payload(b.weapon)&&units[b.owner].npc>0&&u.team==units[b.owner].team)&&hitsUnit(u,x,y))hit=true;}
             if(hit){impact(b);removeBall(i);}
             else if((sequentialAttack&&b.weapon!=AntCaveRules.QUEEN_ARROW&&(x<viewX||x>=viewX+viewWidth||y<viewY||y>=viewY+viewHeight))||x< -25||x>W+25||y>H+35||b.age>1600)removeBall(i);
         }
         if(wasBusy&&ballCount==0&&bursts==0&&settle<=0)settle=24;
         if(dungeonStage==2&&units[1].hp<=0){check();return;}
-        if(settle>0){if(--settle==0){check();if(!over)next();}return;}
-        if(busy())return;check();if(over)return;
+        if(settle>0){if(--settle==0){check();if(!over&&!SulanRules.npcTurn(this))next();}if(!SulanRules.npcTurn(this))return;}
+        if(busy()){if(SulanRules.npcTurn(this))SulanRules.tickAI(this);return;}check();if(over||TribalRules.active(this)&&tribalFx>0)return;
         if(TribalRules.active(this)&&units[active].hp<=0){next();return;}
         if(dungeonStage>0&&!TribalRules.active(this)&&units[active].hp<=0&&units[active].npc>0){
             int peer=AntCaveRules.firstAnt(this,units[active].npc);
@@ -272,11 +276,13 @@ final class Battle {
             Unit u=units[i];int dx=x-u.x,dy=y-targetY(u),dist=dx*dx+dy*dy,r=b.radius+(u.npc==3?45:23);
             if(u.hp>0&&dist<r*r&&!(TribalRules.active(this)&&units[b.owner].npc>0&&u.team==units[b.owner].team)){
                 int damage=b.damage*(100-(int)Math.sqrt(dist)*65/r)/100;
-                if(TribalRules.active(this)&&u.npc==TribalRules.RAGE)damage=tribalBeanSaved?damage*3:Math.max(1,damage*100/(100+u.defense));
+                if(TribalRules.active(this)&&u.npc==TribalRules.RAGE)damage=Math.max(1,damage*100/(100+u.defense));
+                if(SulanRules.active(this))damage=SulanRules.damage(this,b,i,damage);
                 if(u.god)damage=0;
                 if(lightBotDamage(b.owner,i))damage=Math.min(60,Math.max(1,damage/10));
                 if(u.freezeTurns>0){u.freezeTurns=u.frozen=0;damage=damage/2;}
                 int received=Math.min(u.hp,damage);u.hp=Math.max(0,u.hp-damage);
+                if(SulanRules.active(this))SulanRules.hit(this,i,received);
                 if(u.hp>0&&u.npc>=4){u.flashTicks=24;u.lastBuff=0;}
                 if(u.hp>0&&u.npc==3){botPhase=AntCaveRules.QUEEN_HIT;u.flashTicks=24;}
                 if(!ally(b.owner,i)){this.damage[b.owner]+=received;if(u.hp==0)kills[b.owner]++;}
@@ -284,12 +290,13 @@ final class Battle {
             }
 
         }
+        if(SulanRules.active(this)&&b.weapon==TribalRules.FIRE_SHOT)SulanRules.ignite(this,x);
         if(b.weapon==AntCaveRules.QUEEN_ARROW&&fx.damage>0)botPhase=AntCaveRules.QUEEN_SUCCESS;
         if(!TribalRules.active(this)&&!TribalRules.payload(b.weapon)&&!unsafeBotLanding(b,x,y))ground.crater(x,y,Math.max(1,b.radius*9/10));hitSerial++;
     }
     boolean lightBotDamage(int owner,int target){
         Unit bot=units[owner];
-        return dungeonStage>0&&!bot.human&&bot.team==0&&units[target].team==0;
+        return dungeonStage>0&&!bot.human&&bot.team==0&&units[target].team==0&&units[target].npc!=TribalRules.BEAN;
     }
     boolean unsafeBotLanding(Ball b,int x,int y){
         for(int i=0;i<6;i+=2){
@@ -301,7 +308,7 @@ final class Battle {
     }
     void check(){for(int i=0;i<unitCount;i++)if(units[i].god)units[i].hp=units[i].maxHp;if(TribalRules.active(this)){if(!over)TribalRules.check(this);return;}boolean left=false,right=false;for(int i=0;i<unitCount;i++){Unit u=units[i];if(u.hp<=0&&!u.dead&&(dungeonStage==0||u.maxHp>0)){u.dead=true;u.deathX=clamp(u.x,12,W-12);u.deathY=clamp(u.y,40,H-4);}if(u.hp>0){if((teams?u.team:i)==0)left=true;else right=true;}}if(dungeonStage==2&&units[1].hp<=0){if(!AntCaveRules.dying(this)&&!over){ballCount=bursts=settle=0;charging=pendingNext=false;botPhase=AntCaveRules.QUEEN_DEATH;}return;}if(!left||!right){finishPower();over=true;winner=!left?(!right?2:1):0;charging=false;winSerial++;}}
     void finishPower(){Unit u=units[active];if(u.pendingPower>=0){u.lastPower=u.pendingPower;u.pendingPower=-1;}}
-    void next(){finishPower();check();if(over)return;if(deferNext){pendingNext=true;charging=false;return;}Unit previous=units[active];if(previous.invisible>0)previous.invisible--;if(previous.frozen==2){previous.freezeTurns=Math.max(0,previous.freezeTurns-1);previous.frozen=previous.freezeTurns>0?1:0;}int next=active;if(TribalRules.active(this))next=TribalRules.nextActor(this,active);else if(dungeonStage>0)next=AntCaveRules.nextActor(this,active);else do{next=(next+1)%unitCount;}while(units[next].hp<=0);beginTurn(next);}
+    void next(){finishPower();check();if(over||SulanRules.active(this)&&tribalFx>0)return;if(deferNext){pendingNext=true;charging=false;return;}Unit previous=units[active];if(previous.invisible>0)previous.invisible--;if(previous.frozen==2){previous.freezeTurns=Math.max(0,previous.freezeTurns-1);previous.frozen=previous.freezeTurns>0?1:0;}int next=active;if(TribalRules.active(this))next=TribalRules.nextActor(this,active);else if(dungeonStage>0)next=AntCaveRules.nextActor(this,active);else do{next=(next+1)%unitCount;}while(units[next].hp<=0);beginTurn(next);}
     void beginTurn(int actor){
         active=actor;turn++;
         Unit u=units[active];

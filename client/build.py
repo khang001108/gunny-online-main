@@ -38,18 +38,18 @@ if args.code_only:
 downloads = root.parent/'public/downloads'
 release_errors=[]
 with zipfile.ZipFile(build/'preverified.jar') as code:
-    for name in ('Gunny-E6-Online-798', 'Gunny-E72-2009-Online-798'):
+    for name in ('Gunny-E6-Online-7913', 'Gunny-E72-2009-Online-7913'):
         jar = downloads/(name+'.jar')
         temp = build/(name+'.jar')
         overlays = {p.name:p.read_bytes() for p in (root/('assets2' if 'E6' in name else 'assets1')).iterdir() if p.is_file() and p.suffix in ('.png','.dat') and p.name!='tribal797-loading-bg.png'}
-        seed = jar if jar.exists() else downloads/(name.replace('798','797')+'.jar')
+        seed = jar if jar.exists() else downloads/(name.replace('7913','7912')+'.jar')
         with zipfile.ZipFile(seed) as original, zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED) as output:
             for info in original.infolist():
                 if (info.filename=='tribal797-loading-bg.png' or info.filename.startswith(('tribal-npc-', 'tribal-cover-')) or info.filename.startswith(('wing792-','wing793-','wing795-show-')) or re.match(r'vip-wing-[0-5]-(24|44|72)\.png$', info.filename)) or info.filename.startswith('vip-progress') or 'vip-ring-' in info.filename and '-216.png' in info.filename or info.filename.endswith('.class') or info.filename in overlays or info.filename in ('stone780.png','forge780-success.png','forge780-success-slot.png'):
                     continue
                 data = original.read(info.filename)
                 if info.filename.upper() == 'META-INF/MANIFEST.MF':
-                    data = data.replace(b'7.9.7',b'7.9.8').replace(b'7.9.6',b'7.9.8').replace(b'7.9.5',b'7.9.8').replace(b'7.9.4',b'7.9.8').replace(b'7.9.3',b'7.9.8').replace(b'7.9.2',b'7.9.8').replace(b'7.9.1',b'7.9.8').replace(b'7.9.0',b'7.9.8').replace(b'7.8.8',b'7.9.8').replace(b'7.8.9',b'7.9.8').replace(b'socket://gunnyjava.xubi.org:22122', b'socket://gunnyjava.xubi.org:22123')
+                    data = re.sub(rb"(?m)^MIDlet-Version: [^\r\n]+", b"MIDlet-Version: 7.9.13", data).replace(b"socket://gunnyjava.xubi.org:22122", b"socket://gunnyjava.xubi.org:22123")
                 output.writestr(info, data)
             for filename,data in overlays.items():
                 entry=zipfile.ZipInfo(filename,(2000,1,1,0,0,0));entry.create_system=0;entry.extra=b"";entry.flag_bits=0;entry.external_attr=0x20
@@ -84,8 +84,10 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
                 if entry.filename.endswith('.class') and installed.read(entry.filename)!=code.read(entry.filename):
                     raise SystemExit('Sai ma nguon trong JAR: '+str(jar))
         jad = downloads/(name+'.jad')
-        jad_seed = jad if jad.exists() else downloads/(name.replace('798','797')+'.jad')
-        text = jad_seed.read_text(encoding='utf-8').replace('7.9.7','7.9.8').replace('7.9.6','7.9.8').replace('Online-797','Online-798').replace('Online-796','Online-798').replace('7.9.5','7.9.8').replace('7.9.4','7.9.8').replace('7.9.3','7.9.8').replace('7.9.2','7.9.8').replace('Online-795','Online-798').replace('Online-794','Online-798').replace('Online-793','Online-798').replace('Online-792','Online-798').replace('7.9.1','7.9.8').replace('Online-791','Online-798').replace('7.9.0','7.9.8').replace('Online-790','Online-798').replace(':22122', ':22123').replace('7.8.8','7.9.8').replace('7.8.9','7.9.8').replace('Online-788','Online-798').replace('Online-789','Online-798')
+        jad_seed = jad if jad.exists() else downloads/(name.replace('7913','7912')+'.jad')
+        text = jad_seed.read_text(encoding="utf-8").replace(":22122", ":22123")
+        text = re.sub(r"(?m)^MIDlet-Version: [^\r\n]+", "MIDlet-Version: 7.9.13", text)
+        text = re.sub(r"(?m)^MIDlet-Jar-URL: [^\r\n]+", "MIDlet-Jar-URL: "+name+".jar", text)
         text = re.sub(r'MIDlet-Jar-Size: \d+', 'MIDlet-Jar-Size: '+str(jar.stat().st_size), text)
         jad.write_text(text, encoding='utf-8')
 if release_errors:

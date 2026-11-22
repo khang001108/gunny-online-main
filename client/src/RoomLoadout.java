@@ -65,7 +65,7 @@ final class RoomLoadout {
    c.part(randomMap,93-width,24+row,width,1,313-width,171+row,false);
   }
   dungeonMapRow("Độ khó: ",c.dungeon.difficultyName(online?c.net.dungeonDifficulty:c.offlineDungeon.difficulty),153,dungeonMapYellow);
-  dungeonMapRow("Cấp: ","15+",165,dungeonMapGreen);
+  dungeonMapRow("Cấp: ",selectedStage>=3?"30+":"15+",165,dungeonMapGreen);
   dungeonMapRow("Ải: ",c.net.dungeonStage>=3?"1-3":"1-2",177,dungeonMapGreen);
  }
  private void dungeonMapRow(String label, String value, int y, Image font) {

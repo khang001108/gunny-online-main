@@ -23,12 +23,8 @@ final class MapPicker {
     }
     void drawDungeon(int difficulty, boolean confirmFocused) {
         drawFrame("Chọn ải viễn chinh");
-        if (dungeonCover == null)
-            dungeonCover = c.combatRoomArt("dungeon-picker-cover");
+        for(int i=0;i<2;i++){int x=16+i*94;if(i==0&&dungeonCover==null)dungeonCover=c.combatRoomArt("dungeon-picker-cover");if(i==1&&tribalCover==null)tribalCover=c.combatRoomArt("tribal-picker-cover");if(c.dungeon.portraitFrame==null){c.loadout.load();c.dungeon.portraitFrame=NativeUi.fit(c.loadout.card,82*c.s,172*c.s,5*c.s);}c.img(c.dungeon.portraitFrame,x,31);c.img(c.dungeon.portraitCard(i),x+2,33);c.pcCenter(i==0?"Huyệt Ma":"Bộ Lạc",x+41,143);c.pcCenter(i==0?"Kiến":"Tà Thần",x+41,157);c.pcCenter(i==0?"Lv15+":"Lv30+",x+41,170);c.pcCenter(i==0?"Ải: 1-2":"Ải: 1-3",x+41,182);if(c.dungeon.draftDungeon==i)c.drawSelectionGlow(x-2,29,86,176);}
         boolean tribal=c.onlineAccount()&&c.dungeon.draftDungeon==1;
-        if(tribal&&tribalCover==null)tribalCover=c.combatRoomArt("tribal-picker-cover");
-        c.img(tribal?tribalCover:dungeonCover, 25, 31);
-        c.drawSelectionGlow(23, 29, 155, 193);
         c.part(frame, 223, 17, 78, 14, 223, 31, false);
         c.pcCenter("Mức độ", 262, 34);
         for (int i = 0; i < 3; i++) {
@@ -59,6 +55,7 @@ final class MapPicker {
             if (x + width > 306) {
                 x = 216;
                 y += 8;
+                if(y>199)return;
             }
             for (int i = 0; i < word.length(); i++) {
                 int glyph = c.glyph(word.charAt(i));
@@ -69,6 +66,7 @@ final class MapPicker {
             start = end + 1;
         }
     }
+    void smallText(String text,int center,int y){if(compactFont==null){Image source=c.combatRoomArt("font-pc");compactFont=NativeUi.fit(source,source.getWidth()*3/4,source.getHeight()*7/10,0);}int width=0;for(int i=0;i<text.length();i++)width+=compactWidth(text.charAt(i));int x=center-width/2;for(int i=0;i<text.length();i++){int glyph=c.glyph(text.charAt(i));c.part(compactFont,glyph%16*6,glyph/16*7,6,7,x,y,false);x+=compactWidth(text.charAt(i));}}
     private int compactWidth(char ch) {
         return Math.max(2,(c.pcWidth(String.valueOf(ch))*3+2)/4);
     }

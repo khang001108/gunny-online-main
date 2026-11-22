@@ -14,7 +14,8 @@ final class TribalRules {
  static final int[] WAVES={4,4,4},STONE_MIN={10,50,100},STONE_MAX={100,200,300};
  static final int GOAL=20;
  static final int[] ENEMIES={1,3,5,6,7,8,9,10,11,12,13};
- static int reviveRounds=2,minLevel=15;
+ static final int MIN_LEVEL=30;
+ static int reviveRounds=2;
  static boolean active(Battle b){return b.dungeonStage>=3;}
  static int stage(Battle b){return b.dungeonStage-2;}
  static boolean twins(Battle b){return b.dungeonStage==4||b.dungeonStage==5;}
@@ -73,6 +74,7 @@ final class TribalRules {
   if(encounter==1){spawn(b,1,ELITE,310);wave(b);b.botPhase=INTRO_SPEAR;}
   else if(twins(b)){spawn(b,1,BROTHER,88);spawn(b,3,SISTER,408);b.botPhase=BULAN_INTRO;}
   else{spawn(b,1,SULAN,300);b.botPhase=SULAN_INTRO;}
+  if(SulanRules.active(b))SulanRules.reset(b);
   b.active=twins(b)?3:1;b.botWait=0;b.countdown=b.turnLimit;b.over=false;b.winner=-1;b.charging=false;
  }
  static boolean alive(Battle b,int kind){for(int i=0;i<b.unitCount;i++)if(b.units[i].npc==kind&&b.units[i].hp>0)return true;return false;}
@@ -80,10 +82,11 @@ final class TribalRules {
  static int target(Battle b,int actor){
   int best=-1,distance=99999;Battle.Unit who=b.units[actor];
   if(who.npc==0&&who.team==0&&stage(b)==4&&b.units[1].hp>0)return 1;
-  for(int i=0;i<b.unitCount;i++){Battle.Unit u=b.units[i];if(u.hp<=0||u.team==who.team||who.team==1&&u.npc!=0)continue;int d=Math.abs(u.x-who.x);if(d<distance){distance=d;best=i;}}
+  for(int i=0;i<b.unitCount;i++){Battle.Unit u=b.units[i];if(u.hp<=0||u.team==who.team||who.team==1&&u.npc!=0&&!(SulanRules.active(b)&&SulanRules.reinforcement(who)&&u.npc==BEAN))continue;int d=Math.abs(u.x-who.x);if(d<distance){distance=d;best=i;}}
   return best<0?actor:best;
  }
  static int nextActor(Battle b,int actor){
+  if(SulanRules.active(b))return SulanRules.nextActor(b,actor);
   if(stage(b)==1){
    int first=-1,last=-1;for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0){if(b.units[i].npc==SPEAR&&first<0)first=i;if(b.units[i].npc==ELITE&&last<0)last=i;}
    int[] order={first,last,0,2,4};int old=b.units[actor].npc==SPEAR?0:b.units[actor].npc==ELITE?1:actor==0?2:actor==2?3:4;
@@ -110,10 +113,7 @@ final class TribalRules {
    if(u.npc==HEAL)heal(b,b.units[1],b.units[1].maxHp/12);
    if(u.npc==BOMB&&++u.power>=2){Battle.Ball hit=new Battle.Ball();hit.owner=1;hit.x=u.x*256;hit.y=(u.y-12)*256;hit.damage=DAMAGE[b.dungeonDifficulty]*2;hit.radius=42;hit.weapon=FIRE_SHOT;b.impact(hit);u.hp=0;}
   }
-  if(stage(b)==4&&alive(b,BEAN)){
-   if(b.tribalRound%3==0){b.tribalBeanSaved=true;b.tribalDead3=b.tribalRound+2;b.tribalState=SPECIAL;b.tribalFx=45;b.botPhase=BEAN_POWER;for(int i=0;i<6;i+=2)if(b.units[i].hp>0){b.units[i].flashTicks=36;b.units[i].lastBuff=13;}}
-   else if(b.tribalRound>=b.tribalDead3)b.tribalBeanSaved=false;
-  }
+
  }
  static void beginTurn(Battle b){if(stage(b)==1&&b.units[b.active].npc==SPEAR)wave(b);b.tribalClock=0;if(b.tribalFx==0)b.tribalState=IDLE;else if(b.tribalState==SPECIAL)b.botPhase=BEAN_POWER;
   if(b.units[b.active].npc==0&&alive(b,FATIGUE))b.units[b.active].energy=Math.max(0,b.units[b.active].energy-fatigue(b));
@@ -121,6 +121,7 @@ final class TribalRules {
  static void march(Battle b,int actor,int dir){Battle.Unit u=b.units[actor];int nx=u.x+dir;if(u.hp<=0||nx<18||nx>Battle.W-18)return;for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].team!=u.team&&Math.abs(nx-b.units[i].x)<20)return;int rise=0;while(rise<6&&(b.ground.solid(nx-2,u.y-rise-1)||b.ground.solid(nx+2,u.y-rise-1)))rise++;if(rise>=6)return;u.face=dir;u.x=nx;u.y-=rise;u.walk++;b.refreshAim(u);}
  static void openingStep(Battle b,int actor,int dir){int old=b.active,fx=b.tribalFx;boolean acting=b.botActing;try{b.active=actor;b.tribalFx=0;b.botActing=true;march(b,actor,dir);}finally{b.active=old;b.tribalFx=fx;b.botActing=acting;}}
  static void tickEffect(Battle b){
+  if(SulanRules.active(b)){SulanRules.effect(b);return;}
   if(stage(b)==1&&b.tribalState==OPENING){int elapsed=120-b.tribalFx;int old=b.active;if(elapsed==36)b.units[1].walk=0;if(elapsed==90)for(int i=0;i<b.unitCount;i++)if(b.units[i].npc==SPEAR)b.units[i].walk=0;if(elapsed<36){openingStep(b,1,1);b.units[1].walk=elapsed+1;}else if(elapsed<90){for(int i=0;i<b.unitCount;i++)if(b.units[i].npc==SPEAR&&b.units[i].hp>0){openingStep(b,i,-1);b.units[i].walk=elapsed-35;}}b.active=old;}
   if(twins(b)&&b.tribalState==OPENING){int elapsed=BULAN_INTRO_END-b.tribalFx+1;b.botPhase=elapsed<BULAN_LEFT_AT||elapsed>=BULAN_TITLE_AT?0:elapsed<BULAN_RIGHT_AT?BULAN_LEFT:BULAN_INTRO;}
   if(--b.tribalFx>0)return;
@@ -140,12 +141,12 @@ final class TribalRules {
    if(u.hp>0){if(u.npc==0&&u.team==0)player=true;if(u.team==1&&fighter(u))enemy=true;}
   }
   if(!player){win(b,1);return true;}
+  if(SulanRules.active(b)&&b.tribalState==TRANSFORM&&b.tribalFx>0)return false;
   if(stage(b)==4&&b.units[1].hp<=0&&b.tribalPhase==1){
-   int x=b.units[1].x;spawn(b,1,RAGE,x);b.tribalPhase=2;b.tribalFx=75;b.tribalState=TRANSFORM;b.botPhase=POWER_LINE;
-   b.finishPower();b.ballCount=b.bursts=b.settle=0;b.charging=false;b.hitSerial++;return false;
+   SulanRules.transform(b);return false;
   }
   if(stage(b)==1&&!enemy&&b.tribalGoal>0)return false;
-  if(stage(b)==4&&b.units[1].hp<=0||twins(b)&&b.units[1].hp<=0&&b.units[3].hp<=0||!enemy){b.tribalOutcome=0;b.tribalState=DEAD;b.tribalFx=stage(b)==4?65:35;b.ballCount=b.bursts=b.settle=0;b.charging=false;return false;}
+  if(stage(b)==4&&b.units[1].hp<=0||twins(b)&&b.units[1].hp<=0&&b.units[3].hp<=0||!enemy){b.tribalOutcome=0;b.tribalState=DEAD;b.tribalFx=stage(b)==4?SulanRules.DEATH:35;if(stage(b)==4){b.sulanFireCount=0;SulanRules.say(b,SulanRules.FAREWELL,1,85);}b.ballCount=b.bursts=b.settle=0;b.charging=false;return false;}
   if(b.turn>200){win(b,1);return true;}return false;
  }
  static void projectile(Battle b,int actor,int victim,int weapon,int offset){
@@ -198,19 +199,20 @@ final class TribalRules {
   if(t>=115&&!b.busy()){b.tribalState=IDLE;b.botPhase=0;b.next();}
  }
  static void tickAI(Battle b){
+  if(SulanRules.npcTurn(b)){SulanRules.tickAI(b);return;}
   if(twins(b)&&floats(b.units[b.active])){tickBulan(b);return;}
   Battle.Unit u=b.units[b.active];if(u.hp<=0){b.next();return;}
-  int elapsed=++b.tribalClock;int t=stage(b)==1&&elapsed>46?Math.max(46,elapsed-12):elapsed;b.botWait=t;u.walk=elapsed;b.botActing=true;
+  int elapsed=++b.tribalClock;int t=(stage(b)==1||SulanRules.active(b))&&elapsed>46?Math.max(46,elapsed-12):elapsed;b.botWait=t;u.walk=elapsed;b.botActing=true;
   try{
    int victim=target(b,b.active);Battle.Unit v=b.units[victim];u.face=v.x<u.x?-1:1;
    int action=action(b,u);
    if(t<=12){b.tribalState=IDLE;return;}
-   if(t==13){b.tribalState=SELECT_TARGET;b.botPhase=action==2?FATIGUE_LINE:action==3?CHAIN_LINE:action==4?CALL_LINE:action==5?HEAL_LINE:action==6?BOMB_LINE:action==7?BORROW_LINE:u.npc>=SULAN?BOMB_LINE:u.npc==BROTHER||u.npc==SISTER?BULAN_THROW:(b.tribalRound%2==0?MASK_LINE:CHICKEN_LINE);}
+   if(t==13){if(SulanRules.active(b))SulanRules.say(b,SulanRules.ADD_ATTACK,b.active,70);b.tribalState=SELECT_TARGET;b.botPhase=action==2?FATIGUE_LINE:action==3?CHAIN_LINE:action==4?CALL_LINE:action==5?HEAL_LINE:action==6?BOMB_LINE:action==7?BORROW_LINE:u.npc>=SULAN?BOMB_LINE:u.npc==BROTHER||u.npc==SISTER?BULAN_THROW:(b.tribalRound%2==0?MASK_LINE:CHICKEN_LINE);}
    if(t<=46){
     if(action==0){b.tribalState=MOVE;int leader=b.active;
      for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].npc==SPEAR){Battle.Unit ally=b.units[i];int enemy=target(b,i);ally.face=b.units[enemy].x<ally.x?-1:1;ally.walk=elapsed;b.active=i;if(Math.abs(ally.x-b.units[enemy].x)>30)march(b,i,ally.face);}
      b.active=leader;}
-    else if(stage(b)==1&&u.npc==ELITE){b.tribalState=MOVE;march(b,b.active,b.tribalRound%2==0?u.face:-u.face);}else b.tribalState=action>=2&&action<=7?SUMMON:AIM;
+    else if((stage(b)==1||SulanRules.active(b))&&u.npc==ELITE){b.tribalState=MOVE;march(b,b.active,b.tribalRound%2==0?u.face:-u.face);}else b.tribalState=action>=2&&action<=7?SUMMON:AIM;
     return;
    }
    if(t==47){u.attackTicks=action==0&&!meleeRange(u,v)?0:36;if(action==0)for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].npc==SPEAR){Battle.Unit ally=b.units[i];ally.attackTicks=meleeRange(ally,b.units[target(b,i)])?36:0;}b.tribalState=action>=2&&action<=7?SUMMON:action==9?SPECIAL:ATTACK;}

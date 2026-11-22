@@ -1,0 +1,15 @@
+{
+  "title": "Thủ lĩnh bộ lạc",
+  "source": "Shipped font.dat + font-pc-yellow.png; red speech is the same orange glyph atlas with red palette. Broken-mask fragments use living121.swf bitmap3, no new artwork. All actor and effect artwork is unchanged source SWF.",
+  "mask_source_sha256": "976d178cbc77af7bbe1c9733d82b6d3b014dbff5dde3fa144a3f18941611a7a8",
+  "hashes": {
+    "1": {
+      "glyphs": "9dc6a06496b08d308db90da22a07190885a6021d952f3988f908dbc67d643943",
+      "red_palette_source": "7f59e09da3762930de2a08ada7ac276a18d7aca20b8a7ac27f02522addb567bd"
+    },
+    "2": {
+      "glyphs": "fca1c8a77fa6eaa63e9d4ed1feda6035119db9b7490c89c93ca71bd00facc309",
+      "red_palette_source": "f87c85cac54c8ae80cb1c36df1f4f557d1bf795b3ce5e39d198cb8541a46c783"
+    }
+  }
+}

@@ -1603,8 +1603,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 || AntCaveRules.dying(game) || AntCaveRules.summoning(game) && game.botPhase<AntCaveRules.REINFORCEMENTS+45
                 || game.botPhase == AntCaveRules.QUEEN_THREAT || game.botPhase==AntCaveRules.QUEEN_HIT
                 || game.botPhase==AntCaveRules.QUEEN_SUCCESS);
-        if(TribalRules.active(game)&&game.tribalState==TribalRules.OPENING&&game.tribalFx>0){
-            int elapsed=120-game.tribalFx,slot=TribalRules.twins(game)?TribalRules.introActor(game):elapsed<25?0:game.active;
+        if(SulanRules.cinematic(game)||TribalRules.active(game)&&game.tribalState==TribalRules.OPENING&&game.tribalFx>0){
+            int elapsed=120-game.tribalFx,slot=SulanRules.active(game)?SulanRules.cameraActor(game):TribalRules.twins(game)?TribalRules.introActor(game):elapsed<25?0:game.active;
             if(slot==0&&onlineBattle())slot=playerActor();
             tx=game.units[slot].x-160;ty=game.units[slot].y-(game.units[slot].npc==0?135:170);
         } else if(AntCaveRules.antOpening(game)||AntCaveRules.introducing(game)&&game.botPhase<AntCaveRules.QUEEN_SPEECH){
@@ -2199,7 +2199,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         Graphics screen = g;
         int oldX = ox, oldY = oy;
         boolean zoom = showingPowCutin();
-        int tribalShake=(TribalRules.swordShaking(game)||TribalRules.active(game)&&game.tribalPhase==2&&game.tribalFx>0&&game.tribalState!=TribalRules.DEAD)?(frame%2==0?1:-1):0;cameraX+=tribalShake;
+        int tribalShake=(SulanRules.active(game)?SulanRules.shake(game):TribalRules.swordShaking(game)||TribalRules.active(game)&&game.tribalPhase==2&&game.tribalFx>0&&game.tribalState!=TribalRules.DEAD)?(frame%2==0?1:-1):0;cameraX+=tribalShake;
         if (!zoom)
             resetPowWorld();
         if (!zoom || powWorldPixels == null) {
@@ -2627,6 +2627,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         return Battle.clamp(left,4,316-width);
     }
 
+    Image speechOverride;
     void drawSpeechBubble(int x, int tip, String[] lines,int top,boolean tailUp) {
         int w = 0;
         for (int i=0; i<lines.length; i++) w=Math.max(w,pcWidth(lines[i]));
@@ -2652,7 +2653,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             int textX=left+(w-pcWidth(value))/2;
             for (int i=0; i<value.length(); i++) {
                 int glyph=glyph(value.charAt(i));
-                part(speechFont,glyph%16*8,glyph/16*10,8,10,textX,y+5+row*11,false);
+                part(speechOverride==null?speechFont:speechOverride,glyph%16*8,glyph/16*10,8,10,textX,y+5+row*11,false);
                 textX+=(widths[glyph]*8+5)/11;
             }
         }

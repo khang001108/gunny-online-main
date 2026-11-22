@@ -3,9 +3,9 @@ import java.io.*;import java.util.*;
 final class Dungeon780 {
  static boolean space(GunnyServer.Room room){for(int i=2;i<6;i+=2)if(room.members[i]==null&&room.selectedBots[i]<0&&(room.closedSlots&(1<<i))==0)return true;return false;}
  static void eligible(GunnyServer.Session s,int difficulty){
-  GunnyServer.requireWeapon(s);
   int level=Progression.level(s.profile.experience);
-  if(level<15)throw new IllegalArgumentException("Huyệt Ma Kiến yêu cầu Lv 15. Tài khoản hiện ở Lv "+level+".");
+  if(level<15)throw new IllegalArgumentException("Huyệt Ma Kiến yêu cầu Lv 15. "+s.profile.name+" hiện ở Lv "+level+".");
+  GunnyServer.requireWeapon(s);
   if(difficulty<0||difficulty>2||difficulty==2&&!s.profile.dungeonClear)
    throw new IllegalArgumentException("Vượt chế độ Thường để mở Khó");
  }
@@ -47,7 +47,9 @@ final class Dungeon780 {
   throw new IllegalArgumentException("Sai thao tác ải viễn chinh");
  }
  private static void joinWaitingTeam(GunnyServer server,GunnyServer.Session viewer,DataOutputStream out)throws Exception{
+  if(Progression.level(viewer.profile.experience)<15)eligible(viewer,0);
   GunnyServer.requireWeapon(viewer);
+  boolean levelLocked=false;
   synchronized(server.rooms){
    if(viewer.room!=0)throw new IllegalArgumentException("Rời phòng hiện tại trước khi tìm tổ đội.");
    var candidates=new ArrayList<>(server.rooms.values());
@@ -55,7 +57,8 @@ final class Dungeon780 {
    for(var room:candidates)synchronized(room){
     if(server.rooms.get(room.id)!=room||room.kind!=3||room.phase!=0||room.dungeonStage==2
         ||!room.secret.isEmpty()||TribalDungeon.is(room)&&(!viewer.tribal||room.dungeonStage!=3)||!TribalDungeon.is(room)&&room.difficulty==2&&!viewer.profile.dungeonClear
-        ||!compatible(room.host,viewer))continue;
+        ||TribalDungeon.is(room)&&room.host.sulan7912!=viewer.sulan7912||!compatible(room.host,viewer))continue;
+    if(TribalDungeon.is(room)&&Progression.level(viewer.profile.experience)<TribalRules.MIN_LEVEL){if(space(room))levelLocked=true;continue;}
     if(TribalDungeon.is(room))TribalDungeon.eligible(viewer,room.difficulty);else eligible(viewer,room.difficulty);
     for(int seat=2;seat<6;seat+=2){
      if(room.occupiedSeat(seat)||(room.closedSlots&(1<<seat))!=0)continue;
@@ -69,6 +72,7 @@ final class Dungeon780 {
     }
    }
   }
+  if(levelLocked)TribalDungeon.eligible(viewer,0);
   throw new IllegalArgumentException("Chưa có phòng ải viễn chinh phù hợp còn chỗ. Hãy thử lại hoặc chọn Tạo phòng.");
  }
 
