@@ -36,6 +36,7 @@ if args.code_only:
     print('Compiled and preverified client classes.')
     raise SystemExit(0)
 downloads = root.parent/'public/downloads'
+release_errors=[]
 with zipfile.ZipFile(build/'preverified.jar') as code:
     for name in ('Gunny-E6-Online-797', 'Gunny-E72-2009-Online-797'):
         jar = downloads/(name+'.jar')
@@ -71,12 +72,22 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
                 break
             except OSError:
                 if attempt == 5:
-                    raise SystemExit("Khong the cap nhat "+str(jar)+". Hay dong gia lap/chuong trinh dang mo file JAR, roi chay lai client/Build.bat. Build chi xuat ten ban cai chuan trong public/downloads.")
+                    release_errors.append(str(jar))
+                    print("Khong the cap nhat "+str(jar)+". Hay dong gia lap/chuong trinh dang mo file JAR, roi chay lai client/Build.bat.")
+                    break
                 time.sleep(0.3)
 
+        if str(jar) in release_errors:
+            continue
+        with zipfile.ZipFile(jar) as installed:
+            for entry in code.infolist():
+                if entry.filename.endswith('.class') and installed.read(entry.filename)!=code.read(entry.filename):
+                    raise SystemExit('Sai ma nguon trong JAR: '+str(jar))
         jad = downloads/(name+'.jad')
         jad_seed = jad if jad.exists() else downloads/(name.replace('797','796')+'.jad')
         text = jad_seed.read_text(encoding='utf-8').replace('7.9.6','7.9.7').replace('Online-796','Online-797').replace('7.9.5','7.9.7').replace('7.9.4','7.9.7').replace('7.9.3','7.9.7').replace('7.9.2','7.9.7').replace('Online-795','Online-797').replace('Online-794','Online-797').replace('Online-793','Online-797').replace('Online-792','Online-797').replace('7.9.1','7.9.7').replace('Online-791','Online-797').replace('7.9.0','7.9.7').replace('Online-790','Online-797').replace(':22122', ':22123').replace('7.8.8','7.9.7').replace('7.8.9','7.9.7').replace('Online-788','Online-797').replace('Online-789','Online-797')
         text = re.sub(r'MIDlet-Jar-Size: \d+', 'MIDlet-Jar-Size: '+str(jar.stat().st_size), text)
         jad.write_text(text, encoding='utf-8')
-print('Rebuilt current E72/E6 JAR and JAD.')
+if release_errors:
+    raise SystemExit('CHUA cap nhat cac ban cai dang bi khoa: '+', '.join(release_errors))
+print('Rebuilt and verified current E72/E6 JAR and JAD.')

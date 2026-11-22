@@ -46,6 +46,7 @@ public class UiTribal797Check {
         host.tribal797=host.clock793=host.vip=host.delta=host.tribal=host.playerUi=host.prefetch=host.expansion=host.campaign=host.flock=host.actors=host.itemFx=host.items=host.equipment=host.arsenal=host.modern=host.async=host.events=host.progress=host.bagLayout=host.social=host.matchmaking=host.roomFix=host.waitBot=true;host.itemVersion=2;host.live=false;
         try(var server=new GunnyServer(new java.net.InetSocketAddress("127.0.0.1",0),java.nio.file.Path.of("backend/assets"),store)){
          server.clock.shutdownNow();
+         if(c.game.dungeonStage!=0)throw new AssertionError("Cold start must not depend on Ant Cave initialization");
          for(int stage:new int[]{3,4,6}){
           var room=server.new Room(host,6,2,-1,true);room.kind=3;room.strict=true;room.dungeonStage=stage;room.refreshWaiting();room.start();if(stage==3)TribalRules.round(room.battle);
           n.inBattle=false;var wire=new java.io.ByteArrayOutputStream();server.lobby(new java.io.DataOutputStream(wire),room,host);n.readLobby(new java.io.DataInputStream(new java.io.ByteArrayInputStream(wire.toByteArray())));n.prepareBattle();
