@@ -191,10 +191,7 @@ final class ShopScreen {
         else if(tab==3&&c.stoneShop.infoType>=0)c.stoneShop.drawInfo(c.stoneShop.infoType,box(c.stoneShop.focus%6));
         else if (c.bag.info)
             c.bag.drawInfo();
-        else if (c.toastTicks > 0) {
-            c.panel(16, 27, 288, 17);
-            c.pcCenter(c.pcShort(c.toast, 276), 160, 32);
-        }
+
     }
 
     int[] box(int id) {

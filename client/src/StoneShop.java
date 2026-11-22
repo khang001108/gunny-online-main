@@ -14,7 +14,7 @@ final class StoneShop {
  StoneShop(PhoneCanvas canvas){c=canvas;}
  int conversion=-1;
  void convert(int type){conversion=type;c.popup.open("Đổi đá sang xu","Đổi 1 "+NAMES[type]+" lấy "+(100*(1<<type))+" xu mua sắm?",new String[]{"Hủy","Đổi"},31);}
- void confirmConversion(){if(conversion>=0&&conversion<5&&c.mode==7)c.vip.submit("vipuse",13+conversion);}
+ void confirmConversion(){if(conversion>=0&&conversion<5&&c.mode==8)c.vip.submit("vipuse",13+conversion);}
  int quantity(){return 1;}
  int price(){return ForgeRules.price(focus);}
  Image icon(int type){

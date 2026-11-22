@@ -225,7 +225,7 @@ final class DungeonScreen {
   }
   drawRoom(true);
   if (picker) drawPicker();
-  if (c.toastTicks > 0) c.drawBattleNotice();
+
  }
 
  void drawRoom(boolean online) {

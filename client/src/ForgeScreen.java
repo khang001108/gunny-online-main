@@ -160,7 +160,6 @@ final class ForgeScreen {
         if(focus==9)c.drawSelectionGlow(94,72,52,53);
         if (focus == 1)
             c.drawSelectionGlow(48, 198, 78, 21);
-        if(c.toastTicks>0&&now>=resultUntil)c.pcCenter(c.pcShort(c.toast,135),80,57);
         c.img(inventoryPanel, 149, 55);
         c.img(c.bag.input, 153, 57);
         c.pcText(c.pcShort(step==1&&gradeCount>0?StoneShop.NAMES[ownedGrades[stoneSelection]-1]:count>0?c.bag.itemName(kind,item):"Trang bị",120),160,62);

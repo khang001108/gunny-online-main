@@ -28,6 +28,7 @@ final class HomeScreen {
         }
         c.all();
         c.img(background, 0, 0);
+        if(!c.onlineAccount()){Image exit=c.lobbyMenu[8+(c.lobbySelection==4?1:0)];c.img(exit,300-exit.getWidth()/c.s/2,c.lobbyIconY(4,exit.getHeight()/c.s));return;}
         for (int i = 0; i < 5; i++) {
             Image image = c.lobbyMenu[i * 2 + (i == c.lobbySelection ? 1 : 0)];
             c.img(image, x(i) - image.getWidth() / c.s / 2, c.lobbyIconY(i, image.getHeight() / c.s));
@@ -57,7 +58,7 @@ final class HomeScreen {
         } else
             c.img(dungeon, 188, 117);
         c.img(c.lobbyHallLabel, X[2] - c.lobbyHallLabel.getWidth() / (2 * c.s), 141);
-        c.pcCenter("Xếp hạng",X[6],168);
+        drawLabel(6,X[6],168);
         drawLabel(7, X[7], 101);
         drawLabel(5, 226, 193);
         int selected = c.lobbySelection;
@@ -96,6 +97,7 @@ final class HomeScreen {
     }
 
     int hit(int x, int y) {
+        if(!c.onlineAccount())return x>=278&&y>=194?4:-1;
         if (x >= 48 && x < 118 && y >= 48 && y < 113)
             return 7;
         if (x >= 67 && x < 122 && y >= 110 && y < 180)
@@ -114,6 +116,7 @@ final class HomeScreen {
     }
 
     void move(int dir) {
+        if(!c.onlineAccount()){c.lobbySelection=4;return;}
         if (c.lobbySelection < 0 || c.lobbySelection == FRIENDS && !c.onlineAccount()) {
             c.lobbySelection = 2;
             return;
@@ -153,8 +156,9 @@ final class HomeScreen {
 
     void activate() {
         int choice = c.lobbySelection;
+        if(choice==4){c.popup.confirmQuit();return;}
         if (c.net.pending.equals("logout") || c.net.operation.equals("logout")) {
-            c.message("Đang chuyển sang Offline.");
+            c.message("Đang đăng xuất.");
             return;
         }
         if(!c.onlineAccount()){c.net.loginForm(false);return;}

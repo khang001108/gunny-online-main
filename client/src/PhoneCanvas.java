@@ -1775,8 +1775,6 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             drawCreation();
         else if (mode == 0) {
             drawLobby();
-            if (toastTicks > 0)
-                drawBattleNotice();
         }
         else if (mode == 5)
             drawResult();
@@ -1798,6 +1796,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         presentation.draw();
         popup.draw();
         typing.draw();
+        if(presentation.boot==2&&toastTicks>0&&!popup.opened)drawBattleNotice();
     }
 
     void clip(int x, int y, int w, int h) {
@@ -2267,14 +2266,6 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         drawHud();
         if(!TribalRules.active(game))drawDungeonSpeech();
         drawPowCutin();
-        if (toastTicks > 0) {
-            if (toast.equals("Đến lượt bạn!")) {
-                if (isLocalTurn() && !game.over)
-                    img(hudYourTurn, turnNoticeX(), 82);
-            } else {
-                drawBattleNotice();
-            }
-        }
         if (training && !game.busy()) {
             panel(52, 149, 208, 42);
             center(game.turn <= 1 ? "Giữ " + keyBindings.name(32) + " để lấy lực" : "Chỉnh góc để bắn trúng bia", 156, 152);
@@ -3401,7 +3392,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             noticeFont = combatRoomArt("font-pc-yellow");
         }
         String[] rows = new String[5];
-        String rest = toast;
+        String rest = toast==null?"":toast;
         int count = 0, w = 0;
         while (rest.length() > 0 && count < rows.length) {
             int end = rest.length();
@@ -3429,7 +3420,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void message(String value) {
-        toast = value;
+        toast = value==null?"":value;
         toastTicks = 55;
     }
 

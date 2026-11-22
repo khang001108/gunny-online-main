@@ -14,5 +14,17 @@
     "Original VIP10, VIP11, VIP12 icons",
     "Twelve separate original VIP ring animations",
     "Twelve distinct VIP EXP-card icons (native common VIP-card icon used with level labels)"
-  ]
+  ],
+  "wing_animation": {
+    "show": "wing_show_* native 20-frame transform timeline",
+    "game": "wing_game_* native 19-frame inner/outer bitmap timelines; original upright wrapper pose",
+    "generator": "client/tools/wing_timelines795.py",
+    "battle_anchor": "torso/back joint, rotated with terrain slope; separate front/back weapon layers",
+    "video_references": [
+      "Screenrecorder-20261122-064049.mp4",
+      "Screenrecorder-20261122-064116.mp4",
+      "Screenrecorder-20261122-064139.mp4",
+      "VIDEO_DOWNLOAD_1795305109484_1795305119734.mp4"
+    ]
+  }
 }

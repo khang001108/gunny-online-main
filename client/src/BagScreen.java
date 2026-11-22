@@ -185,10 +185,7 @@ final class BagScreen {
         }
         if (info)
             drawInfo();
-        else if (c.toastTicks > 0) {
-            c.panel(20, 31, 264, 18);
-            c.pcCenter(c.pcShort(c.toast, 250), 152, 36);
-        }
+
     }
 
     void drawStats() {
