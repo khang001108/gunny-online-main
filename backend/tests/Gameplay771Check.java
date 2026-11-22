@@ -11,8 +11,8 @@ public final class Gameplay771Check {
   var s=new GunnyServer.Session();s.profile=store.profile(store.login(email,"test-password-123").userId);s.id=s.profile.id;s.profile.experience=Progression.experienceForLevel(level);s.profile.characterChosen=true;s.actors=s.live=s.equipment=s.async=s.chunks=true;s.lastSeen=System.currentTimeMillis();return s;
  }
  public static void main(String[] args)throws Exception {
-  for(String device:new String[]{"E72-2009","E6"})for(String ext:new String[]{"jar","jad"})check(GunnyServer.downloadFile("Gunny-"+device+"-Online-7915."+ext),"Current "+device+" "+ext+" is downloadable");
-  check(!GunnyServer.downloadFile("../gunny.env")&&!GunnyServer.downloadFile("Gunny-E6-Online-7915.jar/../../gunny.env"),"Installer allowlist rejects traversal and private files");
+  for(String device:new String[]{"E72-2009","E6"})for(String ext:new String[]{"jar","jad"})check(GunnyServer.downloadFile("Gunny-"+device+"-Online-7918."+ext),"Current "+device+" "+ext+" is downloadable");
+  check(!GunnyServer.downloadFile("../gunny.env")&&!GunnyServer.downloadFile("Gunny-E6-Online-7918.jar/../../gunny.env"),"Installer allowlist rejects traversal and private files");
   int prior=0;
   for(int level=1;level<=70;level++){
    int exp=Progression.experienceForLevel(level);check(Progression.level(exp)==level&&Progression.bonus(exp)==(level-1)*5,"Level "+level+" has exact cumulative EXP and +5 growth");

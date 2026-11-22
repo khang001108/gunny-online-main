@@ -119,18 +119,19 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     String actorName(int i) {
-        if (game.units[i].npc > 0 && (offlineDungeon.active || onlineBattle() && net.roomKind == 3))
+        if(i<0||i>=game.unitCount)return "";
+        if (game.units[i].npc > 0 && (game.dungeonStage>0 || offlineDungeon.active || onlineBattle() && net.roomKind == 3))
             return TribalRules.active(game)?TribalRules.name(game.units[i].npc):AntCaveRules.name(game.units[i].npc, map == 7);
         if (onlineBattle())
-            return net.names[i];
+            return i<net.names.length&&net.names[i]!=null?net.names[i]:"";
         if(offlineDungeon.active&&i>0&&i%2==0)
             return offlineDungeon.allyAt(i)>=0?BOT_NAMES[offlineDungeon.allyAt(i)]:"";
         return i == 0 ? playerName
                 : game.teams
                         ? (i == 2 && allyMode == 2 ? "Người 2"
                                 : i == 2 && chosenAllyBot >= 0 ? BOT_NAMES[chosenAllyBot]
-                                        : BOT_NAMES[(game.units[i].botStyle + (i % 2) * 4) % 8])
-                        : training ? "Bia tập" : BOT_NAMES[(game.units[i].botStyle + (actorSex[i] * 4)) % 8];
+                                        : BOT_NAMES[(Math.max(0,game.units[i].botStyle) + (i % 2) * 4) % 8])
+                        : training ? "Bia tập" : BOT_NAMES[(Math.max(0,game.units[i].botStyle) + (i<actorSex.length?actorSex[i]*4:0)) % 8];
     }
 
     void actorAppearance(int i, int anim, int x, int y, boolean flip) {
@@ -670,6 +671,10 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             widths[i] = input.readByte();
         }
         input.close();
+        glyphLow=new int[512];glyphVietnamese=new int[128];
+        for(int i=0;i<glyphLow.length;i++)glyphLow[i]=31;
+        for(int i=0;i<glyphVietnamese.length;i++)glyphVietnamese[i]=31;
+        for(int i=glyphs.length-1;i>=0;i--){int code=glyphs[i];if(code<512)glyphLow[code]=i;else if(code>=0x1e80&&code<0x1f00)glyphVietnamese[code-0x1e80]=i;}
         for (int i = 0; i < 2; i++)
             hero[i] = load("hero" + i);
         for (int i = 0; i < MAPS.length; i++)
@@ -1840,7 +1845,9 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     oy + py * s, Graphics.TOP | Graphics.LEFT);
     }
 
+    int[] glyphLow,glyphVietnamese;
     int glyph(char c) {
+        if(glyphLow!=null){if(c<512)return glyphLow[c];if(c>=0x1e80&&c<0x1f00)return glyphVietnamese[c-0x1e80];}
         for (int i = 0; i < glyphs.length; i++)
             if (glyphs[i] == c)
                 return i;

@@ -10,7 +10,8 @@ final class RoomLoadout {
  void load(){if(panel!=null)return;squareInvite=c.combatRoomArt("room-invite-square");squareStart=c.combatRoomArt("match742-start");squareCancel=c.combatRoomArt("match742-cancel");squareReady=c.combatRoomArt("room-ready-square");background=art("background");panel=art("panel");left=art("left");cell=art("cell");selected=art("selected");invite=art("invite");server=art("server");start=art("start");ready=art("ready");card=art("card");waiting=art("waiting");closed=art("closed");teamCard=art("team-card");teamWaiting=art("team-waiting");teamClosed=art("team-closed");chat=art("chat");tooltip=art("tooltip");randomMap=art("map-random");}
  Image art(String name){return c.combatRoomArt("kit-"+name);}
  Image icon(int id){if(id<0||id>=6)return null;if(icons[id]==null)icons[id]=art("item"+id);return icons[id];}
- Image grayIcon(int id){if(grayIcons[id]==null)grayIcons[id]=c.combatRoomArt("kit-item"+id+"-gray");return grayIcons[id];}
+ boolean validItem(int id){return id>=0&&id<Battle.ITEM_COST.length&&id<icons.length;}
+ Image grayIcon(int id){if(!validItem(id))return null;if(grayIcons[id]==null)grayIcons[id]=c.combatRoomArt("kit-item"+id+"-gray");return grayIcons[id];}
  void save(){try{RecordStore rs=RecordStore.openRecordStore("gunny-loadout-v2",true);byte[] b={(byte)kit[0],(byte)kit[1],(byte)kit[2]};if(rs.getNumRecords()==0)rs.addRecord(b,0,3);else rs.setRecord(1,b,0,3);rs.closeRecordStore();}catch(Exception ignored){}}
  void choose(int id,boolean online){
   if(online&&(!c.net.itemsCap||c.net.inBattle)){c.message("Cập nhật server 7.4.4; đổi đạo cụ trước trận.");return;}
@@ -94,12 +95,14 @@ final class RoomLoadout {
  }
  int hit(int x,int y){if(x<214)return -1;if(y>=45&&y<74&&x>=221&&x<309)return 20+Math.min(2,(x-221)/29);if(y>=88&&y<136&&x>=221&&x<310)return 23+Math.min(2,(x-221)/29)+(y-88)/24*3;if(y>=146&&y<197)return 29;if(y>=197)return x<267?2:5;return -1;}
  boolean pointer(int x,int y,boolean online){if(pressToolbar(x,y))return true;int f=hit(x,y);if(f<0)return false;c.roomSelection=f;if(!activate(online)){if(online)c.net.waiting.activate();else c.roomActivate();}return true;}
- void use(int slot){if(!c.isLocalTurn()||c.freeCamera){c.message("Đến lượt bạn và trở về nhân vật để dùng.");return;}Battle.Unit u=c.game.units[c.game.active];if((u.itemUsed&(1<<slot))!=0){c.message("Đạo cụ này đã dùng trong trận");return;}if(u.energy<Battle.ITEM_COST[u.kit[slot]]){c.message("Không đủ thể lực để sử dụng");return;}if(c.onlineBattle())c.net.command(8,slot);else if(!c.game.item(slot))c.message("Đạo cụ chưa thể sử dụng lúc này");}
+ void use(int slot){if(slot<0||slot>=3)return;if(!c.isLocalTurn()||c.freeCamera){c.message("Đến lượt bạn và trở về nhân vật để dùng.");return;}int actor=c.game.active;if(actor<0||actor>=c.game.unitCount)return;Battle.Unit u=c.game.units[actor];int id=u.kit[slot];if(!validItem(id)){c.message("Đạo cụ đang đồng bộ, chờ một chút.");return;}if((u.itemUsed&(1<<slot))!=0){c.message("Đạo cụ này đã dùng trong trận");return;}if(u.energy<Battle.ITEM_COST[id]){c.message("Không đủ thể lực để sử dụng");return;}if(c.onlineBattle())c.net.command(8,slot);else if(!c.game.item(slot))c.message("Đạo cụ chưa thể sử dụng lúc này");}
+
  Image frost,ice,freezeImpact,hiding;Image effect(String name){return c.combatRoomArt("kit-"+name);}
  Image ice(){if(ice==null)ice=effect("ice-projectile");return ice;}
  void frost(int x,int y){if(frost==null)frost=effect("frost");c.part(frost,c.frame/6%4*64,0,64,64,x-32,y-56,false);}
  void impact(int age,int x,int y){if(freezeImpact==null)freezeImpact=effect("freeze-impact");c.part(freezeImpact,Math.min(4,age/5)*64,0,64,64,x-32,y-48,false);}
- void hud(){Battle.Unit u=c.game.units[c.playerActor()];for(int k=0;k<3;k++){int x=184+k*29,y=170;c.img(c.hudPropSlot,x,y);if((u.itemUsed&(1<<k))==0){c.img(u.energy<Battle.ITEM_COST[u.kit[k]]?grayIcon(u.kit[k]):icon(u.kit[k]),x,y);c.text(c.keyBindings.name(k==0?'z':k==1?'x':'c'),x,y-2);}}if(c.game.units[c.game.active].frozen==2)c.pcCenter("Đóng băng",160,80);}
+ void hud(){int actor=c.playerActor();if(actor<0||actor>=c.game.unitCount)return;Battle.Unit u=c.game.units[actor];for(int k=0;k<3;k++){int x=184+k*29,y=170,id=u.kit[k];c.img(c.hudPropSlot,x,y);if((u.itemUsed&(1<<k))==0){if(validItem(id))c.img(u.energy<Battle.ITEM_COST[id]?grayIcon(id):icon(id),x,y);c.text(c.keyBindings.name(k==0?'z':k==1?'x':'c'),x,y-2);}}int active=c.game.active;if(active>=0&&active<c.game.unitCount&&c.game.units[active].frozen==2)c.pcCenter("Đóng băng",160,80);}
+
  boolean hidden(int index){Battle.Unit u=c.game.units[index],self=c.game.units[c.playerActor()];return u.invisible>0&&index!=c.playerActor()&&(!c.game.teams||u.team!=self.team);}
  void preview(){} // Dẫn đường bends real projectiles near a target; it is not an aiming preview.
 }

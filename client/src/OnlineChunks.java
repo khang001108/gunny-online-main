@@ -34,8 +34,8 @@ final class OnlineChunks {
     void read(DataInputStream in, boolean done, int serverTurn) throws IOException {
         if (turn!=serverTurn) { reset();turn=serverTurn; }
         int stage=in.readUnsignedByte();
-        if(recovering&&stage==0){net.acceptSnapshot(in,done,serverTurn);recovering=false;recoveryFailures=0;return;}
-        if (stage==0 || stage==5&&net.liveCap) { if(net.phase==2){reset();turn=serverTurn;} net.acceptSnapshot(in,done,serverTurn);return; }
+        if(recovering&&stage==0){if(snapshot(in,done,serverTurn)){recovering=false;recoveryFailures=0;}return;}
+        if (stage==0 || stage==5&&net.liveCap) { if(net.phase==2){reset();turn=serverTurn;} snapshot(in,done,serverTurn);return; }
         if (stage==3) return;
         if (stage!=4) throw new IOException("Sai đoạn hành động.");
         int next=in.readInt(), size=in.readInt();
@@ -67,6 +67,14 @@ final class OnlineChunks {
         if (waitingSince==0) waitingSince=System.currentTimeMillis();
         if (frames==null) advance();
         net.resolutionSeen=false;net.c.held=net.c.fireKey=0;
+    }
+    boolean snapshot(DataInputStream in,boolean done,int serverTurn)throws IOException {
+        try {net.acceptSnapshot(in,done,serverTurn);recoveryFailures=0;return true;}
+        catch(IOException invalid){
+            if(++recoveryFailures>2)throw invalid;
+            reset();turn=serverTurn;recovering=true;net.predicting=net.resolutionSeen=false;
+            net.c.held=net.c.fireKey=0;net.revision=0;net.lastPoll=0;return false;
+        }
     }
     byte[] frame(DataInputStream in)throws IOException {previousFrame=SnapshotDelta.read(in,previousFrame);return previousFrame;}
     void advance() throws IOException {

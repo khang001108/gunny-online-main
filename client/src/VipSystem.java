@@ -158,9 +158,8 @@ final class VipSystem {
 
     void ring(int kind, int context, int frame, int x, int y) {
         int size = SIZE[context];
-        for (int k = 0; k < 3; k++)
-            if (k != kind)
-                rings[k][context] = null;
+        // Small avatar rings may show several VIP tiers in the same frame.
+        if(context==0||context==3)for(int k=0;k<3;k++)if(k!=kind)rings[k][context]=null;
         if (rings[kind][context] == null)
             rings[kind][context] = c.combatRoomArt("vip-ring-" + kind + "-" + size);
         c.part(rings[kind][context], frame % 16 * size, 0, size, size, x - size / 2, y - size, false);

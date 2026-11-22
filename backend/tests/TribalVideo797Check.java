@@ -25,7 +25,7 @@ public final class TribalVideo797Check {
  }
  static void campaign()throws Exception{
   var store=new CloudStore.Memory();var host=Expansion780Check.session(store,"Video797",70);host.tribal=host.flock=host.campaign=true;
-  host.tribal797=false;try{TribalDungeon.eligible(host,0);throw new AssertionError("Old client accepted");}catch(IllegalArgumentException expected){ok(expected.getMessage().contains("7.9.15"),"Unsupported NPC clients receive an update message");}host.tribal797=true;
+  host.tribal797=false;try{TribalDungeon.eligible(host,0);throw new AssertionError("Old client accepted");}catch(IllegalArgumentException expected){ok(expected.getMessage().contains("7.9.18"),"Unsupported NPC clients receive an update message");}host.tribal797=true;
   try(var server=new GunnyServer(new InetSocketAddress("127.0.0.1",0),Path.of("backend/assets"),store)){
    server.clock.shutdownNow();
    for(int stage:new int[]{3,4,6}){

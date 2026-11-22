@@ -37,19 +37,23 @@ if args.code_only:
     raise SystemExit(0)
 downloads = root.parent/'public/downloads'
 release_errors=[]
+# These sizes/effects have no runtime references; do not reintroduce them via overlays.
+def retired_asset(name):
+    return name == 'fx-pow-ring.png' or bool(re.fullmatch(r'vip-ring-[0-2]-216\.png', name))
+
 with zipfile.ZipFile(build/'preverified.jar') as code:
-    for name in ('Gunny-E6-Online-7915', 'Gunny-E72-2009-Online-7915'):
+    for name in ('Gunny-E6-Online-7918', 'Gunny-E72-2009-Online-7918'):
         jar = downloads/(name+'.jar')
         temp = build/(name+'.jar')
-        overlays = {p.name:p.read_bytes() for p in (root/('assets2' if 'E6' in name else 'assets1')).iterdir() if p.is_file() and p.suffix in ('.png','.dat') and p.name!='tribal797-loading-bg.png'}
-        seed = jar if jar.exists() else downloads/(name.replace('7915','7914')+'.jar')
+        overlays = {p.name:p.read_bytes() for p in (root/('assets2' if 'E6' in name else 'assets1')).iterdir() if p.is_file() and p.suffix in ('.png','.dat') and p.name!='tribal797-loading-bg.png' and not retired_asset(p.name)}
+        seed = jar if jar.exists() else downloads/(name.replace('7918','7917')+'.jar')
         with zipfile.ZipFile(seed) as original, zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED) as output:
             for info in original.infolist():
-                if (info.filename=='tribal797-loading-bg.png' or info.filename.startswith(('tribal-npc-', 'tribal-cover-')) or info.filename.startswith(('wing792-','wing793-','wing795-show-')) or re.match(r'vip-wing-[0-5]-(24|44|72)\.png$', info.filename)) or info.filename.startswith('vip-progress') or 'vip-ring-' in info.filename and '-216.png' in info.filename or info.filename.endswith('.class') or info.filename in overlays or info.filename in ('stone780.png','forge780-success.png','forge780-success-slot.png'):
+                if retired_asset(info.filename) or (info.filename=='tribal797-loading-bg.png' or info.filename.startswith(('tribal-npc-', 'tribal-cover-')) or info.filename.startswith(('wing792-','wing793-','wing795-show-')) or re.match(r'vip-wing-[0-5]-(24|44|72)\.png$', info.filename)) or info.filename.startswith('vip-progress') or 'vip-ring-' in info.filename and '-216.png' in info.filename or info.filename.endswith('.class') or info.filename in overlays or info.filename in ('stone780.png','forge780-success.png','forge780-success-slot.png'):
                     continue
                 data = original.read(info.filename)
                 if info.filename.upper() == 'META-INF/MANIFEST.MF':
-                    data = re.sub(rb"(?m)^MIDlet-Version: [^\r\n]+", b"MIDlet-Version: 7.9.15", data).replace(b"socket://gunnyjava.xubi.org:22122", b"socket://gunnyjava.xubi.org:22123")
+                    data = re.sub(rb"(?m)^MIDlet-Version: [^\r\n]+", b"MIDlet-Version: 7.9.18", data).replace(b"socket://gunnyjava.xubi.org:22122", b"socket://gunnyjava.xubi.org:22123")
                 output.writestr(info, data)
             for filename,data in overlays.items():
                 entry=zipfile.ZipInfo(filename,(2000,1,1,0,0,0));entry.create_system=0;entry.extra=b"";entry.flag_bits=0;entry.external_attr=0x20
@@ -84,9 +88,9 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
                 if entry.filename.endswith('.class') and installed.read(entry.filename)!=code.read(entry.filename):
                     raise SystemExit('Sai ma nguon trong JAR: '+str(jar))
         jad = downloads/(name+'.jad')
-        jad_seed = jad if jad.exists() else downloads/(name.replace('7915','7914')+'.jad')
+        jad_seed = jad if jad.exists() else downloads/(name.replace('7918','7917')+'.jad')
         text = jad_seed.read_text(encoding="utf-8").replace(":22122", ":22123")
-        text = re.sub(r"(?m)^MIDlet-Version: [^\r\n]+", "MIDlet-Version: 7.9.15", text)
+        text = re.sub(r"(?m)^MIDlet-Version: [^\r\n]+", "MIDlet-Version: 7.9.18", text)
         text = re.sub(r"(?m)^MIDlet-Jar-URL: [^\r\n]+", "MIDlet-Jar-URL: "+name+".jar", text)
         text = re.sub(r'MIDlet-Jar-Size: \d+', 'MIDlet-Jar-Size: '+str(jar.stat().st_size), text)
         jad.write_text(text, encoding='utf-8')

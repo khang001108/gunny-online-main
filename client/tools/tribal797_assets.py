@@ -103,7 +103,7 @@ for scale in (1,2):
     defs117,_=library(WORK/'Resource/image/game/living/Living117.swf')
     defs121,_=library(WORK/'Resource/image/game/living/living121.swf')
     defs126,_=library(WORK/'Resource/image/game/living/living126.swf')
-    staff=bitmap(defs117[77]).rotate(-90,expand=True);fire=bitmap(defs126[56]);chief_staff=bitmap(defs121[81]).rotate(90,expand=True)
+    staff=bitmap(defs117[77]).rotate(-90,expand=True);fire=bitmap(defs126[56]);chief_staff=bitmap(defs121[81]).rotate(-90,expand=True)
     fx=Image.new('RGBA',(32*8*scale,32*4*scale))
     for row,base in enumerate([pike,staff,fire,chief_staff]):
         base=base.crop(base.getbbox())
