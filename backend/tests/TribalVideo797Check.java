@@ -6,9 +6,10 @@ public final class TribalVideo797Check {
  static void turn(Battle b){int start=b.turn;for(int i=0;i<500&&b.turn==start&&!b.over;i++)b.tick();ok(b.turn!=start||b.over,"NPC action terminates");}
  static void npcOnly(Battle b,int keep){for(int i=1;i<b.unitCount;i++)if(i!=keep&&b.units[i].npc>0){b.units[i].hp=0;b.units[i].dead=true;}b.active=keep;}
  static void attacks(){
-  var b=raid(1);npcOnly(b,1);b.units[1].x=130;b.units[0].x=52;turn(b);ok(b.shotSerial==0,"Melee tribesman never throws his spear from a distance");
+  var b=raid(1);npcOnly(b,1);b.units[1].x=130;b.units[0].x=52;turn(b);ok(b.shotSerial==0&&b.units[0].hp==30000,"Melee tribesman cannot damage a distant target");
+  b=raid(1);npcOnly(b,1);b.units[1].x=400;b.units[0].x=52;for(int i=0;i<47;i++)b.tick();ok(b.units[1].attackTicks==0,"Distant melee troop does not play a stabbing attack");
   b=raid(1);npcOnly(b,1);b.units[1].x=90;b.units[0].x=52;int hp=b.units[0].hp;turn(b);ok(b.units[0].hp<hp&&b.shotSerial==0,"Close tribesman actually stabs");
-  b=raid(1);int elite=-1;for(int i=0;i<13;i++)if(b.units[i].npc==TribalRules.ELITE)elite=i;npcOnly(b,elite);for(int i=0;i<61;i++)b.tick();ok(b.ballCount==1&&b.balls[0].weapon==TribalRules.SPEAR_SHOT,"Purple warrior launches a spear payload");hp=b.units[0].hp;turn(b);ok(b.units[0].hp<hp,"Thrown NPC spear follows physics and hits");
+  b=raid(1);int elite=-1;for(int i=0;i<13;i++)if(b.units[i].npc==TribalRules.ELITE)elite=i;npcOnly(b,elite);for(int i=0;i<61;i++)b.tick();ok(b.ballCount==3&&Arrays.stream(b.balls,0,b.ballCount).allMatch(x->x.weapon==TribalRules.SPEAR_SHOT),"Purple warrior launches three spear payloads");hp=b.units[0].hp;turn(b);ok(b.units[0].hp<hp,"Thrown NPC spear follows physics and hits");
   b=raid(2);b.active=3;for(int i=0;i<61;i++)b.tick();ok(b.ballCount==1&&b.balls[0].weapon==TribalRules.SPIRIT_SHOT,"Bulan uses his own thrown staff");
   b=raid(4);for(int i=0;i<61;i++)b.tick();ok(b.ballCount==1&&b.balls[0].weapon==TribalRules.CHIEF_SHOT,"Golden Sulan throws the staff shown in his native attack pose");
   b=raid(4);b.units[1].hp=0;b.check();b.tribalFx=0;b.tribalState=0;b.active=1;TribalRules.summon(b,TribalRules.BEAN,80);b.tribalRound=3;for(int i=0;i<61;i++)b.tick();ok(b.ballCount==3&&Arrays.stream(b.balls,0,b.ballCount).allMatch(x->x.weapon==TribalRules.FIRE_SHOT),"Red Sulan launches three flame payloads");
@@ -32,7 +33,7 @@ public final class TribalVideo797Check {
     int ticks=0;while(!b.over&&ticks++<100000){if(b.humanTurn()&&!b.busy()&&b.tribalFx==0){b.units[0].power=70;b.fire();}b.tick();}
     if(!b.over||b.winner!=0)System.out.println("DEBUG stage="+stage+" ticks="+ticks+" turn="+b.turn+" active="+b.active+" phase="+b.tribalPhase+" round="+b.tribalRound+" fx="+b.tribalFx+" outcome="+b.tribalOutcome+" hp="+b.units[1].hp+" bean="+TribalRules.alive(b,TribalRules.BEAN)+" saved="+b.tribalBeanSaved+" goal="+b.tribalGoal);ok(b.over&&b.winner==0,"Playable full encounter with movement, AI, impacts and death: "+stage);
     ok(b.turn<=200,"Win within video turn limit");
-    for(int y=0;y<264;y++)for(int x=0;x<480;x++)if(r.ground.hard[(y*480+x)>>3]!=0)throw new AssertionError("Invented hard floor in Tribal map");checks++;
+    for(int y=0;y<264;y++)for(int x=0;x<480;x++)if((r.ground.hard[(y*480+x)>>3]&255)!=255)throw new AssertionError("Tribal terrain must be indestructible");checks++;
    }
   }
  }

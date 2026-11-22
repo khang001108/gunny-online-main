@@ -8,13 +8,13 @@ final class ShopScreen {
     boolean trialCustom;
     final int[] cart = new int[7], sentCart = new int[7], trialLook = new int[5];
     Image frame, card, cartArt, buyArt, previous, next, money, coin, close;
-    Image curtain, subTab, activeSubTab, goldBuy, goldTab;
+    Image curtain, subTab, activeSubTab, goldBuy;
     final Image[][] mainTabs = new Image[4][2];
 
     final Command exchangeOK = new Command("Đổi", Command.OK, 1), exchangeBack = new Command("Hủy", Command.BACK, 2);
-    static final int[] TAB_VALUES={0,1,3,4,2},TAB_IDS={6,7,19,43,18};
-    boolean headerFocus(){return focus==6||focus==7||focus==19||focus==43||focus==18;}
-    static final int[] EQUIPMENT = { 0, 2, 3, 6 }, BEAUTY = { 4, 5, 1 };
+    static final int[] TAB_VALUES={0,1,3,2},TAB_IDS={6,7,19,18};
+    boolean headerFocus(){return focus==6||focus==7||focus==19||focus==18;}
+    static final int[] EQUIPMENT = { 0, 2, 3, 6 }, BEAUTY = { 4, 5, 1, 7 };
 
     ShopScreen(PhoneCanvas owner) {
         c = owner;
@@ -43,8 +43,10 @@ final class ShopScreen {
         return tab == 0 ? EQUIPMENT : BEAUTY;
     }
 
+    boolean wingCategory() { return tab == 1 && kind == 7; }
+
     int count() {
-        return kind == 0 ? PhoneCanvas.ACTIVE_WEAPONS.length : 10;
+        return wingCategory() ? 5 : kind == 0 ? PhoneCanvas.ACTIVE_WEAPONS.length : 10;
     }
 
     int item(int index) {
@@ -69,8 +71,8 @@ final class ShopScreen {
         activeSubTab = c.combatRoomArt("shop-sub-active");
         String[] names = {"equipment", "beauty", "props", "exchange"};
         for (int i = 0; i < names.length; i++) {
-            mainTabs[i][0] = NativeUi.fit(c.combatRoomArt("shop-tab-" + names[i]),31*c.s,20*c.s,0);
-            mainTabs[i][1] = NativeUi.fit(c.combatRoomArt("shop-tab-" + names[i] + "-active"),31*c.s,20*c.s,0);
+            mainTabs[i][0] = NativeUi.fit(c.combatRoomArt("shop-tab-" + names[i]),39*c.s,20*c.s,0);
+            mainTabs[i][1] = NativeUi.fit(c.combatRoomArt("shop-tab-" + names[i] + "-active"),39*c.s,20*c.s,0);
         }
     }
 
@@ -133,11 +135,10 @@ final class ShopScreen {
         c.img(close, 289, 12);
         c.pcCenter("Phòng thử", 77, 46);
         c.bag.characterFor(trialMask, trialCustom, trialSkin, trialLook, trialWeapon);
-        if (tab < 2)
+        if (tab < 2 && !wingCategory())
             c.pcCenter(c.pcShort(name(kind, item(selected)), 68), 77, 182);
-        for(int i=0;i<5;i++){int value=TAB_VALUES[i],x=151+i*32;if(value==4){if(goldTab==null)goldTab=NativeUi.fit(c.combatRoomArt("popup751-button"),31*c.s,20*c.s,4*c.s);c.img(goldTab,x,38);c.pcCenter("VIP",x+15,45);if(tab==4)c.drawItemSelection(x,38,31,20,false);}else c.img(mainTabs[value==3?2:value==2?3:value][tab==value?1:0],x,38);}
-        if(tab==4){c.vip.drawShop();}
-        else if (tab == 2) {
+        for(int i=0;i<TAB_VALUES.length;i++){int value=TAB_VALUES[i],x=151+i*40;c.img(mainTabs[value==3?2:value==2?3:value][tab==value?1:0],x,38);}
+        if (tab == 2) {
             c.exchangePanel.draw();
         } else if (tab == 3) {
             c.stoneShop.draw();
@@ -147,11 +148,13 @@ final class ShopScreen {
                 int x = 151 + i * 40;
                 c.img(kind == cats[i] || focus == 8 + i ? activeSubTab : subTab, x, 63);
                 c.pcCenter(
-                        cats[i] == 0 ? "Vũ khí"
+                        cats[i] == 7 ? "Cánh" : cats[i] == 0 ? "Vũ khí"
                                 : cats[i] == 1 ? "Bộ"
                                         : cats[i] == 2 ? "Áo" : cats[i] == 3 ? "Nón" : PhoneCanvas.BAG_TABS[cats[i]],
                         x + 19, 68);
             }
+            if (wingCategory()) c.vip.drawShop();
+            else {
             for (int slot = 0; slot < 6; slot++) {
                 int id = page * 6 + slot;
                 if (id >= count())
@@ -168,6 +171,7 @@ final class ShopScreen {
             c.img(previous, 151, 213);
             c.pcCenter((page + 1) + "/" + ((count() + 5) / 6), 229, 217);
             c.img(next, 284, 213);
+            }
         }
         c.img(coin, 12, 196);
         c.pcText("" + c.coins, 26, 196);
@@ -175,7 +179,7 @@ final class ShopScreen {
         c.pcText("" + c.shoppingMoney, 26, 208);
         c.pcText("Tổng", 12, 221);
         c.img(money, 43, 220);
-        c.pcText("" + (tab == 4 ? VipRules.WING_PRICE[c.vip.shopFocus] : tab == 3 ? c.stoneShop.price() : total()), 57, 221);
+        c.pcText("" + (wingCategory() ? VipRules.WING_PRICE[c.vip.shopFocus] : tab == 3 ? c.stoneShop.price() : total()), 57, 221);
         if(tab==3)c.pcText("Thông tin",4,229);
         if (tab != 2) {
             if(goldBuy==null)goldBuy=NativeUi.fit(c.combatRoomArt("popup751-button"),37*c.s,21*c.s,4*c.s);c.img(goldBuy,106,201);c.pcCenter("Mua(B)",124,207);
@@ -187,7 +191,7 @@ final class ShopScreen {
                 || focus >= 8 && focus <= 11;
         if (!tabFocus && (tab != 3 || focus >= 6) && (tab != 2 || focus != 17))
             c.drawItemSelection(b[0], b[1], b[2], b[3], true);
-        if(tab==4&&c.vip.info)c.vip.drawInfo();
+        if(wingCategory()&&c.vip.info)c.vip.drawInfo();
         else if(tab==3&&c.stoneShop.infoType>=0)c.stoneShop.drawInfo(c.stoneShop.infoType,box(c.stoneShop.focus%6));
         else if (c.bag.info)
             c.bag.drawInfo();
@@ -197,7 +201,7 @@ final class ShopScreen {
     int[] box(int id) {
         if (id < 6)
             return new int[] { 151 + id % 2 * 80, 87 + id / 2 * 41, 76, 40 };
-        for(int i=0;i<5;i++)if(id==TAB_IDS[i])return new int[]{151+i*32,38,31,20};
+        for(int i=0;i<TAB_IDS.length;i++)if(id==TAB_IDS[i])return new int[]{151+i*40,38,39,20};
         if (id >= 8 && id <= 11)
             return new int[] { 151 + (id - 8) * 40, 63, 38, 20 };
         if (id == 12 || id == 13)
@@ -212,7 +216,7 @@ final class ShopScreen {
     }
 
     boolean valid(int id) {
-        if(id==43)return true;
+        if(id==43)return false;
         if (id == 16)
             return false;
         if (id == 19)
@@ -226,17 +230,17 @@ final class ShopScreen {
         if (id >= 8 && id <= 11)
             return tab < 2 && id - 8 < categories().length;
         if (id == 12 || id == 13)
-            return tab != 2;
+            return tab != 2 && !wingCategory();
         return true;
     }
 
     int header() {
-        return tab == 4 ? 43 : tab == 3 ? 19 : tab == 2 ? 18 : 6 + tab;
+        return tab == 3 ? 19 : tab == 2 ? 18 : 6 + tab;
     }
 
     void hover() {
         if (headerFocus()) {
-            int value = focus == 43 ? 4 : focus == 19 ? 3 : focus == 18 ? 2 : focus - 6;
+            int value = focus == 19 ? 3 : focus == 18 ? 2 : focus - 6;
             if (tab != value)
                 selectTab(value);
         } else if (focus >= 8 && focus <= 11 && tab < 2) {
@@ -245,7 +249,7 @@ final class ShopScreen {
                 chooseCategory(value);
         } else if (focus < 6) {
             if(tab==3)c.stoneShop.focus=c.stoneShop.focus/6*6+focus;
-            else selected = page * 6 + focus;
+            else {selected = page * 6 + focus;if(wingCategory())c.vip.shopFocus=selected;}
         }
     }
 
@@ -259,8 +263,8 @@ final class ShopScreen {
 
     void move(int dir) {
         if (headerFocus()) {
-            if(dir==1||dir==2){int at=0;for(int i=0;i<5;i++)if(TAB_VALUES[i]==tab)at=i;at=Battle.clamp(at+(dir==1?-1:1),0,4);focus=TAB_IDS[at];hover();}
-            else if(dir==8){focus=tab==4?c.vip.shopFocus:tab==3?c.stoneShop.focus%6:tab==2?17:categoryFocus();}
+            if(dir==1||dir==2){int at=0;for(int i=0;i<TAB_VALUES.length;i++)if(TAB_VALUES[i]==tab)at=i;at=Battle.clamp(at+(dir==1?-1:1),0,TAB_VALUES.length-1);focus=TAB_IDS[at];hover();}
+            else if(dir==8){focus=tab==3?c.stoneShop.focus%6:tab==2?17:categoryFocus();}
             return;
         }
         if (focus >= 8 && focus <= 11) {
@@ -328,11 +332,12 @@ final class ShopScreen {
     void chooseCategory(int k) {
         kind = k;
         page = selected = 0;
+        c.vip.info=false;if(wingCategory())c.vip.shopFocus=0;
     }
 
     void selectTab(int value) {
         c.bag.info = false;
-        tab = value;
+        c.vip.info=false;tab = value;
         if (tab < 2)
             chooseCategory(categories()[0]);
     }
@@ -396,10 +401,12 @@ final class ShopScreen {
         }
         if ((c.net.busy || c.net.pending.length() > 0) && focus != 15)
             return;
-        if (focus < 6)
-            trial(page * 6 + focus);
+        if (focus < 6) {
+            if(wingCategory()){c.vip.shopFocus=focus;c.vip.trialWing=focus;c.bag.previewKey="";}
+            else trial(page * 6 + focus);
+        }
         else if (headerFocus())
-            selectTab(focus==43?4:focus == 19 ? 3 : focus == 18 ? 2 : focus - 6);
+            selectTab(focus == 19 ? 3 : focus == 18 ? 2 : focus - 6);
         else if (focus >= 8 && focus <= 11)
             chooseCategory(categories()[focus - 8]);
         else if (focus == 12 || focus == 13) {
@@ -420,6 +427,7 @@ final class ShopScreen {
     }
 
     void showInfo() {
+        if(wingCategory()){c.vip.info=true;return;}
         int k = kind, i = -1;
         if (focus < 6 && tab != 2)
             i = item(page * 6 + focus);
@@ -436,8 +444,8 @@ final class ShopScreen {
     }
 
     void key(int key, int dir, boolean ok) {
-        if(tab==4&&!headerFocus()){c.vip.shopKey(key,dir,ok);return;}
-        if(key=='b'||key=='B'){if(tab==4){c.vip.buy();return;}c.stoneShop.infoType=-1;if(tab==3)c.stoneShop.buy();else checkout();return;}
+        if(wingCategory()&&c.vip.info){c.vip.info=false;return;}
+        if(key=='b'||key=='B'){if(wingCategory()){c.vip.buy();return;}c.stoneShop.infoType=-1;if(tab==3)c.stoneShop.buy();else checkout();return;}
         if (tab == 3 && (focus < 6 || focus == 12 || focus == 13 || focus == 14)) {
             c.stoneShop.key(key, dir, ok);
             return;
@@ -468,11 +476,10 @@ final class ShopScreen {
 
     void pointer(int x, int y) {
         if (y >= 38 && y < 59 && x >= 151) {
-            int at=Math.min(4,(x-151)/32);int value=TAB_VALUES[at];focus=TAB_IDS[at];
+            int at=Math.min(TAB_VALUES.length-1,(x-151)/40);int value=TAB_VALUES[at];focus=TAB_IDS[at];
             selectTab(value);
             return;
         }
-        if(tab==4){if(x>=289&&y<33){leave();return;}for(int i=0;i<5;i++){int[] b=box(i);if(x>=b[0]&&x<b[0]+b[2]&&y>=b[1]&&y<b[1]+b[3]){c.vip.shopFocus=i;c.vip.trialWing=i;return;}}if(x>=106&&x<143&&y>=201&&y<222)c.vip.buy();return;}
         if (tab == 3 && c.stoneShop.pointer(x, y))
             return;
         if (tab == 3 && x >= 106 && x < 143 && y >= 201 && y < 222) {

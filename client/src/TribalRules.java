@@ -139,9 +139,12 @@ final class TribalRules {
   p.owner=actor;p.weapon=weapon;p.x=(u.x+u.face*(u.npc>=SULAN?22:12))*256;p.y=(u.y-(u.npc>=SULAN?39:22))*256;
   int steps=Math.max(70,Math.min(170,Math.abs(v.x-u.x)*2/3+65));
   p.vx=(v.x*256-p.x)*4/steps;p.vy=((Battle.targetY(v)+offset)*256-p.y)*4/steps-Battle.gravity(p)*(steps+1)/2;
+  if(u.npc==ELITE){p.y+=offset*256;p.vy-=offset*256*4/steps;}
   p.radius=weapon==FIRE_SHOT?11:4;p.damage=DAMAGE[b.dungeonDifficulty]*(u.npc==RAGE?130:100)/100;
+  if(u.npc==ELITE)p.damage=Math.max(1,p.damage/3);
   b.balls[b.ballCount++]=p;
  }
+ static boolean meleeRange(Battle.Unit u,Battle.Unit v){return Math.abs(u.x-v.x)<=32&&Math.abs(u.y-v.y)<=28;}
  static void strike(Battle b,int victim,int damage){Battle.Unit v=b.units[victim];Battle.Ball p=new Battle.Ball();p.owner=b.active;p.x=v.x*256;p.y=Battle.targetY(v)*256;p.weapon=SPEAR_SHOT;p.damage=damage;p.radius=1;b.impact(p);}
  static int action(Battle b,Battle.Unit u){
   int round=b.tribalRound;
@@ -169,10 +172,10 @@ final class TribalRules {
     else b.tribalState=action>=2&&action<=7?SUMMON:AIM;
     return;
    }
-   if(t==47){u.attackTicks=36;if(action==0)for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].npc==SPEAR)b.units[i].attackTicks=36;b.tribalState=action>=2&&action<=7?SUMMON:action==9?SPECIAL:ATTACK;}
+   if(t==47){u.attackTicks=action==0&&!meleeRange(u,v)?0:36;if(action==0)for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].npc==SPEAR){Battle.Unit ally=b.units[i];ally.attackTicks=meleeRange(ally,b.units[target(b,i)])?36:0;}b.tribalState=action>=2&&action<=7?SUMMON:action==9?SPECIAL:ATTACK;}
    if(t<61)return;
    if(t==61){
-    if(action==0){int leader=b.active;for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].npc==SPEAR){Battle.Unit ally=b.units[i];int enemy=target(b,i);ally.attackTicks=22;b.active=i;if(Math.abs(ally.x-b.units[enemy].x)<42&&Math.abs(ally.y-b.units[enemy].y)<32)strike(b,enemy,DAMAGE[b.dungeonDifficulty]);}b.active=leader;b.settle=24;}
+    if(action==0){int leader=b.active;for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].npc==SPEAR){Battle.Unit ally=b.units[i];int enemy=target(b,i);ally.attackTicks=meleeRange(ally,b.units[enemy])?22:0;b.active=i;if(meleeRange(ally,b.units[enemy]))strike(b,enemy,DAMAGE[b.dungeonDifficulty]);}b.active=leader;b.settle=24;}
     else if(action==9){if(Math.abs(u.x-v.x)<55&&Math.abs(u.y-v.y)<50)strike(b,victim,DAMAGE[b.dungeonDifficulty]);b.settle=24;}
     else if(action==2||action==3){summon(b,action==2?FATIGUE:CHAIN,action==2?184:296);b.settle=30;}
     else if(action==4){for(int n=0;n<2;n++){int slot=summon(b,ELITE,twins(b)?(u.x<240?106:390):u.x-38-n*25);if(slot>=0&&twins(b))b.units[slot].y=86;}b.settle=30;}
@@ -182,7 +185,8 @@ final class TribalRules {
     else{
      if(b.shotObserver!=null)b.shotObserver.beforeShot();
      if(action==8){for(int n=-1;n<=1;n++)projectile(b,b.active,victim,FIRE_SHOT,n*8);b.botPhase=FIRE_LINE;}
-     else projectile(b,b.active,victim,u.npc==ELITE?SPEAR_SHOT:u.npc>=SULAN?CHIEF_SHOT:SPIRIT_SHOT,0);
+     else if(u.npc==ELITE){for(int n=-1;n<=1;n++)projectile(b,b.active,victim,SPEAR_SHOT,n*7);}
+     else projectile(b,b.active,victim,u.npc>=SULAN?CHIEF_SHOT:SPIRIT_SHOT,0);
      b.shotSerial++;
     }
     return;

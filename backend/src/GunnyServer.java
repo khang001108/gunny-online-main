@@ -26,10 +26,10 @@ public final class GunnyServer implements AutoCloseable {
     static final class Avatar {String name;int wornMask=3;int experience;int sex,skin,weapon;boolean custom,bot;int[] look=new int[5];Session owner;}
     final byte[][] hardness=new byte[12][];
     final class Ground implements Battle.Ground {
-        final byte[] hard;final boolean[] solid;final List<int[]> craters=new ArrayList<>();Ground(int map){solid=terrain[map].clone();hard=hardness[map];}
+        final byte[] hard;final boolean[] solid;final boolean tribalGround;final List<int[]> craters=new ArrayList<>();Ground(int map){tribalGround=map>=8&&map<=11;solid=terrain[map].clone();hard=hardness[map];}
         public boolean solid(int x,int y){return x>=0&&x<480&&y>=0&&y<264&&solid[y*480+x];}
         public int surface(int x,int from){if(x<3||x>=477)return 294;for(int y=Math.max(0,from);y<264;y++)if(solid(x-2,y)||solid(x+2,y))return y;return 294;}
-        public void crater(int x,int y,int radius){for(int py=Math.max(0,y-radius);py<=Math.min(263,y+radius);py++)for(int px=Math.max(0,x-radius);px<=Math.min(479,x+radius);px++)if((px-x)*(px-x)+(py-y)*(py-y)<=radius*radius&&(hard[(py*480+px)>>3]&(1<<((py*480+px)&7)))==0)solid[py*480+px]=false;if(craters.size()<4096)craters.add(new int[]{x,y,radius});}
+        public void crater(int x,int y,int radius){if(tribalGround)return;for(int py=Math.max(0,y-radius);py<=Math.min(263,y+radius);py++)for(int px=Math.max(0,x-radius);px<=Math.min(479,x+radius);px++)if((px-x)*(px-x)+(py-y)*(py-y)<=radius*radius&&(hard[(py*480+px)>>3]&(1<<((py*480+px)&7)))==0)solid[py*480+px]=false;if(craters.size()<4096)craters.add(new int[]{x,y,radius});}
     }
     final class Room {
         final LobbyChatServer.Speech[] speech=new LobbyChatServer.Speech[6];

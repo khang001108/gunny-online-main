@@ -31,7 +31,7 @@ final class RewardCards780 {
   c.pcCenter((result.smallDeck()?"ẢI "+(n.dungeonStage>=3?DungeonRewards.tribalNumber(n.dungeonStage):1)+" • ":"")+"BẢNG THẺ • "+picks()+"/"+limit()+" đã chọn",160,13);
   if(result.smallDeck()){
    c.img(result.light,5,39);
-   c.vip.back(c.vip.actorExp(result.actor()),c.vip.actorWing(result.actor()),66,169,0,false);
+   c.vip.back(c.vip.actorExp(result.actor()),c.vip.actorWing(result.actor()),66,169,0,false,18);
    c.img(result.hero,18,49);
    c.pcCenter(c.pcShort(result.name(result.actor()),128),78,175);
   }

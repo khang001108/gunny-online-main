@@ -2,9 +2,9 @@ import javax.microedition.lcdui.Image;
 /** Native labeled Flash poses baked for MIDP; caches only the current encounter. */
 final class TribalArt {
  final PhoneCanvas c;final Image[] sprites=new Image[16],headers=new Image[16];
- Image cover,small,wing,missiles,healthFrame,healthBar,loadingBackground;int coverStage,cachedStage;
+ Image cover,small,wing,missiles,healthFrame,healthBar;int coverStage,cachedStage;
  TribalArt(PhoneCanvas canvas){c=canvas;}
- void release(){for(int i=0;i<16;i++){sprites[i]=headers[i]=null;}cover=small=wing=missiles=healthFrame=healthBar=loadingBackground=null;coverStage=cachedStage=0;}
+ void release(){for(int i=0;i<16;i++){sprites[i]=headers[i]=null;}cover=small=wing=missiles=healthFrame=healthBar=null;coverStage=cachedStage=0;}
  Image atlas(int kind){if(sprites[kind]==null)sprites[kind]=c.combatRoomArt("tribal797-npc-"+kind);return sprites[kind];}
  int size(int kind){return kind>=14?96:kind==8||kind==9?72:56;}
  Image smallCover(){if(small==null)small=c.combatRoomArt("tribal797-banner");return small;}
@@ -38,7 +38,7 @@ final class TribalArt {
   int frame=ball.weapon==TribalRules.FIRE_SHOT?ball.age/6%8:c.flightDirection(ball.vx,ball.vy)/2;
   c.part(missiles,frame*32,row*32,32,32,ball.x/256-c.cameraX-16,ball.y/256-c.cameraY-16,false);
  }
- void trail(int x,int y,int weapon,int age){if(weapon==TribalRules.SPEAR_SHOT)return;int r=age<5?2:1;c.oval(x-r,y-r,r*2,r*2,weapon==TribalRules.FIRE_SHOT?0xffbd4d:0x9ce9f7);}
+ void trail(int x,int y,int weapon,int age){if(weapon==TribalRules.SPEAR_SHOT){int length=age<5?5:age<10?3:1;c.rect(x-length/2,y-1,length,2,age<5?0xc4fff0:age<10?0x8adcca:0x6cb6ac);return;}int r=age<5?2:1;c.oval(x-r,y-r,r*2,r*2,weapon==TribalRules.FIRE_SHOT?0xffbd4d:0x9ce9f7);}
  void impact(Battle.Blast blast){int frame=Math.min(11,blast.time*12/25),weapon=blast.weapon==TribalRules.FIRE_SHOT?0:5;c.part(c.impactArt(weapon),frame%4*96,frame/4*96,96,96,blast.x-c.cameraX-48,blast.y-c.cameraY-48,false);}
  void boss(int actor,int y){
   Battle.Unit u=c.game.units[actor];if(healthFrame==null){healthFrame=c.combatRoomArt("npc780-boss-frame");healthBar=c.combatRoomArt("npc780-boss-hp");}

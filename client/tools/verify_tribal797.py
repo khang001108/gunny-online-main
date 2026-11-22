@@ -36,7 +36,7 @@ for scale,name in [(1,'Gunny-E72-2009-Online-797'),(2,'Gunny-E6-Online-797')]:
    client=Image.open(io.BytesIO(archive.read(f'land{ident}.png'))).convert('RGBA').resize((480,264),Image.Resampling.NEAREST)
    alpha=client.getchannel('A').tobytes();original=server.getchannel('A').tobytes();bits=archive.read(f'collision{ident}.dat');hard=archive.read(f'hard{ident}.dat')
    ok(all((a>96)==(b>96)==bool(bits[n>>3]&(1<<(n&7))) for n,(a,b) in enumerate(zip(alpha,original))),'Exact handset/server collision agreement')
-   ok(not any(hard),'No artificial hard floor')
+   ok(all(v==255 for v in hard),'All Tribal terrain is indestructible; collision alpha unchanged')
    ok(Image.open(io.BytesIO(archive.read(f'bg{ident}.png'))).size==(320*scale,240*scale),'Native-sized background')
   for stage in [1,2,3]:ok(Image.open(io.BytesIO(archive.read(f'tribal797-cover-{stage}.png'))).size==(80*scale,100*scale),'Video loading card')
  releases.append(dict(jar=str(jar.relative_to(ROOT)),jad=str(jad.relative_to(ROOT)),bytes=jar.stat().st_size,sha256=hashlib.sha256(jar.read_bytes()).hexdigest(),entries=len(names),resolution=[320*scale,240*scale]))

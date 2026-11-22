@@ -146,7 +146,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
 
     final Image[] loadingHeroes=new Image[6];
     final int[] loadingWidths=new int[6];
-    boolean loadingParticipant(int index){return index<6&&index<game.unitCount&&game.units[index].npc==0&&game.units[index].hp>0;}
+    boolean loadingParticipant(int index){return index>=0&&index<6&&index<game.unitCount&&(!(onlineBattle()&&net.roomKind==3)||index%2==0&&net.present[index])&&game.units[index].npc==0&&game.units[index].hp>0;}
     int loadingTeam(int index){return game.teams?game.units[index].team:index;}
     int[] loadingSlot(int actor){
         int team=loadingTeam(actor),count=0,leader=-1,rank=0;
@@ -260,7 +260,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             versusTime = combatRoomArt("room-loading-time");
             versusDigits = combatRoomArt("room-loading-digits");
         }
-        if(TribalRules.active(game)){if(tribalArt.loadingBackground==null)tribalArt.loadingBackground=combatRoomArt("tribal797-loading-bg");img(tribalArt.loadingBackground,0,0);}else img(versusBg, 0, 0);
+        img(versusBg, 0, 0);
         img(versusLogo, 124, 15);
         if(TribalRules.active(game)){pcCenter("Your Team",72,8);pcCenter("Enemy Team",264,8);}
         img(versusTime, 137, 110);
@@ -1689,6 +1689,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     public void crater(int x, int y, int r) {
+        if(map>=8&&map<=11)return;
         if (onlineGround != null)
             for (int py = Math.max(0, y - r); py <= Math.min(263, y + r); py++)
                 for (int px = Math.max(0, x - r); px <= Math.min(479, x + r); px++)
@@ -2634,13 +2635,13 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         int y=tailUp?Math.max(top,tip+9):tip-h-9;
         int tail = Battle.clamp(x, left + 14, left + w - 14);
         int px = ox + left*s, py = oy + y*s;
-        g.setColor(TribalRules.active(game)?0x87511a:0x302d2e);
+        g.setColor(0x302d2e);
         g.fillRoundRect(px,py,w*s,h*s,12*s,12*s);
         g.fillTriangle(ox+(tail-9)*s,py+(tailUp?4:h-4)*s,ox+(tail+10)*s,py+(tailUp?4:h-4)*s,ox+x*s,oy+tip*s);
-        g.setColor(TribalRules.active(game)?0xffb926:0xc6cfee);
+        g.setColor(0xc6cfee);
         g.fillRoundRect(px+s,py+s,(w-2)*s,(h-2)*s,11*s,11*s);
         g.fillTriangle(ox+(tail-7)*s,py+(tailUp?5:h-5)*s,ox+(tail+8)*s,py+(tailUp?5:h-5)*s,ox+x*s,oy+(tailUp?tip+2:tip-2)*s);
-        g.setColor(TribalRules.active(game)?0xffe668:0xffffff);
+        g.setColor(0xffffff);
         g.fillRoundRect(px+3*s,py+3*s,(w-6)*s,(h-6)*s,8*s,8*s);
         g.fillTriangle(ox+(tail-5)*s,py+(tailUp?6:h-6)*s,ox+(tail+6)*s,py+(tailUp?6:h-6)*s,ox+x*s,oy+(tailUp?tip+5:tip-5)*s);
         if (speechFont == null) speechFont = combatRoomArt("font-dungeon-speech");
@@ -3075,9 +3076,9 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             }
             img(opponentStanding, -2, 9);
         }
-        if (game.teams) {
+        if (game.teams || onlineBattle()&&net.roomKind==3) {
             for (int i = 0; i < game.unitCount; i++)
-                if(i<6&&game.units[i].hp>0&&game.units[i].npc==0 && (!offlineDungeon.active||game.units[i].hp>0))drawTurnPortrait(i, i % 2 == 0 ? (game.dungeonStage>0?61:70) + i / 2 * 24 : 190 + i / 2 * 24, 1);
+                if(loadingParticipant(i) && (!offlineDungeon.active||game.units[i].hp>0))drawTurnPortrait(i, i % 2 == 0 ? (game.dungeonStage>0?61:70) + i / 2 * 24 : 190 + i / 2 * 24, 1);
         } else {
             drawTurnPortrait(0, 112, 1);
             drawTurnPortrait(1, 184, 1);

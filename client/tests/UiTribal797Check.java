@@ -48,7 +48,13 @@ public class UiTribal797Check {
          server.clock.shutdownNow();
          for(int stage:new int[]{3,4,6}){
           var room=server.new Room(host,6,2,-1,true);room.kind=3;room.strict=true;room.dungeonStage=stage;room.refreshWaiting();room.start();
-          n.inBattle=false;var wire=new java.io.ByteArrayOutputStream();server.lobby(new java.io.DataOutputStream(wire),room,host);n.readLobby(new java.io.DataInputStream(new java.io.ByteArrayInputStream(wire.toByteArray())));n.prepareBattle();sync(server,room,host,c);
+          n.inBattle=false;var wire=new java.io.ByteArrayOutputStream();server.lobby(new java.io.DataOutputStream(wire),room,host);n.readLobby(new java.io.DataInputStream(new java.io.ByteArrayInputStream(wire.toByteArray())));n.prepareBattle();
+          if(!c.game.teams||c.game.dungeonStage!=stage)throw new AssertionError("Dungeon presentation restored before snapshot");
+          for(int i=1;i<6;i+=2)if(c.loadingParticipant(i))throw new AssertionError("No enemy slot as loading hero after reconnect");
+          c.mode=14;shot(c,"tribal797-reconnect-loading-"+stage);sync(server,room,host,c);
+          boolean[] before=room.ground.solid.clone();room.ground.crater(240,220,60);
+          if(!java.util.Arrays.equals(before,room.ground.solid)||!room.ground.craters.isEmpty())throw new AssertionError("Server Tribal ground unchanged");
+          for(int x=30;x<450;x+=30){int y=c.surface(x,0);c.crater(x,y,30);if(c.surface(x,0)!=y)throw new AssertionError("Client Tribal ground unchanged");}
           if(c.game.dungeonStage!=stage||c.map!=room.map||c.game.unitCount!=13)throw new AssertionError("Campaign snapshot/map");
           c.mode=16;shot(c,"tribal797-room-"+stage);c.mode=14;c.loadTicks=20;shot(c,"tribal797-loading-"+stage);
           c.mode=1;c.cameraY=0;c.cameraX=stage==6?150:0;c.frame=9;shot(c,"tribal797-intro-"+stage);
@@ -57,6 +63,14 @@ public class UiTribal797Check {
           if(stage==4){c.cameraX=160;shot(c,"tribal797-bulan-right");c.cameraX=0;}
           room.battle.tribalClock=0;
           for(int t=0;t<62;t++)room.battle.tick();sync(server,room,host,c);c.frame=71;shot(c,"tribal797-action-"+stage);
+          if(stage==3){
+           for(int actor=0;actor<room.battle.unitCount;actor++)if(room.battle.units[actor].npc==TribalRules.ELITE){
+            room.battle.active=actor;room.battle.tribalClock=60;room.battle.ballCount=0;TribalRules.tickAI(room.battle);sync(server,room,host,c);
+            if(c.game.ballCount!=3)throw new AssertionError("Three parallel spears received");
+            for(int t=0;t<14;t++){room.battle.tick();sync(server,room,host,c);c.game.ageTrails();for(int i=0;i<c.game.ballCount;i++)c.game.stampTrail(c.game.balls[i]);}
+            c.cameraX=120;c.cameraY=0;shot(c,"tribal797-three-spears");break;
+           }
+          }
           // Every pose row/column must load and draw in the actual handset JAR.
           for(int actor=0;actor<c.game.unitCount;actor++)if(c.game.units[actor].npc>=4){int kind=c.game.units[actor].npc;var atlas=c.tribalArt.atlas(kind);int cell=c.tribalArt.size(kind)*c.s;if(atlas==null||atlas.getWidth()!=cell*8||atlas.getHeight()!=cell*8)throw new AssertionError("Native pose grid "+kind);for(int state=0;state<8;state++){c.game.tribalState=state;for(int frame=0;frame<8;frame++){c.frame=frame*3;c.paint(javax.microedition.lcdui.Image.createImage(320*c.s,240*c.s).getGraphics());}}}
           if(stage==6){

@@ -284,7 +284,7 @@ final class Battle {
 
         }
         if(b.weapon==AntCaveRules.QUEEN_ARROW&&fx.damage>0)botPhase=AntCaveRules.QUEEN_SUCCESS;
-        if(!TribalRules.payload(b.weapon)&&!unsafeBotLanding(b,x,y))ground.crater(x,y,Math.max(1,b.radius*9/10));hitSerial++;
+        if(!TribalRules.active(this)&&!TribalRules.payload(b.weapon)&&!unsafeBotLanding(b,x,y))ground.crater(x,y,Math.max(1,b.radius*9/10));hitSerial++;
     }
     boolean lightBotDamage(int owner,int target){
         Unit bot=units[owner];

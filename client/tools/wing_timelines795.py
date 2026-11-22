@@ -95,6 +95,13 @@ if __name__=='__main__':
     m=(a,b,-b,a,48*scale-a*48+b*60,48*scale-b*48-a*60)
     for layer,(depth,(child,mat,start)) in enumerate(sorted(children.items())):
      atlas=Image.new('RGBA',(96*scale*19,96*scale))
-     for frame in range(19):atlas.paste(render(movie.flat(child,frame,mat,pose=0),(96*scale,96*scale),m),(frame*96*scale,0))
+     for frame in range(19):
+      parts=movie.flat(child,frame,mat,pose=0)
+      # Anatomical roots in each original bitmap (feather tips are on the left).
+      roots=(((48,55),(42,52)),((60,48),(59,48)),((60,48),(59,48)),((77,62),(77,66)),((35,43),(59,49)),((77,62),(77,66)))
+      im,transform=parts[0];px,py=roots[wing][layer]
+      aa,bb,cc,dd,tx,ty=transform;anchorX=aa*px+cc*py+tx;anchorY=bb*px+dd*py+ty
+      m=(a,b,-b,a,48*scale-a*anchorX+b*anchorY,48*scale-b*anchorX-a*anchorY)
+      atlas.paste(render(parts,(96*scale,96*scale),m),(frame*96*scale,0))
      atlas.save(out/f'wing795-game-{wing}-{angle}-{layer}.png',optimize=True)
  print('Baked native wing_show 20-frame and wing_game 19-frame timelines, both original layers, 5 slopes.')

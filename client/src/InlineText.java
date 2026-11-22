@@ -56,6 +56,13 @@ final class InlineText {
 
     boolean key(int key) {
         if (!active()) return false;
+        // Cho phép nhập @ bằng phím # trong ô Email
+        if (!numeric && !secret
+                && label != null
+                && label.toLowerCase().indexOf("email") >= 0
+                && key == Canvas.KEY_POUND) {
+            key = '@';
+        }
         if (key == -7 || key == 27) cancel();
         else if (key == 13 || key == 10 || key == -6 || key == -5) finish();
         else if (key == 8 || key == -8 || key == 127) {

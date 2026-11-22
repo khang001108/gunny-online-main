@@ -55,7 +55,7 @@ public class Ui790Check {
         c.bag.activate();int selected=c.vip.item;String key=c.vip.requestKey;c.vip.submit("vipuse",12);
         if(!n.pending.equals("vipuse")||c.vip.cards[selected]!=999||c.vip.item!=selected||!c.vip.requestKey.equals(key))throw new AssertionError("Repeated press preserves pending item and receipt");n.pending="";
         c.mode=6;c.shop.open();c.shop.tab=3;c.shop.focus=19;c.shop.key(0,2,false);
-        if(c.shop.tab!=4||c.shop.focus!=43)throw new AssertionError("VIP tab is next to Props");
+        if(c.shop.tab!=2||c.shop.focus!=18)throw new AssertionError("Exchange follows Props without a VIP tab");c.shop.selectTab(1);c.shop.chooseCategory(7);c.shop.focus=0;
         c.shop.key(0,8,false);c.shop.key(0,8,false);if(c.vip.shopFocus!=2)throw new AssertionError("VIP two-column navigation");shot(c,"vip790-shop");
         c.vip.experience=0;c.vip.owned=0;c.vip.shopFocus=4;c.vip.buy();if(n.pending.length()!=0)throw new AssertionError("Locked wing cannot buy");shot(c,"vip790-shop-locked");c.vip.info=true;shot(c,"vip790-shop-info");c.vip.info=false;
         c.vip.experience=VipRules.TOTAL;c.vip.buy();if(!n.pending.equals("vipbuy")||c.vip.owned!=0)throw new AssertionError("Buy waits for server");n.pending="";

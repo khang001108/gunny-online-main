@@ -68,9 +68,9 @@ for scale in (1,2):
             if a>96:bits[n>>3]|=1<<(n&7)
         if scale==1:
             (ROOT.parent/'backend/assets'/f'collision{ident}.dat').write_bytes(bits)
-            (ROOT.parent/'backend/assets'/f'hard{ident}.dat').write_bytes(bytes(15840))
+            (ROOT.parent/'backend/assets'/f'hard{ident}.dat').write_bytes(bytes([255])*15840)
             land.save(ROOT.parent/'backend/assets'/f'land{ident}.png')
-        (out/f'collision{ident}.dat').write_bytes(bits);(out/f'hard{ident}.dat').write_bytes(bytes(15840))
+        (out/f'collision{ident}.dat').write_bytes(bits);(out/f'hard{ident}.dat').write_bytes(bytes([255])*15840)
         land.resize((480*scale,264*scale),Image.Resampling.NEAREST).save(out/f'land{ident}.png',optimize=True)
         sky=Image.open(src/'back.jpg').convert('RGB');sky.resize((320*scale,240*scale),Image.Resampling.LANCZOS).save(out/f'bg{ident}.png')
         preview=sky.resize((480,264));preview.paste(land,(0,0),land)
@@ -85,7 +85,7 @@ for scale in (1,2):
         card.resize((80*scale,100*scale),Image.Resampling.LANCZOS).save(out/f'tribal797-cover-{stage}.png')
         if scale==1:card.save(SOURCE/f'loading-card-{stage}.png')
     # Actual thrown objects, never a whole basket or the boss's weapon.
-    pike=Image.open(WORK/'Resource/image/arm/pike/1/0/show.png').convert('RGBA');pike=pike.crop(pike.getbbox())
+    defs116,_=library(WORK/'Resource/image/game/living/Living116.swf');pike=bitmap(defs116[58]).rotate(-90,expand=True);pike=pike.crop(pike.getbbox())
     # Native bone is bitmap 13 from Bulan, selected below from the extracted sheet.
     defs,_=library(WORK/'Resource/image/game/living/Living117.swf')
     images=[]
@@ -112,6 +112,6 @@ for scale in (1,2):
             art=ImageOps.contain(im,(27*scale,27*scale),Image.Resampling.LANCZOS)
             fx.alpha_composite(art,(n*32*scale+(32*scale-art.width)//2,row*32*scale+(32*scale-art.height)//2))
     png(fx,out/'tribal797-projectiles.png',scale)
-manifest=dict(loading_backdrop='Original outer boy/dragon artwork from video stage2 at2s, faded into smooth code-rendered blue/red panels. Avatars, VS, cards and progress remain dynamic.',projectiles={'11':'Resource Living116/arm/pike spear','12':'Living117.swf bitmap77 staff','13':'living126.swf bitmap56 flame','14':'living121.swf bitmap81 staff'},video_folder='tà thần phó bản/playertest',maps=MAPS,npcs=entries,poses='8 original timeline samples per labeled row, shared registration; no bitmap rotation as actor animation',loading_cards='User supplied video frame at 2 seconds, crop746,150,929,378; PC source show1/3/4 artwork corresponds, Mobi numbers2/3 retained',terrain='Original alpha only. No invented floor. Server collision sampled from the same 480x264 alpha as the client.',limitations='MIDP adaptation, not Flash playback. HP, damage and exact skill intervals remain explicit local tuning; footage cannot establish server formulas.')
+manifest=dict(loading_backdrop='Original outer boy/dragon artwork from video stage2 at2s, faded into smooth code-rendered blue/red panels. Avatars, VS, cards and progress remain dynamic.',projectiles={'11':'Living116.swf bitmap58 spear','12':'Living117.swf bitmap77 staff','13':'living126.swf bitmap56 flame','14':'living121.swf bitmap81 staff'},video_folder='tà thần phó bản/playertest',maps=MAPS,npcs=entries,poses='8 original timeline samples per labeled row, shared registration; no bitmap rotation as actor animation',loading_cards='User supplied video frame at 2 seconds, crop746,150,929,378; PC source show1/3/4 artwork corresponds, Mobi numbers2/3 retained',terrain='Original alpha only. No invented floor. Server collision sampled from the same 480x264 alpha as the client.',limitations='MIDP adaptation, not Flash playback. HP, damage and exact skill intervals remain explicit local tuning; footage cannot establish server formulas.')
 (SOURCE/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf8')
 print('Baked original NPC timelines, matching maps/collision, room/loading cards for both Nokia sizes.')
