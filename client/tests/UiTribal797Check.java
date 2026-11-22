@@ -47,7 +47,7 @@ public class UiTribal797Check {
         try(var server=new GunnyServer(new java.net.InetSocketAddress("127.0.0.1",0),java.nio.file.Path.of("backend/assets"),store)){
          server.clock.shutdownNow();
          for(int stage:new int[]{3,4,6}){
-          var room=server.new Room(host,6,2,-1,true);room.kind=3;room.strict=true;room.dungeonStage=stage;room.refreshWaiting();room.start();
+          var room=server.new Room(host,6,2,-1,true);room.kind=3;room.strict=true;room.dungeonStage=stage;room.refreshWaiting();room.start();if(stage==3)TribalRules.round(room.battle);
           n.inBattle=false;var wire=new java.io.ByteArrayOutputStream();server.lobby(new java.io.DataOutputStream(wire),room,host);n.readLobby(new java.io.DataInputStream(new java.io.ByteArrayInputStream(wire.toByteArray())));n.prepareBattle();
           if(!c.game.teams||c.game.dungeonStage!=stage)throw new AssertionError("Dungeon presentation restored before snapshot");
           for(int i=1;i<6;i+=2)if(c.loadingParticipant(i))throw new AssertionError("No enemy slot as loading hero after reconnect");
@@ -55,7 +55,7 @@ public class UiTribal797Check {
           boolean[] before=room.ground.solid.clone();room.ground.crater(240,220,60);
           if(!java.util.Arrays.equals(before,room.ground.solid)||!room.ground.craters.isEmpty())throw new AssertionError("Server Tribal ground unchanged");
           for(int x=30;x<450;x+=30){int y=c.surface(x,0);c.crater(x,y,30);if(c.surface(x,0)!=y)throw new AssertionError("Client Tribal ground unchanged");}
-          if(c.game.dungeonStage!=stage||c.map!=room.map||c.game.unitCount!=13)throw new AssertionError("Campaign snapshot/map");
+          if(c.game.dungeonStage!=stage||c.map!=room.map||c.game.unitCount!=(stage==3?14:13))throw new AssertionError("Campaign snapshot/map");
           c.mode=16;shot(c,"tribal797-room-"+stage);c.mode=14;c.loadTicks=20;shot(c,"tribal797-loading-"+stage);
           c.mode=1;c.cameraY=0;c.cameraX=stage==6?150:0;c.frame=9;shot(c,"tribal797-intro-"+stage);
           room.battle.tribalFx=0;room.battle.tribalState=0;room.battle.botPhase=0;sync(server,room,host,c);shot(c,"tribal797-stage-"+stage);
@@ -66,7 +66,7 @@ public class UiTribal797Check {
           if(stage==3){
            for(int actor=0;actor<room.battle.unitCount;actor++)if(room.battle.units[actor].npc==TribalRules.ELITE){
             room.battle.active=actor;room.battle.tribalClock=60;room.battle.ballCount=0;TribalRules.tickAI(room.battle);sync(server,room,host,c);
-            if(c.game.ballCount!=3)throw new AssertionError("Three parallel spears received");
+            if(c.game.ballCount!=3)throw new AssertionError("Three arcing spear shots received");
             for(int t=0;t<14;t++){room.battle.tick();sync(server,room,host,c);c.game.ageTrails();for(int i=0;i<c.game.ballCount;i++)c.game.stampTrail(c.game.balls[i]);}
             c.cameraX=120;c.cameraY=0;shot(c,"tribal797-three-spears");break;
            }

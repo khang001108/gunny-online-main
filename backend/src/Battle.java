@@ -14,7 +14,7 @@ final class Battle {
     final Ground ground;
     interface ShotObserver {void beforeShot();}
     ShotObserver shotObserver;
-    static final int MAX_UNITS=13;
+    static final int MAX_UNITS=14;
     final Unit[] units=new Unit[MAX_UNITS];int unitCount=2;boolean teams;
     boolean explicitHumans;boolean humanTurn(){return explicitHumans?units[active].human:teams?units[active].human:hotseat||active==0;}
     int enemyOf(int actor){if(TribalRules.active(this))return TribalRules.target(this,actor);int best=actor==0?1:0,distance=99999;for(int i=0;i<unitCount;i++)if(i!=actor&&units[i].hp>0&&(!teams||units[i].team!=units[actor].team)){int d=Math.abs(units[i].x-units[actor].x);if(d<distance){distance=d;best=i;}}return best;}
@@ -125,7 +125,8 @@ final class Battle {
         for(int distance=4;distance<=AIM_RAY_LENGTH;distance++)if(ground.solid(aimPointX(u,distance),aimPointY(u,distance)))return distance;
         return AIM_RAY_LENGTH;
     }
-    boolean blockedStep(int from,int to,int except,int radius){for(int i=0;i<unitCount;i++)if(i!=except&&units[i].hp>0){int before=Math.abs(from-units[i].x),after=Math.abs(to-units[i].x);if(after<radius&&after<=before)return true;}return false;}
+    boolean minorNpc(Unit u){return dungeonStage>0&&(u.npc==1||u.npc==2||u.npc==TribalRules.SPEAR||u.npc==TribalRules.JAVELIN);}
+    boolean blockedStep(int from,int to,int except,int radius){for(int i=0;i<unitCount;i++)if(i!=except&&units[i].hp>0){if(minorNpc(units[except])&&units[i].npc>0&&units[i].team==units[except].team)continue;int before=Math.abs(from-units[i].x),after=Math.abs(to-units[i].x);if(after<radius&&after<=before)return true;}return false;}
     boolean occupied(int x,int except,int radius){for(int i=0;i<unitCount;i++)if(i!=except&&units[i].hp>0&&Math.abs(x-units[i].x)<radius)return true;return false;}
     void move(int dir){
         if(!input())return;Unit u=units[active];u.face=dir;

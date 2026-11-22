@@ -27,7 +27,7 @@ final class AntCaveRules {
  static int allyOffset(int slot){return slot==0?0:slot==2?-35:35;}
 
  static int initialAntWave(Battle b){
-  b.unitCount=Battle.MAX_UNITS;
+  b.unitCount=13;
   for(int i=0;i<ANTS.length;i++){
    Battle.Unit ant=b.units[ANTS[i]];
    ant.hp=ant.maxHp=ant.energy=0;ant.npc=1+i%2;ant.dead=false;ant.team=1;

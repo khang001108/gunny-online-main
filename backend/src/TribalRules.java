@@ -12,7 +12,7 @@ final class TribalRules {
  static final int[] DAMAGE={180,230,300};
  static final int[] WAVES={4,4,4},STONE_MIN={10,50,100},STONE_MAX={100,200,300};
  static final int GOAL=20;
- static final int[] ENEMIES={1,3,5,6,7,8,9,10,11,12};
+ static final int[] ENEMIES={1,3,5,6,7,8,9,10,11,12,13};
  static int reviveRounds=2,minLevel=15;
  static boolean active(Battle b){return b.dungeonStage>=3;}
  static int stage(Battle b){return b.dungeonStage-2;}
@@ -51,17 +51,22 @@ final class TribalRules {
  }
  static int allyX(int actor,boolean middle){return middle?240+(actor==0?0:actor==2?-36:36):52+actor*14;}
  static void wave(Battle b){
-  for(int k=0;k<ENEMIES.length;k++){Battle.Unit old=b.units[ENEMIES[k]];if(old.hp<=0){old.npc=0;old.maxHp=0;old.dead=true;}}
-  int amount=Math.min(6,b.tribalGoal);
-  for(int n=0;n<amount;n++){int slot=ENEMIES[n];int kind=n==amount-1?ELITE:SPEAR;spawn(b,slot,kind,300+n*28);b.tribalDead3++;}
-  b.tribalWave++;
+  int live=0;for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].npc==SPEAR)live++;
+  int amount=Math.min(5,Math.min(10-live,GOAL-b.tribalDead3));
+  Battle.Unit chief=b.units[1];int placed=0;
+  for(int k=1;k<ENEMIES.length&&placed<amount;k++){
+   int slot=ENEMIES[k];if(b.units[slot].hp>0)continue;
+   int x=chief.x-chief.face*(46+placed*18);
+   spawn(b,slot,SPEAR,x);placed++;b.tribalDead3++;
+  }
+  if(placed>0)b.tribalWave++;
  }
  static void setup(Battle b,int encounter,int difficulty,boolean ignoredBeanSave){
-  b.dungeonStage=encounter+2;b.dungeonDifficulty=difficulty;b.unitCount=13;b.teams=true;b.tribalOutcome=-1;b.tribalGoal=GOAL;
+  b.dungeonStage=encounter+2;b.dungeonDifficulty=difficulty;b.unitCount=encounter==1?14:13;b.teams=true;b.tribalOutcome=-1;b.tribalGoal=GOAL;
   b.tribalRound=1;b.tribalPhase=1;b.tribalWave=b.tribalClock=b.tribalDead1=b.tribalDead3=0;
   b.tribalFx=120;b.tribalState=OPENING;b.tribalBeanSaved=false;b.ballCount=b.bursts=b.settle=0;
-  for(int i=0;i<13;i++){Battle.Unit u=b.units[i];if(i<6&&i%2==0){u.npc=0;u.team=0;if(u.hp>0)place(b,i,allyX(i,twins(b)));}else{u.npc=0;u.hp=0;u.dead=true;u.maxHp=0;}}
-  if(encounter==1){wave(b);b.botPhase=INTRO_SPEAR;}
+  for(int i=0;i<b.unitCount;i++){Battle.Unit u=b.units[i];if(i<6&&i%2==0){u.npc=0;u.team=0;if(u.hp>0)place(b,i,allyX(i,twins(b)));}else{u.npc=0;u.hp=0;u.dead=true;u.maxHp=0;}}
+  if(encounter==1){spawn(b,1,ELITE,310);wave(b);b.botPhase=INTRO_SPEAR;}
   else if(twins(b)){spawn(b,1,BROTHER,88);spawn(b,3,SISTER,408);b.botPhase=BULAN_INTRO;}
   else{spawn(b,1,SULAN,300);b.botPhase=SULAN_INTRO;}
   b.active=twins(b)?3:1;b.botWait=0;b.countdown=b.turnLimit;b.over=false;b.winner=-1;b.charging=false;
@@ -91,6 +96,7 @@ final class TribalRules {
  static void heal(Battle b,Battle.Unit u,int amount){if(u.hp<=0)return;u.hp=Math.min(u.maxHp,u.hp+amount);u.flashTicks=36;u.lastBuff=13;}
  static void round(Battle b){
   b.tribalRound++;
+  if(stage(b)==1)wave(b);
   if(twins(b)){
    if(b.units[1].hp<=0&&b.units[3].hp>0&&b.tribalRound-b.tribalDead1>=reviveRounds){spawn(b,1,BROTHER,88);b.units[1].hp=b.units[1].maxHp/2;}
    if(b.units[3].hp<=0&&b.units[1].hp>0&&b.tribalRound-b.tribalDead3>=reviveRounds){spawn(b,3,SISTER,408);b.units[3].hp=b.units[3].maxHp/2;}
@@ -120,7 +126,7 @@ final class TribalRules {
   boolean player=false,enemy=false;
   for(int i=0;i<b.unitCount;i++){
    Battle.Unit u=b.units[i];if(u.hp<=0&&!u.dead){u.dead=true;u.deathX=u.x;u.deathY=u.y;u.flashTicks=30;
-    if(stage(b)==1&&u.team==1&&u.npc>=SPEAR&&u.npc<=ELITE){b.tribalDead1++;b.tribalGoal=Math.max(0,b.tribalGoal-1);}
+    if(stage(b)==1&&u.team==1&&u.npc==SPEAR){b.tribalDead1++;b.tribalGoal=Math.max(0,b.tribalGoal-1);}
     if(twins(b)&&i==1)b.tribalDead1=b.tribalRound;if(twins(b)&&i==3)b.tribalDead3=b.tribalRound;
    }
    if(u.hp>0){if(u.npc==0&&u.team==0)player=true;if(u.team==1&&fighter(u))enemy=true;}
@@ -130,16 +136,16 @@ final class TribalRules {
    int x=b.units[1].x;spawn(b,1,RAGE,x);b.tribalPhase=2;b.tribalFx=75;b.tribalState=TRANSFORM;b.botPhase=POWER_LINE;
    b.finishPower();b.ballCount=b.bursts=b.settle=0;b.charging=false;b.hitSerial++;return false;
   }
-  if(stage(b)==1&&!enemy&&b.tribalGoal>0){wave(b);return false;}
+  if(stage(b)==1&&!enemy&&b.tribalGoal>0)return false;
   if(stage(b)==4&&b.units[1].hp<=0||twins(b)&&b.units[1].hp<=0&&b.units[3].hp<=0||!enemy){b.tribalOutcome=0;b.tribalState=DEAD;b.tribalFx=stage(b)==4?65:35;b.ballCount=b.bursts=b.settle=0;b.charging=false;return false;}
   if(b.turn>200){win(b,1);return true;}return false;
  }
  static void projectile(Battle b,int actor,int victim,int weapon,int offset){
   if(b.ballCount>=b.balls.length)return;Battle.Unit u=b.units[actor],v=b.units[victim];Battle.Ball p=new Battle.Ball();
   p.owner=actor;p.weapon=weapon;p.x=(u.x+u.face*(u.npc>=SULAN?22:12))*256;p.y=(u.y-(u.npc>=SULAN?39:22))*256;
-  int steps=Math.max(70,Math.min(170,Math.abs(v.x-u.x)*2/3+65));
-  p.vx=(v.x*256-p.x)*4/steps;p.vy=((Battle.targetY(v)+offset)*256-p.y)*4/steps-Battle.gravity(p)*(steps+1)/2;
-  if(u.npc==ELITE){p.y+=offset*256;p.vy-=offset*256*4/steps;}
+  int steps=u.npc==ELITE?Math.max(140,Math.min(240,Math.abs(v.x-u.x)*2/3+100)):Math.max(70,Math.min(170,Math.abs(v.x-u.x)*2/3+65));
+  p.vx=(v.x*256-p.x)*4/steps;p.vy=((Battle.targetY(v)+(u.npc==ELITE?0:offset))*256-p.y)*4/steps-Battle.gravity(p)*(steps+1)/2;
+  if(u.npc==ELITE){int vx=p.vx,vy=p.vy,cs=Battle.cos(offset),sn=Battle.sin(offset);p.vx=(vx*cs-vy*sn)/1024;p.vy=(vx*sn+vy*cs)/1024;}
   p.radius=weapon==FIRE_SHOT?11:4;p.damage=DAMAGE[b.dungeonDifficulty]*(u.npc==RAGE?130:100)/100;
   if(u.npc==ELITE)p.damage=Math.max(1,p.damage/3);
   b.balls[b.ballCount++]=p;
