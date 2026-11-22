@@ -7,7 +7,7 @@ final class OnlineChunks {
     final OnlineClient net;
     final Vector queued=new Vector();
     int turn=-1, completed=-1, received=-1, id, remaining, kind;
-    boolean terminal, resolved, ownPending, resetTerrain, playing;
+    boolean terminal, resolved, ownPending, resetTerrain, playing;boolean recovering;int recoveryFailures;
     DataInputStream frames;
     byte[] finalFrame,previousFrame;
     long waitingSince;
@@ -26,6 +26,7 @@ final class OnlineChunks {
         return net.prefetchCap&&turn>=0 ? turn : displayedTurn;
     }
     int cached() {
+        if(recovering)return Integer.MIN_VALUE;
         if (!net.prefetchCap) return frames!=null||ownPending ? id : completed;
         // Values below -1 advertise a full receive window.
         return queued.size()+(frames!=null||ownPending?1:0)>=MAX_SEGMENTS ? -received-2 : received;
@@ -33,6 +34,7 @@ final class OnlineChunks {
     void read(DataInputStream in, boolean done, int serverTurn) throws IOException {
         if (turn!=serverTurn) { reset();turn=serverTurn; }
         int stage=in.readUnsignedByte();
+        if(recovering&&stage==0){net.acceptSnapshot(in,done,serverTurn);recovering=false;recoveryFailures=0;return;}
         if (stage==0 || stage==5&&net.liveCap) { if(net.phase==2){reset();turn=serverTurn;} net.acceptSnapshot(in,done,serverTurn);return; }
         if (stage==3) return;
         if (stage!=4) throw new IOException("Sai đoạn hành động.");
@@ -102,7 +104,10 @@ final class OnlineChunks {
                 net.lastPoll=0;
             }
             return true;
-        } catch (IOException error) { net.disconnect("Không đọc được đoạn hành động.");return true; }
+        } catch (IOException error) {
+            if(++recoveryFailures<=2){reset();recovering=true;net.predicting=net.resolutionSeen=false;net.c.held=net.c.fireKey=0;net.revision=0;net.lastPoll=0;return true;}
+            net.disconnect("Không đọc được đoạn hành động: "+error.toString());return true;
+        }
     }
     void finish() {
         if (!ownPending||(!net.c.game.pendingNext&&!net.c.game.over)||net.c.powShotPending) return;
@@ -113,3 +118,4 @@ final class OnlineChunks {
         } catch (IOException error) { net.disconnect("Không đọc được kết quả."); }
     }
 }
+

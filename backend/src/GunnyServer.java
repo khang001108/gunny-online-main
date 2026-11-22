@@ -123,6 +123,7 @@ public final class GunnyServer implements AutoCloseable {
         }catch(IOException e){throw new IllegalStateException(e);}}
         void chunkFlush(boolean terminal){if(host.live)return;if(chunkFrames==null)return;if(chunkCount==0){if(terminal)chunkFrame();else{chunkFrames=null;return;}}try{ByteArrayOutputStream bytes=new ByteArrayOutputStream();DataOutputStream out=new DataOutputStream(bytes);out.writeByte(chunkKind);out.writeBoolean(terminal);out.writeShort(chunkCount);chunkFrames.writeTo(out);chunks.add(bytes.toByteArray());chunkFrames=null;deltaFrame=null;chunkTerminal=terminal;}catch(IOException e){throw new IllegalStateException(e);}}
         void chunkPacket(DataOutputStream out,Session viewer,int revision,int clientTurn,int completed,int cached)throws IOException{
+            if(cached==Integer.MIN_VALUE){out.writeByte(0);snapshot(out,this,0,viewer);return;}
             if(viewer.live){out.writeByte(5);snapshot(out,this,revision,viewer);return;}
             int next=clientTurn==battle.turn?completed+1:0;
             if(viewer.prefetch&&clientTurn==battle.turn){

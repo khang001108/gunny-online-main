@@ -52,6 +52,18 @@ public class UiTribal797Check {
           if(!c.game.teams||c.game.dungeonStage!=stage)throw new AssertionError("Dungeon presentation restored before snapshot");
           for(int i=1;i<6;i+=2)if(c.loadingParticipant(i))throw new AssertionError("No enemy slot as loading hero after reconnect");
           c.mode=14;shot(c,"tribal797-reconnect-loading-"+stage);sync(server,room,host,c);
+          room.chunkBegin(1);for(int tick=0;tick<18;tick++){room.battle.tick();room.chunkFrame();}room.chunkFlush(false);
+          n.chunks.reset();n.prefetchCap=false;
+          for(int segment=0;segment<room.chunks.size();segment++){
+           var block=room.chunks.get(segment);var packetBytes=new java.io.ByteArrayOutputStream();var packetOut=new java.io.DataOutputStream(packetBytes);packetOut.writeByte(4);packetOut.writeInt(segment);packetOut.writeInt(block.length);packetOut.write(block);
+           n.chunks.read(new java.io.DataInputStream(new java.io.ByteArrayInputStream(packetBytes.toByteArray())),false,room.battle.turn);
+           while(n.chunks.frames!=null)n.chunks.animate();if(!n.logged)throw new AssertionError("Action playback disconnected stage "+stage);
+          }
+          n.chunks.frames=new java.io.DataInputStream(new java.io.ByteArrayInputStream(new byte[]{0,5,1}));n.chunks.remaining=1;n.chunks.playing=true;n.chunks.animate();
+          if(!n.logged||n.chunks.cached()!=Integer.MIN_VALUE)throw new AssertionError("Broken action requests full state without disconnect");
+          var recoveryBytes=new java.io.ByteArrayOutputStream();serverRecovery(server,room,host,recoveryBytes);n.chunks.read(new java.io.DataInputStream(new java.io.ByteArrayInputStream(recoveryBytes.toByteArray())),false,room.battle.turn);
+          if(n.chunks.recovering||c.game.unitCount!=(stage==3?14:13))throw new AssertionError("Full state restores playable NPC roster");
+          n.prefetchCap=true;
           boolean[] before=room.ground.solid.clone();room.ground.crater(240,220,60);
           if(!java.util.Arrays.equals(before,room.ground.solid)||!room.ground.craters.isEmpty())throw new AssertionError("Server Tribal ground unchanged");
           for(int x=30;x<450;x+=30){int y=c.surface(x,0);c.crater(x,y,30);if(c.surface(x,0)!=y)throw new AssertionError("Client Tribal ground unchanged");}
@@ -113,6 +125,7 @@ public class UiTribal797Check {
         n.inBattle=n.logged=false;c.beginMatch(0);c.mode=1;shot(c,"tribal797-pvp-regression");if(c.game.dungeonStage!=0)throw new AssertionError("PvP reset");
         c.stop();System.out.println("PASS real MIDP campaign renderer, rooms/loading, authoritative snapshots, native poses, 4 NPC payloads, cache release and PvP at "+(320*scale)+"x"+(240*scale));System.exit(0);
     }
+    static void serverRecovery(GunnyServer server,GunnyServer.Room room,GunnyServer.Session host,java.io.ByteArrayOutputStream bytes)throws Exception{room.chunkPacket(new java.io.DataOutputStream(bytes),host,0,room.battle.turn,-1,Integer.MIN_VALUE);}
     static void sync(GunnyServer server,GunnyServer.Room room,GunnyServer.Session host,PhoneCanvas c)throws Exception{
      var wire=new java.io.ByteArrayOutputStream();server.snapshot(new java.io.DataOutputStream(wire),room,0,host);var input=new java.io.DataInputStream(new java.io.ByteArrayInputStream(wire.toByteArray()));c.net.readSnapshot(input);if(input.available()!=0)throw new AssertionError("Snapshot trailing bytes");
     }
