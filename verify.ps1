@@ -10,7 +10,7 @@ New-Item -ItemType Directory -Force backend/build | Out-Null
 $sourceFiles=@(Get-ChildItem backend/src,backend/tests -Filter *.java | ForEach-Object FullName)
 & "$javaBin/javac.exe" --release 17 -encoding UTF-8 -d backend/build @sourceFiles
 if($LASTEXITCODE -ne 0){throw 'Compilation failed'}
-foreach($check in "SulanAdds7913Check","Sulan7912Check","DungeonLevels7911Check","Raid798Check","Loading796Check","Ranking794Check","Conversion793Check","Features793Check","Fix791Check","Vip790Check","VipTcp790Check","CardsPresence790Check","Update788Check","Gift786Check","AdminLanCheck","Online785Check","TribalCheck","TribalVideo797Check","TribalWavesCheck","BulanSequenceCheck","TribalTcpCheck","CraftingChanceCheck"){
+foreach($check in "Sulan7915Check","Fix7914Check","SulanAdds7913Check","Sulan7912Check","DungeonLevels7911Check","Raid798Check","Loading796Check","Ranking794Check","Conversion793Check","Features793Check","Fix791Check","Vip790Check","VipTcp790Check","CardsPresence790Check","Update788Check","Gift786Check","AdminLanCheck","Online785Check","TribalCheck","TribalVideo797Check","TribalWavesCheck","BulanSequenceCheck","TribalTcpCheck","CraftingChanceCheck"){
  & "$javaBin/java.exe" '-Djava.awt.headless=true' -cp backend/build $check
  if($LASTEXITCODE -ne 0){throw "$check failed"}
 }

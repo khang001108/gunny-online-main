@@ -12,7 +12,7 @@ public final class TribalVideo797Check {
   b=raid(1);int elite=-1;for(int i=0;i<13;i++)if(b.units[i].npc==TribalRules.ELITE)elite=i;npcOnly(b,elite);for(int i=0;i<73;i++)b.tick();ok(b.ballCount==3&&Arrays.stream(b.balls,0,b.ballCount).allMatch(x->x.weapon==TribalRules.SPEAR_SHOT),"Purple warrior launches three spear payloads");hp=b.units[0].hp;turn(b);ok(b.units[0].hp<hp,"Thrown NPC spear follows physics and hits");
   b=raid(2);b.active=3;for(int i=0;i<75;i++)b.tick();ok(b.ballCount==1&&b.balls[0].weapon==TribalRules.SPIRIT_SHOT,"Bulan uses his own thrown staff");
   b=raid(4);b.tribalState=0;int shots=b.shotSerial;turn(b);ok(b.shotSerial-shots==1,"Golden Sulan throws once at the only player");
-  b=raid(4);b.units[1].hp=0;b.check();for(int i=0;i<SulanRules.TRANSFORM;i++)b.tick();b.beginTurn(1);shots=b.shotSerial;turn(b);ok(b.shotSerial-shots==3,"Red Sulan launches three sequential flame salvos for one player");
+  b=raid(4);b.units[1].hp=0;b.check();for(int i=0;i<SulanRules.TRANSFORM;i++)b.tick();b.beginTurn(1);shots=b.shotSerial;turn(b);ok(b.shotSerial-shots==12,"Red Sulan launches four native three-ball volleys");
  }
  static void skills(){
   var b=raid(2);b.active=1;for(int i=0;i<75;i++)b.tick();ok(TribalRules.alive(b,TribalRules.FATIGUE)&&b.ballCount==0,"Bulan casts a fatigue totem without also firing");
@@ -25,7 +25,7 @@ public final class TribalVideo797Check {
  }
  static void campaign()throws Exception{
   var store=new CloudStore.Memory();var host=Expansion780Check.session(store,"Video797",70);host.tribal=host.flock=host.campaign=true;
-  host.tribal797=false;try{TribalDungeon.eligible(host,0);throw new AssertionError("Old client accepted");}catch(IllegalArgumentException expected){ok(expected.getMessage().contains("7.9.13"),"Unsupported NPC clients receive an update message");}host.tribal797=true;
+  host.tribal797=false;try{TribalDungeon.eligible(host,0);throw new AssertionError("Old client accepted");}catch(IllegalArgumentException expected){ok(expected.getMessage().contains("7.9.15"),"Unsupported NPC clients receive an update message");}host.tribal797=true;
   try(var server=new GunnyServer(new InetSocketAddress("127.0.0.1",0),Path.of("backend/assets"),store)){
    server.clock.shutdownNow();
    for(int stage:new int[]{3,4,6}){

@@ -12,21 +12,21 @@ public final class Sulan7912Check {
  }
  static void attacks(){for(int people=1;people<=3;people++){
   Battle b=raid(people,0);int shots=b.shotSerial;turn(b,1);ok(b.shotSerial-shots==people,"Gold throws once per alive player: "+people);ok(b.active==0,"Gold returns to first player");
-  red(b);ok(b.units[6].npc==7&&b.units[6].hp==SulanRules.beanHp(0),"Transform summons one low-HP pea");shots=b.shotSerial;turn(b,1);ok(b.shotSerial-shots==people*3,"Hellfire has three salvos per player: "+people);ok(b.active==6,"Pea gets extinguishing turn after red boss");
+  red(b);ok(b.units[6].npc==7&&b.units[6].hp==SulanRules.beanHp(0),"Transform summons one low-HP pea");shots=b.shotSerial;turn(b,1);ok(b.shotSerial-shots==12,"Hellfire has four volleys of three balls: "+people);ok(b.active==6,"Pea gets extinguishing turn after red boss");
   for(int n=0;n<6;n+=2)if(b.units[n].hp>0)b.sulanBurn[n]=150;b.sulanFireCount=1;b.sulanFireX[0]=60;b.sulanFireLife[0]=150;turn(b,6);ok(b.sulanFireCount==0&&Arrays.stream(b.sulanBurn).sum()==0,"Pea extinguishes ground and attached flames");ok(b.active==0,"Pea returns turn to team");
-  int hp=b.units[6].hp;turn(b,1);ok(b.shotSerial-shots==people*3&&b.units[6].hp<hp,"Next red turn is all-position fury, including pea");
+  int hp=b.units[6].hp;turn(b,1);ok(b.shotSerial-shots==12&&b.units[6].hp<hp,"Next red turn is all-position fury, including pea");
  }}
  static void damage(){for(int diff=0;diff<3;diff++){
   Battle tuned=raid(1,diff);red(tuned);tuned.units[1].power=1;turn(tuned,1);ok(diff==2?tuned.units[6].hp==0:tuned.units[6].hp>0,"Hard pea falls to fury; Easy/Normal survive a hit");
   Battle b=raid(1,diff);red(b);b.beginTurn(0);Battle.Ball p=new Battle.Ball();p.owner=0;p.damage=500;p.radius=1;p.x=b.units[6].x*256;p.y=Battle.targetY(b.units[6])*256;int before=b.units[6].hp;b.impact(p);ok(before-b.units[6].hp==100,"Pea receives exactly 20 percent friendly damage");
-  b.sulanBurn[0]=180;before=b.units[0].hp;b.units[0].x=20;for(int t=0;t<30;t++)SulanRules.ambient(b);ok(before-b.units[0].hp==30+diff*25,"Burn follows player and damages once per second");
+  b.sulanBurn[0]=180;before=b.units[0].hp;b.units[0].x=20;for(int t=0;t<30;t++)SulanRules.ambient(b);ok(before==b.units[0].hp,"Burn does not tick with render time");b.beginTurn(0);ok(before-b.units[0].hp==30+diff*25,"Burn damages on actor turn");
   b.units[0].x=b.units[6].x;int guarded=SulanRules.damage(b,flame(),0,400);b.units[0].x=20;ok(guarded==200&&SulanRules.damage(b,flame(),0,400)==400,"Standing near living pea halves red fire damage");
   b.units[6].hp=0;ok(SulanRules.damage(b,flame(),0,400)==400,"Dead pea cannot protect");
   b.units[1].power=1;turn(b,1);ok(!b.over,"Party survives on all difficulties");
   b.units[1].hp=0;b.check();ok(b.sulanLine==SulanRules.FAREWELL&&b.tribalState==TribalRules.DEAD&&!b.over,"Farewell precedes burned corpse and reward");for(int t=0;t<SulanRules.DEATH;t++)b.tick();ok(b.over&&b.winner==0,"Final death animation ends in victory");
  }
  Battle b=raid(1,0);red(b);b.beginTurn(0);for(int n=0;n<700;n++)SulanRules.ambient(b);ok(b.sulanStory==3&&b.input(),"Three story lines never interrupt player's controls");
- b=raid(1,0);red(b);b.beginTurn(0);b.sulanExternalClock=true;b.units[0].x=20;b.sulanBurn[0]=180;int hp=b.units[0].hp;for(int n=0;n<90;n++)b.tick();ok(b.units[0].hp==hp,"Batched input cannot accelerate the external burn clock");for(int n=0;n<30;n++)SulanRules.ambient(b);ok(b.units[0].hp==hp-30,"Only server clock applies the one-second burn tick");
+ b=raid(1,0);red(b);b.beginTurn(0);b.sulanExternalClock=true;b.units[0].x=20;b.sulanBurn[0]=180;int hp=b.units[0].hp;for(int n=0;n<90;n++)b.tick();ok(b.units[0].hp==hp,"Batched input cannot accelerate the external burn clock");for(int n=0;n<30;n++)SulanRules.ambient(b);ok(b.units[0].hp==hp,"Wall clock no longer damages burn");b.beginTurn(0);ok(b.units[0].hp==hp-30,"Burn applies on actor turn only");
  }
  static Battle.Ball flame(){Battle.Ball p=new Battle.Ball();p.owner=1;p.weapon=TribalRules.FIRE_SHOT;return p;}
  static void wire()throws Exception{var store=new CloudStore.Memory();var host=Expansion780Check.session(store,"SulanWire",70);host.sulan7912=host.tribal=host.campaign=host.flock=true;

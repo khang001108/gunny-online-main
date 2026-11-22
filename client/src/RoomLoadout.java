@@ -66,7 +66,7 @@ final class RoomLoadout {
   }
   dungeonMapRow("Độ khó: ",c.dungeon.difficultyName(online?c.net.dungeonDifficulty:c.offlineDungeon.difficulty),153,dungeonMapYellow);
   dungeonMapRow("Cấp: ",selectedStage>=3?"30+":"15+",165,dungeonMapGreen);
-  dungeonMapRow("Ải: ",c.net.dungeonStage>=3?"1-3":"1-2",177,dungeonMapGreen);
+  dungeonMapRow("Ải: ",c.net.dungeonStage>=3?DungeonRewards.tribalNumber(c.net.dungeonStage)+"-3":Math.max(1,c.net.dungeonStage)+"-2",177,dungeonMapGreen);
  }
  private void dungeonMapRow(String label, String value, int y, Image font) {
   c.tooltip.colored(label,231,y,font);

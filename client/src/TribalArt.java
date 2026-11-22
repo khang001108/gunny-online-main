@@ -1,10 +1,10 @@
 import javax.microedition.lcdui.Image;
 /** Native labeled Flash poses baked for MIDP; caches only the current encounter. */
 final class TribalArt {
- final PhoneCanvas c;final Image[] sprites=new Image[16],headers=new Image[16];
+ final PhoneCanvas c;final Image[] sprites=new Image[16],headers=new Image[16],bossFaces=new Image[16];
  Image cover,small,wing,missiles,healthFrame,healthBar,bulanTitle,bulanShade,sword,sulanTitle,redSpeech,mask;int shadeAlpha=-1;int coverStage,cachedStage;
  TribalArt(PhoneCanvas canvas){c=canvas;}
- void release(){for(int i=0;i<16;i++){sprites[i]=headers[i]=null;}cover=small=wing=missiles=healthFrame=healthBar=bulanTitle=bulanShade=sword=sulanTitle=redSpeech=mask=null;talkLines=null;talkLine=-1;shadeAlpha=-1;coverStage=cachedStage=0;}
+ void release(){for(int i=0;i<16;i++){sprites[i]=headers[i]=bossFaces[i]=null;}cover=small=wing=missiles=healthFrame=healthBar=bulanTitle=bulanShade=sword=sulanTitle=redSpeech=mask=null;talkLines=null;talkLine=-1;shadeAlpha=-1;coverStage=cachedStage=0;}
  Image atlas(int kind){if(sprites[kind]==null)sprites[kind]=c.combatRoomArt("tribal797-npc-"+kind);return sprites[kind];}
  int size(int kind){return kind>=14?96:kind==8||kind==9?72:56;}
  Image smallCover(){if(small==null)small=c.combatRoomArt("tribal797-banner");return small;}
@@ -14,7 +14,7 @@ final class TribalArt {
   Battle b=c.game;Battle.Unit u=b.units[actor];int kind=u.npc;
   if(SulanRules.active(b)&&actor==1&&b.tribalState==TribalRules.OPENING&&SulanRules.INTRO-b.tribalFx<60)return;
   if(kind<4||kind>15||u.maxHp==0||u.hp<=0&&u.flashTicks==0&&b.tribalState!=TribalRules.DEAD)return;
-  if(cachedStage!=b.dungeonStage){for(int i=0;i<16;i++)sprites[i]=headers[i]=null;cachedStage=b.dungeonStage;}
+  if(cachedStage!=b.dungeonStage){for(int i=0;i<16;i++)sprites[i]=headers[i]=bossFaces[i]=null;cachedStage=b.dungeonStage;}
   boolean goldDeath=SulanRules.active(b)&&actor==1&&b.tribalState==TribalRules.TRANSFORM&&SulanRules.TRANSFORM-b.tribalFx<100;
   if(goldDeath)kind=TribalRules.SULAN;
   else if(kind==TribalRules.RAGE){sprites[TribalRules.SULAN]=null;headers[TribalRules.SULAN]=null;}
@@ -49,12 +49,12 @@ final class TribalArt {
 
  void impact(Battle.Blast blast){int frame=Math.min(11,blast.time*12/25),weapon=blast.weapon==TribalRules.FIRE_SHOT?0:5;c.part(c.impactArt(weapon),frame%4*96,frame/4*96,96,96,blast.x-c.cameraX-48,blast.y-c.cameraY-48,false);}
  void boss(int actor,int y){
-  Battle.Unit u=c.game.units[actor];if(healthFrame==null){healthFrame=c.combatRoomArt("npc780-boss-frame");healthBar=c.combatRoomArt("npc780-boss-hp");}
+  Battle.Unit u=c.game.units[actor];if(u.npc<4||u.npc>15||u.maxHp<=0)return;if(healthFrame==null){healthFrame=c.combatRoomArt("npc780-boss-frame");healthBar=c.combatRoomArt("npc780-boss-hp");}
   int x=171,percent=Math.max(0,u.hp)*100/Math.max(1,u.maxHp);c.img(healthFrame,x,y);
   int cx=c.g.getClipX(),cy=c.g.getClipY(),cw=c.g.getClipWidth(),ch=c.g.getClipHeight();
   c.clip(x+29,y+10,Math.max(0,46*percent/100),12);c.img(healthBar,x+23,y+9);c.g.setClip(cx,cy,cw,ch);
-  if(headers[u.npc]==null)headers[u.npc]=c.combatRoomArt("tribal797-portrait-"+u.npc);
-  c.clip(x+1,y+1,23,24);c.img(headers[u.npc],x-9,y-7);c.g.setClip(cx,cy,cw,ch);
+  if(bossFaces[u.npc]==null){Image face=c.combatRoomArt("tribal797-portrait-"+u.npc);if(face==null)return;bossFaces[u.npc]=NativeUi.fit(face,22*c.s,23*c.s,0);}
+  c.clip(x+1,y+1,23,24);c.img(bossFaces[u.npc],x+3,y+3);c.g.setClip(cx,cy,cw,ch);
   c.pcCenter(TribalRules.name(u.npc),x+46,y+2);c.pcCenter(percent+"%",x+50,y+14);
  }
  void hud(){
@@ -73,11 +73,6 @@ final class TribalArt {
    int age=TribalRules.BULAN_INTRO_END-b.tribalFx;
    if(age>=TribalRules.BULAN_TITLE_AT){drawBulanTitle(age-TribalRules.BULAN_TITLE_AT);return;}
    if(age<TribalRules.BULAN_LEFT_AT)return;
-  }
-  if(!TribalRules.twins(b)&&b.tribalState==TribalRules.OPENING&&b.tribalFx>65){
-   c.panel(57,81,206,78);c.pcCenter("Điều kiện thắng",160,87);
-   c.pcCenter(b.dungeonStage==3?"Hạ 20 kẻ địch":TribalRules.twins(b)?"Hạ hai anh em Bulan":"Đánh bại hai dạng Sulan",160,103);
-   c.pcCenter("Thua khi cả đội bị đánh bại",160,120);c.pcCenter("Giới hạn 200 lượt",160,135);return;
   }
   if(b.tribalState==TribalRules.TRANSFORM&&b.tribalFx>0){c.pcCenter("Sulan thức tỉnh!",160,76);return;}
   if(b.botPhase>0&&(b.tribalFx>0||b.units[b.active].walk<95)){

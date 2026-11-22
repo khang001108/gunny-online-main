@@ -575,8 +575,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     boolean miniDirty = true;
     Image hudYourTurn, hudSelectGlow, hudResultWin, hudResultLose, hudResultTie, standingSuit;
     final Image[] standingLayers = new Image[5];
-    final Image[] slopeBody = new Image[6];
-    final int[] slopeKeys = new int[6];
+    final Image[] slopeBody = new Image[Battle.MAX_UNITS];
+    final int[] slopeKeys = new int[Battle.MAX_UNITS];
     int[] slopePixels, slopeRotated, slopeLayer;
     Image dialFace;
     int dialSlope = 999;
@@ -1371,7 +1371,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         queenCall=queenBow=queenDeath=queenArrow=queenIdle=queenShade=queenHit=queenTitle=speechFont=null;
         for(int i=0;i<2;i++){antIdle[i]=antWalk[i]=antBeat[i]=null;for(int j=0;j<antPoses[i].length;j++)antPoses[i][j]=null;}
         for(int i=0;i<queenArrowRotations.length;i++)queenArrowRotations[i]=null;
-        tribalArt.release();
+        tribalArt.release();conditions.reset();
     }
     void beginMatch(int battleMap) throws IOException {
         releaseNpcArt();loadout.releaseMenuArt();gifts.releaseArt();home.releaseArt();ranking.releaseArt();bag.releaseArt();shop.releaseArt();forge.releaseArt();vip.release();tooltip.releaseArt();popup.releaseArt();ui.releaseArt();
@@ -1424,7 +1424,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         System.gc();
         aimSector = null;
         aimSectorMin = aimSectorMax = -1;
-        tribalArt.release();
+        tribalArt.release();conditions.reset();
         map = battleMap;
         background = load("bg" + map);
         Image terrain = load("land" + map);
@@ -1603,7 +1603,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 || AntCaveRules.dying(game) || AntCaveRules.summoning(game) && game.botPhase<AntCaveRules.REINFORCEMENTS+45
                 || game.botPhase == AntCaveRules.QUEEN_THREAT || game.botPhase==AntCaveRules.QUEEN_HIT
                 || game.botPhase==AntCaveRules.QUEEN_SUCCESS);
-        if(SulanRules.cinematic(game)||TribalRules.active(game)&&game.tribalState==TribalRules.OPENING&&game.tribalFx>0){
+        if(SulanRules.stomping(game)||SulanRules.cinematic(game)||TribalRules.active(game)&&game.tribalState==TribalRules.OPENING&&game.tribalFx>0){
             int elapsed=120-game.tribalFx,slot=SulanRules.active(game)?SulanRules.cameraActor(game):TribalRules.twins(game)?TribalRules.introActor(game):elapsed<25?0:game.active;
             if(slot==0&&onlineBattle())slot=playerActor();
             tx=game.units[slot].x-160;ty=game.units[slot].y-(game.units[slot].npc==0?135:170);
@@ -2193,6 +2193,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         shop.draw();
     }
 
+    final DungeonConditions conditions=new DungeonConditions(this);
     void drawBattle() {
         if (onlineBattle())
             net.visuals.age(game, System.currentTimeMillis());
@@ -2276,7 +2277,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         drawTop();
         drawHud();
         if(!TribalRules.active(game))drawDungeonSpeech();else tribalArt.overlay();
-        drawPowCutin();
+        drawPowCutin();conditions.draw();
         if (training && !game.busy()) {
             panel(52, 149, 208, 42);
             center(game.turn <= 1 ? "Giữ " + keyBindings.name(32) + " để lấy lực" : "Chỉnh góc để bắn trúng bia", 156, 152);
@@ -2476,10 +2477,11 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
 
     Image fadeBuffer;
     int[] fadePixels;
-    final Image[] fadedUnits = new Image[6];
-    final int[] fadedKeys = new int[6];
+    final Image[] fadedUnits = new Image[Battle.MAX_UNITS];
+    final int[] fadedKeys = new int[Battle.MAX_UNITS];
 
     void drawUnit(int index) {
+        if(index>=6&&game.units[index].npc==0)return;
         int dx=0,dy=0;if(onlineBattle()&&net.liveCap){long now=System.currentTimeMillis();dx=net.motion.offset(index,false,s,now);dy=net.motion.offset(index,true,s,now);}
         g.translate(dx,dy);try{drawUnitAuthoritative(index);}finally{g.translate(-dx,-dy);}
     }
@@ -2734,6 +2736,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void drawUnitRaw(int index) {
+        if(index>=6&&game.units[index].npc==0)return;
         if(offlineDungeon.active&&index>0&&index<6&&index%2==0&&offlineDungeon.allyAt(index)<0)return;
         Battle.Unit u = game.units[index];
         if(u.maxHp==0&&u.hp<=0||index>=6&&u.npc==0&&u.hp<=0)return;
@@ -2873,6 +2876,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void drawSlopedBody(int index, int anim, int x, int y) {
+        if(index<0||index>=actors.length)return;
         Battle.Unit u = game.units[index];
         int key = anim + 100 * (u.slope + 65) + 20000 * (u.face + 1) + 60000 * u.weapon;
         if (slopeBody[index] == null || slopeKeys[index] != key) {
@@ -3519,6 +3523,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
 
     protected synchronized void keyPressed(int key) {
         if (typing.key(key)) { repaint(); return; }
+        if(mode==1&&game.dungeonStage>0&&(key=='m'||key=='M')){conditions.toggle();repaint();return;}
         int rawKey = key;
         if (keyBindings.press(key)) return;
         key = keyBindings.map(key);

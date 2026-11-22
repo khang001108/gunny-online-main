@@ -44,7 +44,7 @@ final class OnlineChunks {
         // prepareBattle resets this object, so initialize before retaining data.
         if (!net.inBattle) { net.prepareBattle();turn=serverTurn; }
         if (next<=received) return;
-        if (next!=received+1) throw new IOException("Thiếu đoạn hành động.");
+        if (next!=received+1) { reset();turn=serverTurn;recovering=true;net.predicting=net.resolutionSeen=false;net.c.held=net.c.fireKey=0;net.revision=0;net.lastPoll=0;return; }
         if (queued.size()+(frames!=null||ownPending?1:0)>=MAX_SEGMENTS) return;
         DataInputStream block=new DataInputStream(new ByteArrayInputStream(data));
         Segment segment=new Segment();
