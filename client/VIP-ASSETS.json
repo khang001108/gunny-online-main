@@ -25,6 +25,12 @@
       "Screenrecorder-20261122-064116.mp4",
       "Screenrecorder-20261122-064139.mp4",
       "VIDEO_DOWNLOAD_1795305109484_1795305119734.mp4"
-    ]
+    ],
+    "show_ui_sizes": [
+      112,
+      64,
+      32
+    ],
+    "loading": "Separate single-frame PNGs for native wings and rings; no animated atlas decoded"
   }
 }

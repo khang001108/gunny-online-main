@@ -178,8 +178,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     cameraX=Battle.clamp(player.x-160,0,160);
                     cameraY=Battle.clamp(player.y-135,0,40);
                 }
-                toast = "Đến lượt bạn!";
-                toastTicks = 55;
+                lastTurn=-1;
+                syncTurnNotice();
             }
         }
     }
@@ -287,18 +287,18 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     loadingWidths[i]=width;
                 }catch(IOException ignored){}
             }
-            vip.back(vip.actorExp(i),vip.actorWing(i),center,145,width>=52?0:1,false);
+            vip.backStatic(vip.actorExp(i),vip.actorWing(i),center,145,width>=52?0:1);
             img(loadingHeroes[i],center-width/2,145-height);
             img(weapons[game.units[i].weapon],center+width/3-8,127);
             if(loadingReady(i)){
-                if(onlineBattle()&&net.clock793)pcCenter("100%",center,151);else if(versusOK!=null)img(versusOK,center-versusOK.getWidth()/(2*s),149);else pcCenter("OK",center,149);
+                if(versusOK!=null)img(versusOK,center-versusOK.getWidth()/(2*s),149);else pcCenter("OK",center,149);
             }else pcCenter((onlineBattle()&&net.clock793?net.loadingPercent[i]+"%":Math.min(100,loadTicks*100/60)+"%"),center,151);
             pcCenter(pcShort(actorName(i),width+8),center,165);
         }
         pcText(offlineDungeon.active?"Huyệt Ma Kiến • Ải "+offlineDungeon.stage:onlineBattle()&&net.roomKind==3?(net.dungeonStage>=3?"Bộ Lạc Tà Thần • Ải "+DungeonRewards.tribalNumber(net.dungeonStage):"Huyệt Ma Kiến • Ải "+net.dungeonStage):game.unitCount == 6 ? "Tổ đội • 3 đấu 3"
                 : game.teams ? "Phòng riêng • 2 đấu 2" : "Phòng riêng • 1 đấu 1", 8, 179);
         pcText("Chuẩn bị nhân vật và vũ khí", 8, 190);
-        pcText(loadTicks<60?"Đang tải tài nguyên...":allLoadingReady()?"Đã tải xong. Đang vào trận!":"Chờ người chơi khác tải xong...",8,201);
+        pcText(loadTicks<60?"Đang tải tài nguyên...":allLoadingReady()?"Tất cả đã OK. Chuẩn bị vào trận...":"Chờ người chơi khác tải xong...",8,201);
         if (roomMaps[map] == null)
             roomMaps[map] = combatRoomArt("room-map" + map);
         img(roomMaps[map], 166, 189);
@@ -3372,6 +3372,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void syncTurnNotice() {
+        if(mode!=1||onlineBattle()&&net.phase!=1)return;
         if (game.turn == lastTurn)
             return;
         lastTurn = game.turn;

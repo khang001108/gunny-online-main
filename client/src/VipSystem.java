@@ -3,6 +3,7 @@ import javax.microedition.lcdui.Image;
 /** Server-owned inventory and source-derived graphics. All image caches are screen-local. */
 final class VipSystem {
  final PhoneCanvas c;int experience,owned,equipped=-1;final int[] cards=new int[13];boolean loaded;long poll;int item,shopFocus;String requestKey="",requestOp="";int requestItem;
+ final Image[][] staticRings=new Image[3][3],staticWings=new Image[6][3];
  final Image[][] rings=new Image[3][4],wings=new Image[6][3];final Image[] badges=new Image[10],wingIcons=new Image[6],cardIcons=new Image[2];Image progress,fill;int barFrom,barTo;long barAt;
  static final int[] SIZE={72,44,24,144};
  VipSystem(PhoneCanvas c){this.c=c;}
@@ -10,7 +11,7 @@ final class VipSystem {
  int exp(){return c.onlineAccount()?experience:0;}
  int wing(){return c.onlineAccount()?equipped:-1;}
  int hp(){return VipRules.hp(wing());}
- void release(){for(int w=0;w<6;w++)for(int a=0;a<5;a++)for(int l=0;l<2;l++)sideWings[w][a][l]=null;for(int i=0;i<3;i++)for(int j=0;j<4;j++)rings[i][j]=null;for(int i=0;i<6;i++)for(int j=0;j<3;j++)wings[i][j]=null;for(int i=0;i<10;i++)badges[i]=null;for(int i=0;i<6;i++)wingIcons[i]=null;cardIcons[0]=cardIcons[1]=null;progress=fill=sparkle=null;}
+ void release(){for(int i=0;i<3;i++)for(int j=0;j<3;j++)staticRings[i][j]=null;for(int i=0;i<6;i++)for(int j=0;j<3;j++)staticWings[i][j]=null;for(int w=0;w<6;w++)for(int a=0;a<5;a++)for(int l=0;l<2;l++)sideWings[w][a][l]=null;for(int i=0;i<3;i++)for(int j=0;j<4;j++)rings[i][j]=null;for(int i=0;i<6;i++)for(int j=0;j<3;j++)wings[i][j]=null;for(int i=0;i<10;i++)badges[i]=null;for(int i=0;i<6;i++)wingIcons[i]=null;cardIcons[0]=cardIcons[1]=null;progress=fill=sparkle=null;}
  void releaseLargeEffects(){for(int i=0;i<3;i++)rings[i][0]=rings[i][3]=null;for(int i=0;i<6;i++)wings[i][0]=null;}
  Image cardIcon(int n){int i=n==12?1:0;if(cardIcons[i]==null)cardIcons[i]=c.combatRoomArt("vip-card-"+i);return cardIcons[i];}
  Image wingIcon(int n){if(wingIcons[n]==null)wingIcons[n]=c.combatRoomArt("vip-wing-icon-"+n);return wingIcons[n];}
@@ -20,10 +21,10 @@ final class VipSystem {
  void progress(){badge(exp(),88,54);c.pcCenter(VipRules.need(exp())==0?"MAX":VipRules.within(exp())+"/"+VipRules.need(exp()),98,69);}
  void badge(int xp,int x,int y){int lv=VipRules.level(xp);if(lv>0&&lv<=9){if(badges[lv]==null)badges[lv]=NativeUi.fit(c.combatRoomArt("vip-icon-"+lv),20*c.s,13*c.s,0);c.img(badges[lv],x,y);}else c.pcText("VIP",x,y);}
  void ring(int kind,int context,int frame,int x,int y){int size=SIZE[context];for(int k=0;k<3;k++)if(k!=kind)rings[k][context]=null;if(rings[kind][context]==null)rings[kind][context]=c.combatRoomArt("vip-ring-"+kind+"-"+size);c.part(rings[kind][context],frame%16*size,0,size,size,x-size/2,y-size,false);}
- void back(int xp,int wing,int x,int feet,int context,boolean burst){int lv=VipRules.level(xp),size=SIZE[context],phase=c.frame/3%16;
-  if(lv>0)ring((lv-1)/3,context,phase,x,feet);
-  if(wing>=0&&wing<6){int h=context==0?48:context==1?30:18;if(wings[wing][context]==null)wings[wing][context]=c.combatRoomArt("wing795-show-"+wing+"-"+size);c.part(wings[wing][context],(c.frame/3%20)*size,0,size,h,x-size/2,feet-size*3/4,false);}
- }
+ static final int[] WING_SIZE={112,64,32},WING_HEIGHT={72,42,22};
+ void back(int xp,int wing,int x,int feet,int context,boolean burst){if(c.mode==0||c.mode==5||c.mode==6||c.mode==8){releaseBattleWings();if(context==0)for(int w=0;w<6;w++)if(w!=wing)wings[w][0]=null;}int lv=VipRules.level(xp);if(lv>0)ring((lv-1)/3,context,c.frame/3%16,x,feet);if(wing>=0&&wing<6&&context<3){int size=WING_SIZE[context],h=WING_HEIGHT[context];if(wings[wing][context]==null)wings[wing][context]=c.combatRoomArt("wing796-show-"+wing+"-"+size);c.part(wings[wing][context],(c.frame/3%20)*size,0,size,h,x-size/2,feet-h*3/4,false);}}
+ void backStatic(int xp,int wing,int x,int feet,int context){releaseBattleWings();int lv=VipRules.level(xp);if(lv>0){int kind=(lv-1)/3,size=SIZE[context];if(staticRings[kind][context]==null)staticRings[kind][context]=c.combatRoomArt("vip796-ring-static-"+kind+"-"+size);c.img(staticRings[kind][context],x-size/2,feet-size);}if(wing>=0&&wing<6){int size=WING_SIZE[context],h=WING_HEIGHT[context];if(staticWings[wing][context]==null)staticWings[wing][context]=c.combatRoomArt("wing796-static-"+wing+"-"+size);c.img(staticWings[wing][context],x-size/2,feet-h*3/4);}}
+ void releaseBattleWings(){for(int w=0;w<6;w++)for(int a=0;a<5;a++)sideWings[w][a][0]=sideWings[w][a][1]=null;}
  final Image[][][] sideWings=new Image[6][5][2];
  void battleWing(int actor,boolean outer){int wing=actorWing(actor);if(wing<0||wing>5)return;Battle.Unit u=c.game.units[actor];int tilt=c.attackPose(actor)||c.freezeHolding(actor)?0:u.slope;if(u.face<0)tilt=-tilt;int angle=Battle.clamp((tilt+30+7)/15,0,4),layer=outer?1:0;for(int a=0;a<5;a++)if(a!=angle&&!angleUsed(wing,a))sideWings[wing][a][0]=sideWings[wing][a][1]=null;if(sideWings[wing][angle][layer]==null)sideWings[wing][angle][layer]=c.combatRoomArt("wing795-game-"+wing+"-"+angle+"-"+layer);int spineY=c.attackPose(actor)||c.freezeHolding(actor)?-10:-13,cs=Battle.cos(u.slope),sn=Battle.sin(u.slope),spineX=-u.face*5;int anchorX=(spineX*cs-spineY*sn)/1024,anchorY=(spineX*sn+spineY*cs)/1024;c.part(sideWings[wing][angle][layer],c.frame/2%19*96,0,96,96,u.x-c.cameraX+anchorX-48,u.y-c.cameraY+anchorY-48,u.face<0);}
  boolean angleUsed(int wing,int angle){for(int i=0;i<c.game.unitCount;i++)if(actorWing(i)==wing){Battle.Unit u=c.game.units[i];int tilt=c.attackPose(i)||c.freezeHolding(i)?0:u.slope;if(u.face<0)tilt=-tilt;if(Battle.clamp((tilt+37)/15,0,4)==angle)return true;}return false;}

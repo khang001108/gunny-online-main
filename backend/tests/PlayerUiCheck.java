@@ -26,7 +26,7 @@ public final class PlayerUiCheck {
             host.playerUi=true;
             var bytes=new ByteArrayOutputStream();server.lobby(new DataOutputStream(bytes),room,host);
             check((bytes.toByteArray()[bytes.size()-2]&255)==1,"Loading mask reports each player independently");
-            guest.ready=true;room.tick();check(room.phase==1,"Match starts when every player reports loaded");
+            guest.ready=true;room.tick();check(room.phase==3,"All loaded still wait two seconds");room.loadingReadyAt=System.currentTimeMillis()-2001;room.tick();check(room.phase==1,"Match starts when every player reports loaded");
             var headers=new com.sun.net.httpserver.Headers();TcpGameServer.headers(headers,16777216,new int[]{0,1,2});
             check("1".equals(headers.getFirst("X-Gunny-PlayerUi")),"TCP gateway negotiates the player UI extension");
         }

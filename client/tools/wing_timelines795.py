@@ -82,11 +82,12 @@ if __name__=='__main__':
   out=ROOT/f'assets{scale}';out.mkdir(exist_ok=True)
   for wing,name in enumerate(NAMES):
    movie=Movie(Path('D:/gunny/Resource/image/equip/wing')/name/'wings.swf');show=next(v for k,v in movie.symbols.items() if k.startswith('wing_show_'));game=next(v for k,v in movie.symbols.items() if k.startswith('wing_game_'))
-   for size,height in [(72,48),(44,30),(24,18)]:
+   for size,height in [(112,72),(64,42),(32,22)]:
     atlas=Image.new('RGBA',(size*scale*20,height*scale));factor=size/180*scale
     m=(factor,0,0,factor,(size/2-50*size/180)*scale,(height*.42-111*size/180)*scale)
     for frame in range(20):atlas.paste(render(movie.flat(show,frame),(size*scale,height*scale),m),(frame*size*scale,0))
-    atlas.save(out/f'wing795-show-{wing}-{size}.png',optimize=True)
+    atlas.save(out/f'wing796-show-{wing}-{size}.png',optimize=True)
+    atlas.crop((0,0,size*scale,height*scale)).save(out/f'wing796-static-{wing}-{size}.png',optimize=True)
    children=movie.states(game)[0]
    assert len(children)==2
    for angle in range(5):
