@@ -290,8 +290,8 @@ public final class GunnyServer implements AutoCloseable {
         revision=Math.max(0,Math.min(revision,r.ground.craters.size()));int end=r.ground.craters.size();out.writeInt(end);out.writeShort(end-revision);for(int i=revision;i<end;i++)for(int v:r.ground.craters.get(i))out.writeShort(v);if(viewer.async)for(int i=0;i<r.count;i++){out.writeInt(b.damage[i]);out.writeByte(b.kills[i]);}if(viewer.items){out.writeBoolean(b.freezeShot);for(int i=0;i<r.count;i++){Battle.Unit u=b.units[i];for(int k=0;k<3;k++)out.writeByte(u.kit[k]);out.writeByte(u.itemUsed);out.writeByte(u.frozen);out.writeByte(u.invisible);out.writeBoolean(u.assist);if(viewer.itemVersion>=2){out.writeByte(u.freezeTurns);out.writeByte(u.flyCooldown);}}for(int i=0;i<b.ballCount;i++)out.writeBoolean(b.balls[i].freeze);if(viewer.itemVersion>=2){for(int i=0;i<b.ballCount;i++)out.writeBoolean(b.balls[i].guided);for(int i=0;i<b.blastCount;i++)out.writeBoolean(b.blasts[i].freeze);}}
         if(viewer.tribal&&TribalDungeon.is(r)){out.writeByte(b.tribalRound);out.writeByte(b.tribalPhase);out.writeByte(b.tribalWave);out.writeByte(b.tribalState);out.writeShort(b.tribalFx);out.writeBoolean(b.tribalBeanSaved);out.writeByte(b.tribalGoal);out.writeByte(b.tribalOutcome);}
         if(viewer.campaign&&r.kind==3){
-            out.writeByte(b.unitCount-6);
-            for(int i=6;i<b.unitCount;i++){
+            out.writeByte(b.unitCount-r.count);
+            for(int i=r.count;i<b.unitCount;i++){
                 Battle.Unit u=b.units[i];
                 out.writeShort(u.x);out.writeShort(u.y);out.writeShort(u.hp);out.writeShort(u.maxHp);
                 out.writeByte(u.face);out.writeShort(u.walk);out.writeByte(u.attackTicks);if(viewer.flock)out.writeByte(u.npc);

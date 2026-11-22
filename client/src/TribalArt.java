@@ -2,9 +2,9 @@ import javax.microedition.lcdui.Image;
 /** Native labeled Flash poses baked for MIDP; caches only the current encounter. */
 final class TribalArt {
  final PhoneCanvas c;final Image[] sprites=new Image[16],headers=new Image[16];
- Image cover,small,wing,missiles,healthFrame,healthBar;int coverStage,cachedStage;
+ Image cover,small,wing,missiles,healthFrame,healthBar,bulanTitle,bulanShade,sword;int shadeAlpha=-1;int coverStage,cachedStage;
  TribalArt(PhoneCanvas canvas){c=canvas;}
- void release(){for(int i=0;i<16;i++){sprites[i]=headers[i]=null;}cover=small=wing=missiles=healthFrame=healthBar=null;coverStage=cachedStage=0;}
+ void release(){for(int i=0;i<16;i++){sprites[i]=headers[i]=null;}cover=small=wing=missiles=healthFrame=healthBar=bulanTitle=bulanShade=sword=null;shadeAlpha=-1;coverStage=cachedStage=0;}
  Image atlas(int kind){if(sprites[kind]==null)sprites[kind]=c.combatRoomArt("tribal797-npc-"+kind);return sprites[kind];}
  int size(int kind){return kind>=14?96:kind==8||kind==9?72:56;}
  Image smallCover(){if(small==null)small=c.combatRoomArt("tribal797-banner");return small;}
@@ -54,13 +54,18 @@ final class TribalArt {
   c.pcText("Tà Thần "+DungeonRewards.tribalNumber(b.dungeonStage)+(b.dungeonStage==3?" • "+(20-b.tribalGoal)+"/20":""),69,33);
   if(TribalRules.twins(b)){boss(1,0);boss(3,25);}else if(b.dungeonStage==6)boss(1,0);
   if(TribalRules.alive(b,TribalRules.CHAIN))c.pcText("Xiềng Xích: khóa góc",5,72);
-  if(TribalRules.alive(b,TribalRules.FATIGUE))c.pcText("Mệt Mỏi: -100 TL",5,84);
+  if(TribalRules.alive(b,TribalRules.FATIGUE))c.pcText("Mệt Mỏi: -"+TribalRules.fatigue(b)+" TL",5,84);
   if(b.tribalBeanSaved)c.pcText("Đậu Hà Lan: Phủ Sức Mạnh",67,62);
  }
  String[] lines(String text){String[] tmp=new String[5];int count=0,start=0;while(start<text.length()&&count<5){int end=start,last=start;while(end<text.length()){int next=text.indexOf(' ',end);if(next<0)next=text.length();if(c.pcWidth(text.substring(start,next))>170&&last>start)break;last=next;if(next==text.length())break;end=next+1;}if(last<=start)last=Math.min(text.length(),start+24);tmp[count++]=text.substring(start,last);start=last+1;}String[] out=new String[count];for(int i=0;i<count;i++)out[i]=tmp[i];return out;}
  void overlay(){
   Battle b=c.game;if(!TribalRules.active(b))return;
-  if(b.tribalState==TribalRules.OPENING&&b.tribalFx>65){
+  if(TribalRules.twins(b)&&b.tribalState==TribalRules.OPENING){
+   int age=TribalRules.BULAN_INTRO_END-b.tribalFx;
+   if(age>=TribalRules.BULAN_TITLE_AT){drawBulanTitle(age-TribalRules.BULAN_TITLE_AT);return;}
+   if(age<TribalRules.BULAN_LEFT_AT)return;
+  }
+  if(!TribalRules.twins(b)&&b.tribalState==TribalRules.OPENING&&b.tribalFx>65){
    c.panel(57,81,206,78);c.pcCenter("Điều kiện thắng",160,87);
    c.pcCenter(b.dungeonStage==3?"Hạ 20 kẻ địch":TribalRules.twins(b)?"Hạ hai anh em Bulan":"Đánh bại hai dạng Sulan",160,103);
    c.pcCenter("Thua khi cả đội bị đánh bại",160,120);c.pcCenter("Giới hạn 200 lượt",160,135);return;
@@ -68,8 +73,23 @@ final class TribalArt {
   if(b.tribalState==TribalRules.TRANSFORM&&b.tribalFx>0){c.pcCenter("Sulan thức tỉnh!",160,76);return;}
   if(b.botPhase>0&&(b.tribalFx>0||b.units[b.active].walk<95)){
    int actor=TribalRules.speaker(b);Battle.Unit u=b.units[actor];int x=u.x-c.cameraX,y=u.y-c.cameraY-(u.npc>=14?64:40);
-   if(x>=-20&&x<340)c.drawSpeechBubble(Battle.clamp(x,25,295),Math.max(102,y),lines(TribalRules.dialogue(b)),65);
+   if(x>=-20&&x<340)c.drawSpeechBubble(Battle.clamp(x,25,295),Battle.clamp(y,65,190),lines(TribalRules.dialogue(b)),65);
   }
+ }
+ void drawBulanTitle(int age){
+  int duration=TribalRules.BULAN_INTRO_END-TribalRules.BULAN_TITLE_AT;
+  int alpha=56+Math.min(5,Math.max(0,Math.min(age,duration-age)/2))*20;
+  if(bulanShade==null||alpha!=shadeAlpha){int[] rgb=new int[320*c.s*8*c.s];for(int i=0;i<rgb.length;i++)rgb[i]=alpha<<24;bulanShade=Image.createRGBImage(rgb,320*c.s,8*c.s,true);shadeAlpha=alpha;}
+  for(int y=0;y<240;y+=8)c.img(bulanShade,0,y);
+  if(bulanTitle==null)bulanTitle=c.combatRoomArt("tribal-bulan-title");
+  int width=age<10?85:age<AntCaveRules.QUEEN_TITLE_REVEAL?160:288;
+  c.clip(16,43,width,35);c.img(bulanTitle,16,43);c.all();
+ }
+ void worldEffects(){
+  Battle b=c.game;if(!TribalRules.swordVisible(b))return;
+  if(sword==null)sword=c.combatRoomArt("tribal-bulan-sword");
+  int age=b.units[b.active].walk-75,rise=Math.min(64,(age+1)*8);if(age>24)rise=Math.max(0,(36-age)*64/12);
+  for(int i=0;i<6;i+=2)if(b.units[i].hp>0){int x=b.units[i].x-c.cameraX,y=b.units[i].y-c.cameraY;c.clip(x-14,y-64,28,64);c.img(sword,x-12,y-rise);c.all();}
  }
  void wings(int x,int y){if(wing==null)wing=c.combatRoomArt("tribal-wing");if(wing!=null)c.img(wing,x-wing.getWidth()/c.s/2,y-29);}
 }

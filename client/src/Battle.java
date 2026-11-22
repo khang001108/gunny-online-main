@@ -190,7 +190,7 @@ final class Battle {
         }
         if(units[active].frozen==2&&!(dungeonStage>0&&units[active].npc>0&&units[active].npc<3)){if(--countdown<=0)next();return;}
         for(int n=0;n<unitCount;n++){
-            Unit u=units[n];if(u.hp<=0||TribalRules.active(this)&&TribalRules.floats(u))continue;
+            Unit u=units[n];if(u.hp<=0||TribalRules.active(this)&&TribalRules.perched(this,u))continue;
             if(!ground.solid(u.x-2,u.y+1)&&!ground.solid(u.x+2,u.y+1)){
                 u.vy+=44;int dy=Math.max(1,u.vy/256),surface=ground.surface(u.x,u.y+1);
                 u.y=Math.min(surface,u.y+dy);if(u.y==surface)u.vy=0;if(u.y>H+20){if(u.god){u.x=spawnX(n,unitCount>6?6:unitCount);u.y=ground.surface(u.x,5);u.vy=0;}else u.hp=0;}

@@ -58,6 +58,17 @@ public class UiTribal797Check {
           if(c.game.dungeonStage!=stage||c.map!=room.map||c.game.unitCount!=(stage==3?14:13))throw new AssertionError("Campaign snapshot/map");
           c.mode=16;shot(c,"tribal797-room-"+stage);c.mode=14;c.loadTicks=20;shot(c,"tribal797-loading-"+stage);
           c.mode=1;c.cameraY=0;c.cameraX=stage==6?150:0;c.frame=9;shot(c,"tribal797-intro-"+stage);
+          if(stage==4){
+           for(int age:new int[]{0,60,150,245}){
+            room.battle.tribalFx=TribalRules.BULAN_INTRO_END-age;room.battle.tribalState=TribalRules.OPENING;room.battle.botPhase=age<45||age>=225?0:age<135?TribalRules.BULAN_LEFT:TribalRules.BULAN_INTRO;sync(server,room,host,c);
+            for(int step=0;step<25;step++)c.followCamera();shot(c,"bulan-intro-"+age);
+           }
+           for(int actor:new int[]{3,1})for(int cycle=0;cycle<4;cycle++){
+            TribalRules.setup(room.battle,2,1,false);room.battle.tribalFx=0;room.battle.active=actor;room.battle.units[actor].power=cycle;
+            for(int tick=0;tick<88;tick++)TribalRules.tickAI(room.battle);sync(server,room,host,c);for(int step=0;step<25;step++)c.followCamera();shot(c,"bulan-skill-"+actor+"-"+cycle);
+           }
+           TribalRules.setup(room.battle,2,0,false);
+          }
           room.battle.tribalFx=0;room.battle.tribalState=0;room.battle.botPhase=0;sync(server,room,host,c);shot(c,"tribal797-stage-"+stage);
           if(stage==3){c.cameraX=160;c.cameraY=40;shot(c,"tribal797-tribes-spawn");c.cameraX=0;c.cameraY=0;}
           if(stage==4){c.cameraX=160;shot(c,"tribal797-bulan-right");c.cameraX=0;}
@@ -81,6 +92,22 @@ public class UiTribal797Check {
            c.game.ballCount=0;
           }
           c.tribalArt.release();for(var im:c.tribalArt.sprites)if(im!=null)throw new AssertionError("Stage cache release");
+         }
+        }
+        var tcpStore=new CloudStore.Memory();String mail="midp-bulan@tcp.test";tcpStore.register(mail,"test-password-123","BulanTCP");tcpStore.profile(tcpStore.login(mail,"test-password-123").userId).experience=Progression.experienceForLevel(70);
+        try(var tcpServer=new GunnyServer(new java.net.InetSocketAddress("127.0.0.1",0),java.nio.file.Path.of("backend/assets"),tcpStore)){
+         tcpServer.clock.shutdownNow();tcpServer.startTcp("127.0.0.1",0,8);
+         try(var player=new TribalTcpCheck.Player(tcpServer.tcpPort(),mail,n.tcpFlags())){
+          var lobby=player.call("tribalcreate",o->{o.writeByte(0);o.writeUTF("MIDP Bulan TCP");o.writeUTF("");});n.inBattle=false;n.readLobby(lobby);if(lobby.available()!=0)throw new AssertionError("TCP lobby fully decoded");
+          var raid=tcpServer.rooms.get(n.roomId);
+          for(int oldSeats:new int[]{2,4,6})for(int stage:new int[]{3,4,6}){
+           raid.count=oldSeats;
+
+           raid.phase=0;raid.battle=null;raid.dungeonStage=stage;raid.refreshWaiting();raid.start();raid.phase=1;n.inBattle=false;
+           var packet=player.call("sync",o->{o.writeInt(0);o.writeByte(0);o.writeBoolean(true);o.writeInt(-1);o.writeBoolean(false);o.writeInt(raid.departureVersion);o.writeInt(-1);o.writeInt(-1);o.writeInt(-1);o.writeByte(0);});
+           n.ack=packet.readInt();n.readLobby(packet);boolean done=packet.readBoolean();int turn=packet.readInt();n.chunks.read(packet,done,turn);
+           if(packet.available()!=0||c.game.unitCount!=(stage==3?14:13))throw new AssertionError("TCP snapshot NPC count and byte alignment stage "+stage);
+          }
          }
         }
         n.inBattle=n.logged=false;c.beginMatch(0);c.mode=1;shot(c,"tribal797-pvp-regression");if(c.game.dungeonStage!=0)throw new AssertionError("PvP reset");

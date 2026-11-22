@@ -10,13 +10,13 @@ public final class TribalVideo797Check {
   b=raid(1);npcOnly(b,1);b.units[1].npc=TribalRules.SPEAR;b.units[1].x=400;b.units[0].x=52;for(int i=0;i<47;i++)b.tick();ok(b.units[1].attackTicks==0,"Distant melee troop does not play a stabbing attack");
   b=raid(1);npcOnly(b,1);b.units[1].npc=TribalRules.SPEAR;b.units[1].x=90;b.units[0].x=52;int hp=b.units[0].hp;turn(b);ok(b.units[0].hp<hp&&b.shotSerial==0,"Close tribesman actually stabs");
   b=raid(1);int elite=-1;for(int i=0;i<13;i++)if(b.units[i].npc==TribalRules.ELITE)elite=i;npcOnly(b,elite);for(int i=0;i<61;i++)b.tick();ok(b.ballCount==3&&Arrays.stream(b.balls,0,b.ballCount).allMatch(x->x.weapon==TribalRules.SPEAR_SHOT),"Purple warrior launches three spear payloads");hp=b.units[0].hp;turn(b);ok(b.units[0].hp<hp,"Thrown NPC spear follows physics and hits");
-  b=raid(2);b.active=3;for(int i=0;i<61;i++)b.tick();ok(b.ballCount==1&&b.balls[0].weapon==TribalRules.SPIRIT_SHOT,"Bulan uses his own thrown staff");
+  b=raid(2);b.active=3;for(int i=0;i<75;i++)b.tick();ok(b.ballCount==1&&b.balls[0].weapon==TribalRules.SPIRIT_SHOT,"Bulan uses his own thrown staff");
   b=raid(4);for(int i=0;i<61;i++)b.tick();ok(b.ballCount==1&&b.balls[0].weapon==TribalRules.CHIEF_SHOT,"Golden Sulan throws the staff shown in his native attack pose");
   b=raid(4);b.units[1].hp=0;b.check();b.tribalFx=0;b.tribalState=0;b.active=1;TribalRules.summon(b,TribalRules.BEAN,80);b.tribalRound=3;for(int i=0;i<61;i++)b.tick();ok(b.ballCount==3&&Arrays.stream(b.balls,0,b.ballCount).allMatch(x->x.weapon==TribalRules.FIRE_SHOT),"Red Sulan launches three flame payloads");
  }
  static void skills(){
-  var b=raid(2);b.active=1;for(int i=0;i<61;i++)b.tick();ok(TribalRules.alive(b,TribalRules.FATIGUE)&&b.ballCount==0,"Bulan casts a fatigue totem without also firing");
-  b=raid(2);b.active=3;b.tribalRound=2;for(int i=0;i<61;i++)b.tick();ok(TribalRules.alive(b,TribalRules.CHAIN),"Other Bulan casts a chain totem");
+  var b=raid(2);b.active=1;for(int i=0;i<75;i++)b.tick();ok(TribalRules.alive(b,TribalRules.FATIGUE)&&b.ballCount==0,"Bulan casts a fatigue totem without also firing");
+  b=raid(2);b.active=3;b.units[3].power=2;for(int i=0;i<75;i++)b.tick();ok(TribalRules.alive(b,TribalRules.CHAIN),"Other Bulan casts a chain totem");
   b=raid(4);b.tribalRound=2;for(int i=0;i<61;i++)b.tick();long totems=Arrays.stream(b.units).filter(u->u.hp>0&&u.npc==TribalRules.HEAL).count();ok(totems==2&&b.ballCount==0,"Sulan summons HP totems on both sides");ok(b.units[6].x<b.units[1].x&&b.units[7].x>b.units[1].x,"HP totems flank boss");
   b=raid(4);b.units[1].hp=0;b.check();int time=b.countdown;for(int i=0;i<74;i++)b.tick();ok(b.countdown==time&&!b.input()&&b.ballCount==0,"Transformation is a real frozen transition");b.tick();ok(b.tribalFx==0&&!b.over,"Transformation resumes the same battle");
   b.active=1;b.tribalClock=0;for(int i=0;i<61;i++)b.tick();ok(TribalRules.alive(b,TribalRules.BEAN),"Borrow-body action brings out the recorded pea helper");while(b.tribalRound%3!=0)TribalRules.round(b);ok(b.tribalBeanSaved,"Pea periodically grants the power window");

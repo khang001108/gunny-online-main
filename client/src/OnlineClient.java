@@ -258,7 +258,7 @@ final class OnlineClient implements Runnable,CommandListener,ItemCommandListener
         if(tribalCap&&b.dungeonStage>=3){b.tribalRound=in.readUnsignedByte();b.tribalPhase=in.readUnsignedByte();b.tribalWave=in.readUnsignedByte();b.tribalState=in.readUnsignedByte();b.tribalFx=in.readUnsignedShort();b.tribalBeanSaved=in.readBoolean();b.tribalGoal=in.readUnsignedByte();b.tribalOutcome=in.readByte();}
         if(campaignCap&&roomKind==3){
             int size=in.readUnsignedByte();
-            if(size>Battle.MAX_UNITS-count)throw new IOException("Sai số kiến vệ sĩ.");
+            if(size>b.units.length-count)throw new IOException("Số đơn vị phó bản không khớp. Hãy build lại client và cập nhật server cùng bản.");
             b.unitCount=count+size;
             for(int i=count;i<b.unitCount;i++){
                 Battle.Unit u=b.units[i];

@@ -1604,8 +1604,9 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 || game.botPhase == AntCaveRules.QUEEN_THREAT || game.botPhase==AntCaveRules.QUEEN_HIT
                 || game.botPhase==AntCaveRules.QUEEN_SUCCESS);
         if(TribalRules.active(game)&&game.tribalState==TribalRules.OPENING&&game.tribalFx>0){
-            int elapsed=120-game.tribalFx,slot=elapsed<25?0:TribalRules.twins(game)&&elapsed>72?1:game.active;
-            tx=game.units[slot].x-160;ty=game.units[slot].y-(slot==0?135:170);
+            int elapsed=120-game.tribalFx,slot=TribalRules.twins(game)?TribalRules.introActor(game):elapsed<25?0:game.active;
+            if(slot==0&&onlineBattle())slot=playerActor();
+            tx=game.units[slot].x-160;ty=game.units[slot].y-(game.units[slot].npc==0?135:170);
         } else if(AntCaveRules.antOpening(game)||AntCaveRules.introducing(game)&&game.botPhase<AntCaveRules.QUEEN_SPEECH){
             boolean ants=AntCaveRules.antOpening(game);
             int elapsed=game.botPhase-(ants?AntCaveRules.ANT_INTRO:AntCaveRules.QUEEN_INTRO);
@@ -2198,7 +2199,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         Graphics screen = g;
         int oldX = ox, oldY = oy;
         boolean zoom = showingPowCutin();
-        int tribalShake=TribalRules.active(game)&&game.tribalPhase==2&&game.tribalFx>0&&game.tribalState!=TribalRules.DEAD?(frame%2==0?1:-1):0;cameraX+=tribalShake;
+        int tribalShake=(TribalRules.swordShaking(game)||TribalRules.active(game)&&game.tribalPhase==2&&game.tribalFx>0&&game.tribalState!=TribalRules.DEAD)?(frame%2==0?1:-1):0;cameraX+=tribalShake;
         if (!zoom)
             resetPowWorld();
         if (!zoom || powWorldPixels == null) {
@@ -2220,6 +2221,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             drawAimFan();
             for (int i = 0; i < game.unitCount; i++)
                 drawUnit(i);
+            if(TribalRules.active(game))tribalArt.worldEffects();
             drawAimRay();
             loadout.preview();
             for (int i = 0; presentation.effects && i < game.trailCount; i++) {
