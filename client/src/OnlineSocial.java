@@ -19,11 +19,9 @@ final class OnlineSocial implements CommandListener {
     final int[][] looks = new int[128][5];
     final boolean[] custom = new boolean[128], online = new boolean[128];
     final String[] names = new String[128];
-    final Image[] heads = new Image[6];
-    Image panel, row, tabArt, invite, close;
+    Image close;
 
-    final Command done = new Command("Tìm", Command.OK, 1), back = new Command("Hủy", Command.BACK, 2),
-            accept = new Command("Vào đội", Command.OK, 1), decline = new Command("Từ chối", Command.CANCEL, 2);
+    final Command accept = new Command("Vào đội", Command.OK, 1);
 
     OnlineSocial(OnlineClient n) {
         net = n;
@@ -34,6 +32,7 @@ final class OnlineSocial implements CommandListener {
     int infoFocus;
     boolean itemInfo;
     boolean viewing;
+    boolean returnToRanking; // true only when the player profile came from Ranking793
     String infoName;
     int infoVip,infoWing=-1;
     int infoSex, infoSkin, infoMask, infoWeapon, infoExp, infoWins, infoRank;
@@ -150,6 +149,7 @@ final class OnlineSocial implements CommandListener {
     }
 
     void openOffline() {
+        returnToRanking = false;
         friendsPopup = false;
         offlineInvite = true;
         inviting = opened = true;
@@ -159,6 +159,7 @@ final class OnlineSocial implements CommandListener {
     }
 
     void open(boolean room) {
+        returnToRanking = false;
         offlineInvite = false;
         if (!net.socialCap) {
             c.message("Cập nhật server để dùng bạn bè.");
@@ -183,9 +184,15 @@ final class OnlineSocial implements CommandListener {
         profileError = "";
         if (pendingOp.equals("playerinfo"))
             pendingOp = "";
+        if (returnToRanking) {
+            returnToRanking = false;
+            opened = false;
+            c.ranking.opened = true; // Keep the previously selected ranking row/page.
+        }
     }
 
     void cancelRequests() {
+        returnToRanking = false;
         pendingOp = "";
         wantList = loading = profileLoading = actionLoading = opened = viewing = searching = false;
         generation++;
@@ -226,8 +233,6 @@ final class OnlineSocial implements CommandListener {
     }
 
     void refresh() {
-        for (int i = 0; i < 6; i++)
-            heads[i] = null;
         if (tab == 2) {
             count = 8;
             loading = false;
@@ -250,7 +255,7 @@ final class OnlineSocial implements CommandListener {
                 : listError.length() > 0 ? listError
                         : tab == 0 ? "Chưa có bạn bè"
                                 : tab == 3 ? "Chưa có lời mời"
-                                        : tab == 4 ? "Không tìm thấy người chơi" : "Chưa có người chơi";
+                                        : tab == 4 ? "Không tìm thấy người chơi" : tab == 1 ? "Sảnh chưa có người chơi" : "Chưa có người chơi";
     }
 
     void read(DataInputStream in) throws IOException {
@@ -277,94 +282,29 @@ final class OnlineSocial implements CommandListener {
         }
         count=receivedCount;
         page = Math.min(page, Math.max(0, (count - 1) / rows()));
-        for (int i = 0; i < 6; i++)
-            heads[i] = null;
     }
 
     int rowExperience(int index) { return tab == 2 ? Progression.botExperience(index) : experience[index]; }
 
-    Image head(int index) throws IOException {
-        int gender = tab == 2 ? c.botSex(index) : sex[index], costume = tab == 2 ? c.botSkin(index) : skin[index];
-        int[] source = new int[80 * 100 * c.s * c.s];
-        if (tab != 2 && custom[index]) {
-            int[] order = { 0, 3, 2, 1, 4 };
-            for (int k = 0; k < 5; k++)
-                c.blendCutin(source, c.load("cutin" + gender + "_" + (order[k] + 1) + "_" + looks[index][order[k]]));
-        } else
-            c.blendCutin(source, c.load("cutin" + gender + "_0_" + costume));
-        int side = 30 * c.s;
-        int[] pixels = new int[side * side];
-        for (int y = 0; y < side; y++)
-            for (int x = 0; x < side; x++)
-                pixels[y * side + x] = source[(y * 65 * c.s / side) * 80 * c.s + x * 80 * c.s / side];
-        return Image.createRGBImage(pixels, side, side, true);
-    }
-
+    // The old four-tab full-screen list has been retired. Always use the
+    // same compact popup for friends, lobby players, requests, and invitations.
     void draw() {
         if (searching) {
             drawInvitePopup();
             c.popup.renderInput("Tìm kiếm bạn bè", searchQuery, searchFocus);
-            return;
-        }
-        if (viewing) {
+        } else if (viewing) {
             drawInfo();
-            return;
-        }
-        if (inviting) {
+        } else {
             drawInvitePopup();
-            return;
         }
-        if (panel == null) {
-            panel = c.combatRoomArt("social-panel");
-            row = c.combatRoomArt("social-row");
-            tabArt = c.combatRoomArt("social-tab");
-            invite = c.combatRoomArt("social-invite");
-            close = c.combatRoomArt("ui-close");
-        }
-        c.img(panel, 0, 0);
-        c.pcText(inviting ? "Mời đồng minh" : "Bạn bè • ID " + myId, 21, 18);
-        c.img(close, 289, 12);
-        String[] labels = { "Bạn bè", "Sảnh", "AI", "Yêu cầu" };
-        for (int i = 0; i < 4; i++) {
-            c.img(tabArt, 19 + i * 69, 39);
-            c.pcCenter(labels[i], 50 + i * 69, 45);
-            if (tab == i)
-                c.drawSelectionGlow(18 + i * 69, 38, 65, 22);
-        }
-        for (int slot = 0; slot < 4 && page * 4 + slot < count; slot++) {
-            int i = page * 4 + slot, x = 20, y = 68 + slot * 33;
-            c.img(row, x, y);
-            try {
-                if (heads[slot] == null)
-                    heads[slot] = head(i);
-            } catch (Exception ignored) {
-            }
-            c.img(heads[slot], x + 4, y + 4);
-            c.pcText(c.pcShort(tab == 2 ? PhoneCanvas.BOT_NAMES[i] : names[i], 88), x + 39, y + 4);
-            c.pcText(tab == 2 ? "AI" : ("ID " + ids[i] + (online[i] ? " • On" : " • Off")), x + 39, y + 16);
-            c.pcText((tab == 2 ? c.botSex(i) : sex[i]) == 1 ? "Nữ" : "Nam", x + 133, y + 5);
-            c.drawLevel(rowExperience(i), x + 160, y + 4);
-            c.img(invite, x + 215, y + 10);
-            c.pcCenter(tab == 3 ? "Nhận" : tab == 2 || inviting ? "Mời" : tab == 0 ? "Đã kết" : "Kết bạn", x + 241,
-                    y + 13);
-            if (nav == 1 && selected == slot)
-                c.drawSelectionGlow(x - 1, y - 1, 280, 31);
-        }
-        if (count == 0)
-            c.pcCenter(emptyText(), 160, 119);
-        c.img(tabArt, 20, 207);
-        c.pcCenter("Trước", 51, 213);
-        c.pcCenter((page + 1) + "/" + Math.max(1, (count + 3) / 4), 128, 213);
-        c.img(tabArt, 158, 207);
-        c.pcCenter("Sau", 189, 213);
-        c.img(tabArt, 231, 207);
-        c.pcCenter("ID", 262, 213);
-        if (nav == 2)
-            c.drawSelectionGlow(footer == 0 ? 19 : footer == 1 ? 157 : 230, 206, 65, 22);
+    }
+
+    boolean friendsSearchTab() {
+        return friendsPopup && (tab == 3 || tab == 4);
     }
 
     int rows() {
-        return friendsPopup && tab != 0 ? 5 : 6;
+        return friendsSearchTab() ? 5 : 6;
     }
 
     Image searchPlus;
@@ -372,9 +312,11 @@ final class OnlineSocial implements CommandListener {
     int searchFocus;
     Image popup, popupTab, popupInvite, popupRefresh, person, arrowUp, arrowDown, scrollTrack, scrollThumb, female;
     static final int[] INVITE_TABS = { 2, 0, 1 };
+    static final String[] FRIEND_TAB_LABELS = { "Bạn bè", "Thêm bạn", "Sảnh" };
+    static final String[] INVITE_TAB_LABELS = { "Liên hệ", "Bạn bè", "Phòng" };
 
     int inviteTabIndex() {
-        return friendsPopup ? (tab == 0 ? 0 : 1) : tab == 2 ? 0 : tab == 0 ? 1 : 2;
+        return friendsPopup ? (tab == 0 ? 0 : tab == 1 ? 2 : 1) : tab == 2 ? 0 : tab == 0 ? 1 : 2;
     }
 
     void popupLoad() {
@@ -399,16 +341,15 @@ final class OnlineSocial implements CommandListener {
         c.img(popup, 60, 8);
         c.pcText(friendsPopup ? "Bạn bè" : "Mời", 71, 18);
         c.img(close, 233, 14);
-        String[] labels = friendsPopup ? new String[] { "Bạn bè", "Thêm bạn" }
-                : new String[] { "Liên hệ", "Bạn bè", "Phòng" };
+        String[] labels = friendsPopup ? FRIEND_TAB_LABELS : INVITE_TAB_LABELS;
         for (int n = 0; n < labels.length; n++) {
             int x = 70 + n * 55;
             c.img(popupTab, x, 41);
             c.pcCenter(labels[n], x + 27, 47);
-            if (friendsPopup ? (n == 0 ? tab == 0 : tab == 3 || tab == 4) : tab == INVITE_TABS[n])
+            if (friendsPopup ? inviteTabIndex() == n : tab == INVITE_TABS[n])
                 c.drawSelectionGlow(x - 1, 40, 56, 22);
         }
-        if (friendsPopup && tab != 0) {
+        if (friendsSearchTab()) {
             c.pcText("Tìm kiếm bạn bè", 77, 74);
             // c.img(popupInvite, 198, 69); // khazg tắt
             c.img(searchPlus, 211, 70);
@@ -416,22 +357,44 @@ final class OnlineSocial implements CommandListener {
                 c.drawSelectionGlow(70, 66, 169, 23);
         }
         for (int slot = 0; slot < rows(); slot++) {
-            int i = page * rows() + slot, y = 66 + (friendsPopup && tab != 0 ? 23 : 0) + slot * 23;
+            int i = page * rows() + slot, y = 66 + (friendsSearchTab() ? 23 : 0) + slot * 23;
             if (i >= count)
                 continue;
             c.img((tab == 2 ? c.botSex(i) : sex[i]) == 1 ? female : person, 74, y + 2);
             c.drawLevel(rowExperience(i), 90, y + 2);
-            String name = c.pcShort(tab == 2 ? PhoneCanvas.BOT_NAMES[i] : names[i], 68);
-            c.pcText(name, 118, y + 8);
-            if (tab != 2 && online[i]) {
-                int dot = 122 + c.pcWidth(name);
-                c.g.setColor(0x174a18);
-                c.g.fillArc(c.ox + dot * c.s, c.oy + (y + 9) * c.s, 6 * c.s, 6 * c.s, 0, 360);
-                c.g.setColor(0x66ef49);
-                c.g.fillArc(c.ox + (dot + 1) * c.s, c.oy + (y + 10) * c.s, 4 * c.s, 4 * c.s, 0, 360);
+            // One line per player: name -> full account ID -> status dot.
+            // Reserve ID + dot space first. Only long names may be truncated.
+            final int textX = 116;
+            if (tab == 2) {
+                c.pcText(c.pcShort(PhoneCanvas.BOT_NAMES[i], 78), textX, y + 8);
+            } else {
+                String idText = " ID:" + ids[i];
+                String fullName = names[i] == null ? "" : names[i];
+                int nameSpace = 191 - textX - c.pcWidth(idText) - 8;
+                int dot;
+                if (nameSpace >= 21) {
+                    // Typical IDs fit alongside the (potentially shortened) name.
+                    String name = c.pcShort(fullName, nameSpace);
+                    c.pcText(name, textX, y + 8);
+                    int idX = textX + c.pcWidth(name);
+                    c.pcText(idText, idX, y + 8);
+                    dot = idX + c.pcWidth(idText) + 2;
+                } else {
+                    // Large numeric IDs must remain complete: use the second
+                    // line instead of pushing the ID into the action button.
+                    c.pcText(c.pcShort(fullName, 75), textX, y + 2);
+                    c.pcText(idText, textX, y + 12);
+                    dot = textX + c.pcWidth(idText) + 2;
+                }
+                c.g.setColor(online[i] ? 0x174a18 : 0x555555);
+                c.g.fillArc(c.ox + dot * c.s, c.oy + (y + 9) * c.s,
+                        6 * c.s, 6 * c.s, 0, 360);
+                c.g.setColor(online[i] ? 0x66ef49 : 0xb3b3b3);
+                c.g.fillArc(c.ox + (dot + 1) * c.s, c.oy + (y + 10) * c.s,
+                        4 * c.s, 4 * c.s, 0, 360);
             }
             c.img(popupInvite, 198, y + 3);
-            c.pcCenter(friendsPopup ? (tab == 3 ? "Nhận" : tab == 4 ? "Kết bạn" : "Xem") : "Mời", 218, y + 8);
+            c.pcCenter(friendsPopup ? (tab == 3 ? "Nhận" : tab == 0 ? "Xem" : "Kết bạn") : "Mời", 218, y + 8);
             if (nav == 1 && selected == slot)
                 c.drawSelectionGlow(70, y, 169, 23);
         }
@@ -455,18 +418,18 @@ final class OnlineSocial implements CommandListener {
 
     void popupTab(int index) {
         if (friendsPopup)
-            tab = index == 0 ? 0 : 3;
+            tab = index == 0 ? 0 : index == 1 ? 3 : 1;
         else
             tab = INVITE_TABS[index];
         page = 0;
-        selected = friendsPopup && tab != 0 ? -1 : 0;
+        selected = friendsSearchTab() ? -1 : 0;
         refresh();
     }
 
     void popupPage(int delta) {
         int pages = Math.max(1, (count + rows() - 1) / rows());
         page = (page + pages + delta) % pages;
-        selected = friendsPopup && tab != 0 ? -1 : 0;
+        selected = friendsSearchTab() ? -1 : 0;
         refresh();
     }
 
@@ -480,18 +443,18 @@ final class OnlineSocial implements CommandListener {
             return;
         }
         if (key == '#') {
-            popupTab((inviteTabIndex() + 1) % (friendsPopup ? 2 : 3));
+            popupTab((inviteTabIndex() + 1) % 3);
             return;
         }
         if (dir != 0) {
             if (nav == 0) {
                 if (dir == 1 || dir == 2)
-                    popupTab((inviteTabIndex() + (dir == 1 ? (friendsPopup ? 1 : 2) : 1)) % (friendsPopup ? 2 : 3));
+                    popupTab((inviteTabIndex() + (dir == 1 ? 2 : 1)) % 3);
                 else if (dir == 8)
                     nav = 1;
             } else if (nav == 1) {
                 if (dir == 4) {
-                    if (selected == (friendsPopup && tab != 0 ? -1 : 0))
+                    if (selected == (friendsSearchTab() ? -1 : 0))
                         nav = 0;
                     else
                         selected--;
@@ -534,7 +497,7 @@ final class OnlineSocial implements CommandListener {
         if (x < 60 || x >= 260 || y < 8 || y >= 233)
             return;
         if (y >= 41 && y < 62 && x >= 70 && x < 235) {
-            popupTab(Math.min(friendsPopup ? 1 : 2, (x - 70) / 55));
+            popupTab(Math.min(2, (x - 70) / 55));
             nav = 0;
             return;
         }
@@ -561,12 +524,12 @@ final class OnlineSocial implements CommandListener {
         }
         if (x >= 70 && x < 239 && y >= 66 && y < 204) {
             nav = 1;
-            if (friendsPopup && tab != 0 && y < 89) {
+            if (friendsSearchTab() && y < 89) {
                 selected = -1;
                 id();
                 return;
             }
-            selected = (y - 66 - (friendsPopup && tab != 0 ? 23 : 0)) / 23;
+            selected = (y - 66 - (friendsSearchTab() ? 23 : 0)) / 23;
             choose();
         }
     }
@@ -578,7 +541,7 @@ final class OnlineSocial implements CommandListener {
             });
     }
     void choose() {
-        if (friendsPopup && tab != 0 && selected < 0) {
+        if (friendsSearchTab() && selected < 0) {
             id();
             return;
         }
@@ -645,82 +608,17 @@ final class OnlineSocial implements CommandListener {
     void key(int key, int dir, boolean ok) {
         if (searching) {
             searchKey(key, dir, ok);
-            return;
-        }
-        if (viewing) {
+        } else if (viewing) {
             if (key == -7 || key == '0') {
                 closeInfo();
             } else if (!profileLoading && profileError.length() == 0) {
-                if (dir != 0)
-                    infoMove(dir);
-                else if (key == -6 || ok)
-                    infoToggle();
+                if (dir != 0) infoMove(dir);
+                else if (key == -6 || ok) infoToggle();
             }
-            return;
-        }
-        if (friendsPopup && (key == 'i' || key == 'I')) {
+        } else if (friendsPopup && (key == 'i' || key == 'I')) {
             id();
-            return;
-        }
-        if (inviting) {
+        } else {
             popupKey(key, dir, ok);
-            return;
-        }
-        if (key == -7) {
-            opened = false;
-            return;
-        }
-        if (key == '#') {
-            tab = (tab + 1) % 4;
-            page = selected = 0;
-            refresh();
-            return;
-        }
-        if (key == 'i' || key == 'I') {
-            id();
-            return;
-        }
-        if (dir != 0) {
-            if (nav == 0) {
-                if (dir == 1 || dir == 2) {
-                    tab = (tab + (dir == 1 ? 3 : 1)) % 4;
-                    page = selected = 0;
-                    refresh();
-                } else if (dir == 8)
-                    nav = 1;
-            } else if (nav == 1) {
-                if (dir == 4) {
-                    if (selected == (friendsPopup && tab != 0 ? -1 : 0))
-                        nav = 0;
-                    else
-                        selected--;
-                } else if (dir == 8) {
-                    if (selected >= Math.min(3, count - page * 4 - 1))
-                        nav = 2;
-                    else
-                        selected++;
-                } else {
-                    page = (page + (dir == 1 ? Math.max(1, (count + 3) / 4) - 1 : 1)) % Math.max(1, (count + 3) / 4);
-                    refresh();
-                }
-            } else {
-                if (dir == 4)
-                    nav = 1;
-                else
-                    footer = (footer + (dir == 1 ? 2 : 1)) % 3;
-            }
-        } else if (ok || key == -6) {
-            if (nav == 0)
-                nav = 1;
-            else if (nav == 1)
-                choose();
-            else if (footer == 2)
-                id();
-            else {
-                int pages = Math.max(1, (count + 3) / 4);
-                page = (page + (footer == 0 ? pages - 1 : 1)) % pages;
-                refresh();
-            }
         }
     }
 
@@ -730,19 +628,24 @@ final class OnlineSocial implements CommandListener {
             return;
         }
         if (viewing) {
-            int[] wingBox=infoBox(7);if(infoWing>=0&&x>=wingBox[0]&&x<wingBox[0]+wingBox[2]&&y>=wingBox[1]&&y<wingBox[1]+wingBox[3]){infoFocus=7;itemInfo=!itemInfo;return;}
+            int[] wingBox = infoBox(7);
+            if (infoWing >= 0 && x >= wingBox[0] && x < wingBox[0] + wingBox[2]
+                    && y >= wingBox[1] && y < wingBox[1] + wingBox[3]) {
+                infoFocus = 7;
+                itemInfo = !itemInfo;
+                return;
+            }
             if (x >= 209 && x < 231 && y >= 12 && y < 33) {
                 closeInfo();
                 return;
             }
-            if (profileLoading || profileError.length() > 0)
-                return;
+            if (profileLoading || profileError.length() > 0) return;
             for (int n = 0; n < 7; n++) {
                 int[] b = infoBox(n);
-                if (x >= b[0] && x < b[0] + b[2] && y >= b[1] && y < b[1] + b[3]
+                if (x >= b[0] && x < b[0] + b[2]
+                        && y >= b[1] && y < b[1] + b[3]
                         && infoIcons[BagScreen.WORN[n]] != null) {
-                    if (infoFocus == n)
-                        infoToggle();
+                    if (infoFocus == n) infoToggle();
                     else {
                         infoFocus = n;
                         itemInfo = false;
@@ -750,37 +653,8 @@ final class OnlineSocial implements CommandListener {
                     return;
                 }
             }
-            return;
-        }
-        if (inviting) {
+        } else {
             popupPointer(x, y);
-            return;
-        }
-        if (x >= 288 && y < 36) {
-            opened = false;
-            return;
-        }
-        if (y >= 39 && y < 61) {
-            tab = Math.max(0, Math.min(3, (x - 19) / 69));
-            page = selected = 0;
-            refresh();
-            return;
-        }
-        if (y >= 207) {
-            if (x >= 230)
-                id();
-            else {
-                int pages = Math.max(1, (count + 3) / 4);
-                page = (page + (x < 100 ? pages - 1 : 1)) % pages;
-                selected = 0;
-                refresh();
-            }
-            return;
-        }
-        if (y >= 68 && y < 203 && x >= 20) {
-            nav = 1;
-            selected = Math.min(3, (y - 68) / 33);
-            choose();
         }
     }
 
