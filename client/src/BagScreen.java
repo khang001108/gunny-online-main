@@ -117,7 +117,8 @@ final class BagScreen {
                 preview = null;
             }
         }
-        c.vip.back(c.vip.exp(),c.mode==6&&c.shop.wingCategory()&&c.vip.trialWing>=0?c.vip.trialWing:c.vip.wing(),76,138,0,false);
+        // Phòng thử cho phép tháo cánh (-1) mà không thay đổi cánh trang bị thật.
+        c.vip.back(c.vip.exp(), c.mode==6 ? c.shop.previewWing() : c.vip.wing(),76,138,0,false);
           c.img(preview, 44, 58);
         for (int i = 0; i < 7; i++) {
             int[] b = box(31 + i);

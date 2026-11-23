@@ -45,6 +45,15 @@ final class ShopScreen {
 
     boolean wingCategory() { return tab == 1 && kind == 7; }
 
+    // -2: giữ cánh đang đeo, -1: tháo cánh chỉ trong phòng thử.
+    int previewWing() {
+        return c.vip.trialWing == -2 ? c.vip.wing() : c.vip.trialWing;
+    }
+
+    // Ô Cánh nằm ngay dưới ô Bộ (các ô cách nhau 27 px).
+    static final int WING_FOCUS = 27;
+
+
     int count() {
         return wingCategory() ? 5 : kind == 0 ? PhoneCanvas.ACTIVE_WEAPONS.length : 10;
     }
@@ -135,11 +144,11 @@ final class ShopScreen {
         c.img(close, 289, 12);
         c.pcCenter("Phòng thử", 77, 46);
         c.bag.characterFor(trialMask, trialCustom, trialSkin, trialLook, trialWeapon);
-        // Slot Cánh dưới ô Bộ, trùng vị trí với màn hình Túi.
-        c.img(c.bag.slot,16,168);
-        int previewWing = c.vip.trialWing >= 0 ? c.vip.trialWing : c.vip.wing();
-        if (previewWing >= 0) c.img(c.vip.wingIcon(previewWing),17,169);
-        else c.pcCenter("Cánh",28,177);
+        // Vị trí theo nhịp 27 px: ô Bộ Y=137, ô Cánh Y=164.
+        c.img(c.bag.slot,16,164);
+        int shownWing = previewWing();
+        if (shownWing >= 0) c.img(c.vip.wingIcon(shownWing),17,165);
+        else c.pcCenter("Cánh",28,173);
         if (tab < 2 && !wingCategory())
             c.pcCenter(c.pcShort(name(kind, item(selected)), 68), 77, 182);
         for(int i=0;i<TAB_VALUES.length;i++){int value=TAB_VALUES[i],x=151+i*40;c.img(mainTabs[value==3?2:value==2?3:value][tab==value?1:0],x,38);}
@@ -198,12 +207,19 @@ final class ShopScreen {
             c.drawItemSelection(b[0], b[1], b[2], b[3], true);
         if(wingCategory()&&c.vip.info)c.vip.drawInfo();
         else if(tab==3&&c.stoneShop.infoType>=0)c.stoneShop.drawInfo(c.stoneShop.infoType,box(c.stoneShop.focus%6));
+        else if (c.bag.info && focus == WING_FOCUS && c.bag.infoKind == BagScreen.WING_KIND) {
+            int w = c.bag.infoItem;
+            if (w == 5) c.tooltip.goods(c.vip.wingName(w),"Cánh", "Cánh thưởng phó bản. Trang bị vĩnh viễn.",box(WING_FOCUS));
+            else if (w >= 0 && w < 5) c.tooltip.goods(c.vip.wingName(w),"Cánh", "+" + VipRules.WING_HP[w] + " HP khi đeo. Cần VIP " + VipRules.WING_VIP[w] + " để mua. Vĩnh viễn.",box(WING_FOCUS));
+        }
         else if (c.bag.info)
             c.bag.drawInfo();
 
     }
 
     int[] box(int id) {
+        if (id == WING_FOCUS)
+            return new int[] { 16, 164, 25, 27 };
         if (id < 6)
             return new int[] { 151 + id % 2 * 80, 87 + id / 2 * 41, 76, 40 };
         for(int i=0;i<TAB_IDS.length;i++)if(id==TAB_IDS[i])return new int[]{151+i*40,38,39,20};
@@ -227,7 +243,7 @@ final class ShopScreen {
         if (id == 19)
             return true;
         if (id >= 20)
-            return id <= 26;
+            return id <= WING_FOCUS;
         if (id == 17)
             return tab == 2;
         if (id < 6)
@@ -309,14 +325,14 @@ final class ShopScreen {
                     page++;
                     focus = Math.min(row * 2, count() - 1 - page * 6);
                 } else if (dir == 1)
-                    focus = 20 + c.bag.nearestWorn(box(focus)) - 31;
+                    focus = nearestShopWorn(box(focus));
                 hover();
                 return;
             }
         }
         int[] f = box(focus);
         int x = f[0] * 2 + f[2], y = f[1] * 2 + f[3], best = focus, score = 999999;
-        for (int id = 0; id <= 26; id++)
+        for (int id = 0; id <= WING_FOCUS; id++)
             if (valid(id) && id != focus) {
                 int[] b = box(id);
                 int dx = b[0] * 2 + b[2] - x, dy = b[1] * 2 + b[3] - y,
@@ -332,6 +348,20 @@ final class ShopScreen {
             }
         focus = best;
         hover();
+    }
+
+    int nearestShopWorn(int[] anchor) {
+        int best = 20, score = 999999;
+        for (int id = 20; id <= WING_FOCUS; id++) {
+            int[] b = box(id);
+            int cost = Math.abs(b[1] * 2 + b[3] - anchor[1] * 2 - anchor[3]) * 7
+                    + Math.abs(b[0] - anchor[0]);
+            if (cost < score) {
+                score = cost;
+                best = id;
+            }
+        }
+        return best;
     }
 
     void chooseCategory(int k) {
@@ -423,6 +453,12 @@ final class ShopScreen {
             leave();
         else if (focus == 17)
             exchange();
+        else if (focus == WING_FOCUS) {
+            // Chỉ tháo cánh trong phòng thử, không gửi lệnh vipequip lên server.
+            c.vip.trialWing = -1;
+            c.bag.info = false;
+            c.vip.info = false;
+        }
         else if (focus >= 20) {
             int k = BagScreen.WORN[focus - 20];
             trialMask = ItemRules.maskAfter(trialMask, k, true);
@@ -432,6 +468,15 @@ final class ShopScreen {
     }
 
     void showInfo() {
+        if (focus == WING_FOCUS) {
+            int wing = previewWing();
+            if (wing >= 0) {
+                c.bag.infoKind = BagScreen.WING_KIND;
+                c.bag.infoItem = wing;
+                c.bag.info = true;
+            }
+            return;
+        }
         if(wingCategory()){c.vip.info=true;return;}
         int k = kind, i = -1;
         if (focus < 6 && tab != 2)
@@ -480,13 +525,7 @@ final class ShopScreen {
     }
 
     void pointer(int x, int y) {
-        // Chạm ô cánh ở phòng thử để mở danh mục mua/thử cánh.
-        if (x >= 16 && x < 41 && y >= 168 && y < 193) {
-            selectTab(1);
-            chooseCategory(7);
-            focus = categoryFocus();
-            return;
-        }
+        // Ô Cánh tham gia xử lý chạm như mọi ô trang bị bên dưới.
         if (y >= 38 && y < 59 && x >= 151) {
             int at=Math.min(TAB_VALUES.length-1,(x-151)/40);int value=TAB_VALUES[at];focus=TAB_IDS[at];
             selectTab(value);
@@ -505,7 +544,7 @@ final class ShopScreen {
             c.bag.info = false;
             return;
         }
-        for (int id = 26; id >= 0; id--)
+        for (int id = WING_FOCUS; id >= 0; id--)
             if (valid(id)) {
                 int[] b = box(id);
                 if (x >= b[0] && x < b[0] + b[2] && y >= b[1] && y < b[1] + b[3]) {
@@ -520,6 +559,7 @@ final class ShopScreen {
     }
 
     void leave() {
+        c.vip.trialWing = -2;
         c.mode = c.shopReturnMode;
         // frame = card = cartArt = previous = next = money = coin = close = null;
         frame = card = cartArt = buyArt = previous = next = money = coin = close = null;
