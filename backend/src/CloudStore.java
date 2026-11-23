@@ -56,6 +56,42 @@ class CloudStore {
         Object cards=r.get("vip_cards");if(cards instanceof List&&((List<?>)cards).size()==13)for(int i=0;i<13;i++)p.vipCards[i]=((Number)((List<?>)cards).get(i)).intValue();
         return p;
     }
+    /** Global leaderboard: stored profiles, not just logged-in sessions.
+     * Read only the required public character fields with server credentials.
+     * Exclude test accounts in Supabase before applying the protocol's 128-row cap.
+     */
+    List<Profile> rankingProfiles() throws Exception {
+        String path="/rest/v1/profiles?select=id,public_id,display_name,experience,wins,max_damage,"
+                +"equipped,weapon_uses,gender,skin,custom_look,worn_mask,look,test_cheats"
+                +"&or=(test_cheats.eq.false,test_cheats.is.null)"
+                +"&order=wins.desc,max_damage.desc,id.asc&limit=128";
+        List<?> rows=(List<?>)request(path,"GET",null,true);
+        List<Profile> result=new ArrayList<>(rows.size());
+        for(Object item:rows){
+            Map<String,Object> row=Json.obj(item);
+            if(Boolean.TRUE.equals(row.get("test_cheats")))continue;
+            Profile p=new Profile(Json.str(row,"id"),Json.str(row,"display_name"));
+            p.publicId=Json.num(row,"public_id",0);
+            p.experience=Json.num(row,"experience",0);
+            p.wins=Json.num(row,"wins",0);
+            p.maxDamage=Json.num(row,"max_damage",0);
+            p.equipped=Json.num(row,"equipped",0);
+            p.gender=Json.num(row,"gender",0);
+            p.skin=Json.num(row,"skin",0);
+            p.custom=Boolean.TRUE.equals(row.get("custom_look"));
+            p.wornMask=Json.num(row,"worn_mask",p.custom?125:3);
+            Object look=row.get("look");
+            if(look instanceof List<?>)for(int i=0;i<5&&i<((List<?>)look).size();i++){
+                Object v=((List<?>)look).get(i);if(v instanceof Number)p.look[i]=((Number)v).intValue();
+            }
+            Object uses=row.get("weapon_uses");
+            if(uses instanceof List<?>)for(int i=0;i<10&&i<((List<?>)uses).size();i++){
+                Object v=((List<?>)uses).get(i);if(v instanceof Number)p.weaponUses[i]=((Number)v).intValue();
+            }
+            result.add(p);
+        }
+        return result;
+    }
     void recordStats(String match,List<Map<String,Object>> players)throws Exception{request("/rest/v1/rpc/gunny_stats793","POST",Json.write(Map.of("p_match",match,"p_players",players)),true);}
     Profile vip(String id,String op,int item,int quantity,String requestKey)throws Exception{
         request("/rest/v1/rpc/gunny_vip","POST",Json.write(Map.of("p_user",id,"p_op",op,"p_item",item,"p_quantity",quantity,"p_key",requestKey)),true);return profile(id);
@@ -187,6 +223,7 @@ class CloudStore {
         synchronized Profile checkout(String id,int sex,int[] cart){Profile p=profile(id);if(sex!=p.gender)throw new IllegalArgumentException("Sai nhân vật");int total=ShopCatalog.total(sex,cart,p.owned,p.wardrobe);if(p.shoppingMoney<total)throw new IllegalArgumentException("Chưa đủ tiền mua sắm");p.shoppingMoney-=total;p.owned|=cart[0];ShopCatalog.grant(sex,cart,p.wardrobe);return p;}
         synchronized Profile buy(String id,int weapon){Profile p=profile(id);int price=ShopCatalog.price(0,weapon);if((p.owned&(1<<weapon))==0){if(p.shoppingMoney<price)throw new IllegalArgumentException("Không đủ vàng.");p.shoppingMoney-=price;p.owned|=1<<weapon;}p.equipped=weapon;return p;}
         final Map<String,Integer> matchKinds=new HashMap<>();
+        @Override synchronized List<Profile> rankingProfiles(){List<Profile> list=new ArrayList<>();for(Account a:accounts.values())if(!a.profile.testCheats)list.add(a.profile);return list;}
         int rank(String id){Profile p=profile(id);int higher=0;for(Account a:accounts.values())if(a.profile.wins>p.wins)higher++;return higher+1;}
         synchronized int[] claim(String match,String id,int card,int coins){int kind=matchKinds.getOrDefault(match,0);if(card<0||card>8||coins<(kind==2?500:200)||coins>(kind==2?2000:1000)||!participants.getOrDefault(match,Set.of()).contains(id))throw new IllegalArgumentException("Không có quyền nhận thưởng.");String key=match+":"+id;if(rewards.containsKey(key))return rewards.get(key).clone();for(Map.Entry<String,int[]> e:rewards.entrySet())if(e.getKey().startsWith(match+":")&&e.getValue()[0]==card)throw new IllegalArgumentException("Thẻ đã được mở. Chọn thẻ khác.");Profile p=profile(id);p.coins=Math.min(999999,p.coins+coins);int[] r={card,coins};rewards.put(key,r);return r.clone();}
         synchronized void settle(String match,int winner,List<Map<String,Object>> players){settle(match,winner,players,0);}
