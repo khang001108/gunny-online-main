@@ -301,10 +301,27 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 : game.teams ? "Phòng riêng • 2 đấu 2" : "Phòng riêng • 1 đấu 1", 8, 179);
         pcText("Chuẩn bị nhân vật và vũ khí", 8, 190);
         pcText(loadTicks<60?"Đang tải tài nguyên...":allLoadingReady()?"Tất cả đã OK. Chuẩn bị vào trận...":"Chờ người chơi khác tải xong...",8,201);
-        if (roomMaps[map] == null)
-            roomMaps[map] = combatRoomArt("room-map" + map);
-        img(roomMaps[map], 166, 189);
-        pcCenter(MAPS[map], 204, 222);
+        if (roomMaps[map] == null) {
+            Image original = combatRoomArt("room-map" + map);
+
+            int targetW = 94 * s;
+            int targetH = 32 * s;
+
+            if (original.getWidth() != targetW ||
+                original.getHeight() != targetH) {
+                roomMaps[map] = NativeUi.fit(
+                    original, targetW, targetH, 0
+                );
+            } else {
+                roomMaps[map] = original;
+            }
+        }
+
+        // Phóng ảnh bản đồ vừa khung Đấu trường (tọa độ logic 320x240)
+        img(roomMaps[map], 157, 189);
+
+        // Tên bản đồ
+        pcCenter(pcShort(MAPS[map], 90), 204, 217);
 
     }
 
