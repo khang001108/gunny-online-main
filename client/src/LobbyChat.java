@@ -24,7 +24,7 @@ final class LobbyChat {
     private boolean loading, more, emojiPicker, namePicker;
     final RoomSpeech roomSpeech;
     private Image backdrop, launchIcon, quickIcon, smileIcon, sendIcon, faces, closeIcon, input, facePanel;
-    private long openedAt;
+    private long openedAt, socialContactsAt;
     private final QuickChat quick;
     private final Message[] history = new Message[16];
     private int historyCount;
@@ -69,9 +69,17 @@ final class LobbyChat {
         return net.logged && !net.homeAfterLogin && c.mode == 0;
     }
 
-    boolean enter(int key) { return key == 'g' || key == 'G'; }
+    boolean enter(int key) { return key == 13 || key == 10; }
+    boolean hotkey(int key) { return key == 'g' || key == 'G'; }
+    void openCompose() {
+        if (!opened) toggle();
+        if (!opened) return;
+        // Enter always composes a public message, even when a DM was unread.
+        if (channel < PUBLIC) switchChannel(PUBLIC, "");
+        compose();
+    }
     int rawBinding(int raw, int mapped) {
-        return enter(raw) || raw == 13 || raw == 10 || raw == '/' || raw == '@' ? raw : mapped;
+        return enter(raw) || hotkey(raw) || raw == '/' || raw == '@' ? raw : mapped;
     }
 
     void toggle() {
@@ -112,6 +120,7 @@ final class LobbyChat {
         names = new String[0];
         channel = PUBLIC;
         blockedReadUntil = 0;
+        socialContactsAt = 0;
         sending = false;
         queued = "";
         readId = seenId = 0;
@@ -121,6 +130,19 @@ final class LobbyChat {
         if (!opened) return;
         c.typing.cancel();
         close();
+    }
+
+    void requestSocialContacts() { socialContactsAt = 0; }
+
+    boolean unreadFrom(int id) {
+        for (int i = 0; i < contacts.length; i++)
+            if (contacts[i].id == id) return contacts[i].unread;
+        return false;
+    }
+
+    private boolean friendsPopupVisible() {
+        return net.social.opened && net.social.friendsPopup && net.social.tab == 0
+                && !net.social.viewing && !net.social.searching;
     }
 
     private void switchChannel(int target, String name) {
@@ -167,6 +189,13 @@ final class LobbyChat {
         }
         if (opened && channel == CONTACTS && now >= contactsAt) {
             contactsAt = now + 6000;
+            sentGeneration = generation;
+            return "chatfriends";
+        }
+        if (!opened && friendsPopupVisible() && now >= socialContactsAt) {
+            // Refresh unread flags for dots in the Friends popup; no protocol change.
+            socialContactsAt = now + 6000;
+            sentGeneration = generation;
             return "chatfriends";
         }
         if (now < pollAt) return "";
@@ -224,12 +253,17 @@ final class LobbyChat {
                 loading = false;
             }
         } else if (op.equals("chatfriends")) {
-            if (!opened || channel != CONTACTS || sentGeneration != generation) return;
+            if (sentGeneration != generation) return;
+            boolean showContacts = opened && channel == CONTACTS;
+            if (!showContacts && (opened || !friendsPopupVisible())) return;
             int count = in.readUnsignedShort();
+            if (count > 128) throw new IOException("Danh sách chat quá lớn.");
             Contact[] updated = new Contact[count];
-            int old = first + selected < contacts.length ? contacts[first + selected].id : 0;
+            int old = showContacts && first + selected < contacts.length
+                    ? contacts[first + selected].id : 0;
             for (int i = 0; i < count; i++) updated[i] = new Contact(in);
             contacts = updated;
+            if (!showContacts) return; // Preserve popup Friends navigation state.
             first = Math.min(first, Math.max(0, count - VISIBLE));
             selected = Math.min(selected, Math.max(0, Math.min(VISIBLE, count - first) - 1));
             for (int i = 0; old != 0 && i < count; i++) {
@@ -407,10 +441,11 @@ final class LobbyChat {
     boolean key(int key, int dir, boolean ok) {
         if (!lobby()) return false;
         if (!opened) {
-            if (enter(key)) { toggle(); return true; }
+            if (enter(key)) { openCompose(); return true; }
+            if (hotkey(key)) { toggle(); return true; }
             return false;
         }
-        if (enter(key)) { close(); return true; }
+        if (hotkey(key)) { close(); return true; }
         if (quick.opened) { quick.key(key, dir, ok); return true; }
         if (key == -7 || key == '0') {
             if (namePicker || emojiPicker) namePicker = emojiPicker = false;

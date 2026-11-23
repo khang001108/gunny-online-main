@@ -1754,6 +1754,10 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             }
     }
 
+    // Smoothed UI frame rate, shown only when enabled in settings.
+    private long fpsWindowStart;
+    private int fpsWindowFrames, fpsValue;
+    private String fpsText = "FPS 0";
     boolean portraitViewport;Image portraitSurface;
     int pointerX(int x,int y){return portraitViewport?y-(getHeight()-320*s)/2:x;}
     int pointerY(int x,int y){return portraitViewport?240*s-1-(x-(getWidth()-240*s)/2):y;}
@@ -1827,6 +1831,24 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         popup.draw();
         typing.draw();
         if(presentation.boot==2&&toastTicks>0&&!popup.opened)drawBattleNotice();
+        if (presentation.showFps) {
+            long now = System.currentTimeMillis();
+            if (fpsWindowStart == 0) fpsWindowStart = now;
+            fpsWindowFrames++;
+            if (now - fpsWindowStart >= 1000) {
+                fpsValue = (int)(fpsWindowFrames * 1000L / Math.max(1L, now - fpsWindowStart));
+                fpsText = "FPS " + fpsValue; // Allocate only once per second on Java ME.
+                fpsWindowFrames = 0;
+                fpsWindowStart = now;
+            }
+            all();
+            rect(0,0,48,14,0x21170e);
+            pcText(fpsText,3,2);
+        } else {
+            fpsWindowStart = 0;
+            fpsWindowFrames = fpsValue = 0;
+            fpsText = "FPS 0";
+        }
     }
 
     void clip(int x, int y, int w, int h) {

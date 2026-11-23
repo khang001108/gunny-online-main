@@ -214,8 +214,7 @@ final class OnlineWaitingRoom {
                     c.pcCenter(rewardLabel(actor), x + 50, 169);
                 else if (actor == net.hostActor)
                     hostBadge(actor, x + 4, 169);
-                else
-                    c.pcCenter(actor == self() ? "Bạn" : net.bots[actor] ? "AI đồng minh" : "Đồng minh", x + 50, 169);
+                // Như phó bản: không vẽ nhãn AI đồng minh / Đồng minh.
             }
             if (i == 0) {
                 c.img(slotEmote, x + 82, 79);

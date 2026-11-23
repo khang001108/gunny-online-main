@@ -135,6 +135,11 @@ final class ShopScreen {
         c.img(close, 289, 12);
         c.pcCenter("Phòng thử", 77, 46);
         c.bag.characterFor(trialMask, trialCustom, trialSkin, trialLook, trialWeapon);
+        // Slot Cánh dưới ô Bộ, trùng vị trí với màn hình Túi.
+        c.img(c.bag.slot,16,168);
+        int previewWing = c.vip.trialWing >= 0 ? c.vip.trialWing : c.vip.wing();
+        if (previewWing >= 0) c.img(c.vip.wingIcon(previewWing),17,169);
+        else c.pcCenter("Cánh",28,177);
         if (tab < 2 && !wingCategory())
             c.pcCenter(c.pcShort(name(kind, item(selected)), 68), 77, 182);
         for(int i=0;i<TAB_VALUES.length;i++){int value=TAB_VALUES[i],x=151+i*40;c.img(mainTabs[value==3?2:value==2?3:value][tab==value?1:0],x,38);}
@@ -475,6 +480,13 @@ final class ShopScreen {
     }
 
     void pointer(int x, int y) {
+        // Chạm ô cánh ở phòng thử để mở danh mục mua/thử cánh.
+        if (x >= 16 && x < 41 && y >= 168 && y < 193) {
+            selectTab(1);
+            chooseCategory(7);
+            focus = categoryFocus();
+            return;
+        }
         if (y >= 38 && y < 59 && x >= 151) {
             int at=Math.min(TAB_VALUES.length-1,(x-151)/40);int value=TAB_VALUES[at];focus=TAB_IDS[at];
             selectTab(value);

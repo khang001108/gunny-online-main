@@ -166,6 +166,7 @@ final class OnlineSocial implements CommandListener {
             return;
         }
         friendsPopup = !room;
+        if (friendsPopup) net.chat.requestSocialContacts();
         inviting = true;
         opened = true;
         nav = page = selected = 0;
@@ -386,10 +387,12 @@ final class OnlineSocial implements CommandListener {
                     c.pcText(idText, textX, y + 12);
                     dot = textX + c.pcWidth(idText) + 2;
                 }
-                c.g.setColor(online[i] ? 0x174a18 : 0x555555);
+                // Unread private message takes precedence over online green.
+                boolean messageUnread = friendsPopup && tab == 0 && net.chat.unreadFrom(ids[i]);
+                c.g.setColor(messageUnread ? 0x681515 : online[i] ? 0x174a18 : 0x555555);
                 c.g.fillArc(c.ox + dot * c.s, c.oy + (y + 9) * c.s,
                         6 * c.s, 6 * c.s, 0, 360);
-                c.g.setColor(online[i] ? 0x66ef49 : 0xb3b3b3);
+                c.g.setColor(messageUnread ? 0xff4242 : online[i] ? 0x66ef49 : 0xb3b3b3);
                 c.g.fillArc(c.ox + (dot + 1) * c.s, c.oy + (y + 10) * c.s,
                         4 * c.s, 4 * c.s, 0, 360);
             }
