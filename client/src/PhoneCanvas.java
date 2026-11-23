@@ -304,8 +304,9 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         if (roomMaps[map] == null) {
             Image original = combatRoomArt("room-map" + map);
 
+            // Phong to kin chieu ngang, chua dai duoi cho ten map.
             int targetW = 94 * s;
-            int targetH = 32 * s;
+            int targetH = 39 * s;
 
             if (original.getWidth() != targetW ||
                 original.getHeight() != targetH) {
@@ -320,7 +321,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         // Phóng ảnh bản đồ vừa khung Đấu trường (tọa độ logic 320x240)
         img(roomMaps[map], 157, 189);
 
-        // Tên bản đồ
+        // Ten map nam tren dai duoi khung, khong de len anh.
         pcCenter(pcShort(MAPS[map], 90), 204, 217);
 
     }
