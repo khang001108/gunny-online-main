@@ -238,7 +238,7 @@ final class DungeonScreen {
   c.wallet(8, 4);
   if (seatCard == null) {
    seatCard = NativeUi.fit(c.loadout.card, 82*c.s, 80*c.s, 5*c.s);
-   emptyCard = NativeUi.fit(c.loadout.waiting, 82*c.s, 80*c.s, 5*c.s);
+   emptyCard = NativeUi.fit(c.loadout.waiting, 82*c.s, 80*c.s, 5*c.s); // Same waiting art as Online
    closedCard = NativeUi.fit(c.loadout.closed, 82*c.s, 80*c.s, 5*c.s);
   }
   for (int seat = 0; seat < 3; seat++)
@@ -263,8 +263,23 @@ final class DungeonScreen {
   int bot = c.offlineDungeon.allyAt(actor);
   boolean occupied = online ? n.present[actor] : seat == 0 || bot >= 0;
   boolean closed = ((online ? n.closedSlots : c.offlineDungeon.closedSlots) & (1 << actor)) != 0;
+
+  // The same waiting/closed/card assets as the regular online room, fitted to
+  // the 82x80 dungeon slots. Keep all three slots and the rewards panel.
   c.img(occupied ? seatCard : closed ? closedCard : emptyCard, x, y);
   if (!occupied) return;
+
+  // All coordinates below are relative to the top-left of the smaller card.
+  // Keep the name in the header, put the level beside the head, and reserve
+  // the bottom row for the host/ally label (not over the weapon or the feet).
+  final int avatarX = x + 27, avatarY = y + 20;
+  final int ringX = x + 42, feetY = y + 62;
+  final int levelX = x + 52, levelY = y + 13;
+  final int weaponX = x + 2, weaponY = y + 44;
+  final int labelY = y + 69;
+  final int portraitClipX = x + 2, portraitClipY = y + 13;
+  final int portraitClipW = 78, portraitClipH = 57;
+
   if (!online && seat != 0) {
    if (allyPortraitId != bot) {
     allyPortraitId = bot;
@@ -274,16 +289,34 @@ final class DungeonScreen {
      allyPortrait = null;
     }
    }
-   c.pcText(c.pcShort(PhoneCanvas.BOT_NAMES[bot],72), x+4, y+4);
-   c.clip(x+2,y+14,78,48);c.img(allyPortrait,x+25,y+17);c.all();
-   c.img(c.weapons[c.botWeapon(bot)],x+7,y+43);
-   c.drawLevel(Progression.botExperience(bot),x+54,y+39);
+   c.pcText(c.pcShort(PhoneCanvas.BOT_NAMES[bot], 72), x + 5, y + 4);
+   c.clip(portraitClipX,portraitClipY,portraitClipW,portraitClipH);
+   c.img(allyPortrait,avatarX,avatarY);
+   c.all();
+   c.img(c.weapons[c.botWeapon(bot)],weaponX,weaponY);
+   c.drawLevel(Progression.botExperience(bot),levelX,levelY);
+   //c.pcCenter("Đồng minh",x+41,labelY);
    return;
   }
-  c.pcText(c.pcShort(online ? n.names[actor] : c.playerName, 72), x+4, y+4);
+
+  c.pcText(c.pcShort(online ? n.names[actor] : c.playerName, 72), x + 5, y + 0);
   if (online) {
-   try{if(seatPortraits[seat]==null||n.standingKeys[actor]!=null&&!n.standingKeys[actor].equals(seatKeys[seat])){seatPortraits[seat]=n.buildStanding(actor,29,39);seatKeys[seat]=n.standingKeys[actor];}Image person=seatPortraits[seat];c.clip(x+2,y+14,78,48);c.vip.back(n.actorVip[actor],n.actorWing[actor],x+40,y+56,1,false);c.img(person,x+25,y+17);c.all();}catch(java.io.IOException ignored){}
-   n.chat.roomSpeech.head(actor,x+40,y+26);c.drawLevel(n.actorExperience[actor],x+54,y+39);
+   try {
+    if (seatPortraits[seat] == null || n.standingKeys[actor] != null
+        && !n.standingKeys[actor].equals(seatKeys[seat])) {
+     seatPortraits[seat] = n.buildStanding(actor,29,39);
+     seatKeys[seat] = n.standingKeys[actor];
+    }
+    c.clip(portraitClipX,portraitClipY,portraitClipW,portraitClipH);
+    c.vip.back(n.actorVip[actor],n.actorWing[actor],ringX,feetY,1,false);
+    c.img(seatPortraits[seat],avatarX,avatarY);
+   } catch (java.io.IOException ignored) {
+   } finally {
+    // Avoid leaking the slot clip into the following badge and other slots.
+    c.all();
+   }
+   n.chat.roomSpeech.head(actor,x+42,y+26);
+   c.drawLevel(n.actorExperience[actor],levelX,levelY);
   } else {
    String key = c.gender + ":" + c.skin + ":" + c.wornMask + ":" + c.customLook;
    for (int i = 0; i < c.look.length; i++) key += ":" + c.look[i];
@@ -295,17 +328,28 @@ final class DungeonScreen {
      localPortrait = null;
     }
    }
-   c.clip(x+2,y+14,78,48);c.vip.back(c.vip.exp(),c.vip.wing(),x+40,y+56,1,false);c.img(localPortrait,x+25,y+17);c.all();
-   n.chat.roomSpeech.head(0,x+48,y+27);
-   c.drawLevel(c.experience, x+54, y+39);
+   c.clip(portraitClipX,portraitClipY,portraitClipW,portraitClipH);
+   c.vip.back(c.vip.exp(),c.vip.wing(),ringX,feetY,1,false);
+   c.img(localPortrait,avatarX,avatarY);
+   c.all();
+   n.chat.roomSpeech.head(0,x+42,y+26);
+   c.drawLevel(c.experience,levelX,levelY);
   }
-  if (online ? (n.wornMasks[actor]&1)!=0 : (c.wornMask&1)!=0)
-   c.img(c.weapons[online ? n.weapon[actor] : c.equipped], x+7, y+43);
-  if(online&&n.rewardWaitingMask!=0){c.pcCenter((n.rewardWaitingMask&(1<<actor))!=0?"Nhận thưởng":"Đã xong",x+41,y+57);return;}
-  if (!online || actor == n.hostActor)
-   c.img(c.roomHost, x+4, y+55);
-  else if ((n.readyMask & (1 << actor)) != 0)
-   c.pcCenter("Sẵn sàng", x+41, y+57);
+
+  if (online ? (n.wornMasks[actor] & 1) != 0 : (c.wornMask & 1) != 0)
+   c.img(c.weapons[online ? n.weapon[actor] : c.equipped],weaponX,weaponY);
+
+  if (online && n.rewardWaitingMask != 0) {
+   c.pcCenter((n.rewardWaitingMask & (1 << actor)) != 0 ? "Nhận thưởng" : "Đã xong",x+41,labelY);
+  } else if (!online || actor == n.hostActor) {
+   c.img(c.roomHost,x+4,labelY);
+  } else {
+   // Match the regular online room: ready is a diagonal stamp, not a text
+   // overlay on the character; keep the ally label on the bottom row.
+   if ((n.readyMask & (1 << actor)) != 0)
+    c.img(c.roomReady,x+12,y+27);
+   //c.pcCenter("Đồng minh",x+41,labelY);
+  }
  }
 
  void openPicker(boolean online) {
