@@ -60,7 +60,7 @@ final class OnlineRooms implements CommandListener {
     void code(){
         if(net.pending.length()>0||net.operation.startsWith("create")||net.operation.equals("join"))return;
         final boolean expedition=expeditionList();
-        int y=expedition?152:14;
+        int y=expedition?33:14;
         c.typing.field("Nhập số phòng",expedition?c.dungeon.roomCode:roomCode,6,true,false,
             expedition?14:152,y,expedition?89:76,new InlineText.Done(){
                 public void accept(String value){

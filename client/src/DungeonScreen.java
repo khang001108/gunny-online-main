@@ -36,11 +36,13 @@ final class DungeonScreen {
    smallCover = NativeUi.fit(banner, 88*c.s, 32*c.s, 0);
   return smallCover;
  }
- private static final int PAGE_SIZE=8, FIRST_ROW=34, ROW_STEP=29, CARD_WIDTH=144, CARD_HEIGHT=28;
+ // List texture spans Y=49..167 (118px): 3 rows of 28px with balanced margins.
+ // 6 cards/page = 2 columns x 3 rows, Y=55,94,133; top/bottom=6px.
+ private static final int PAGE_SIZE=6, FIRST_ROW=55, ROW_STEP=39, CARD_WIDTH=144, CARD_HEIGHT=28;
  private static final int TEAM=0, NEW_ROOM=1, PREV=34, NEXT=35;
- private static final int CODE=36, JOIN=37, REFRESH=38, SEARCH_Y=153;
+ private static final int CODE=36, JOIN=37, REFRESH=38, SEARCH_Y=35;
  private static final int[] MENU={PREV,NEXT,TEAM,NEW_ROOM,CODE,JOIN,REFRESH};
- private static final int[] MENU_X={13,74,145,228}, MENU_W={55,55,72,78};
+ private static final int[] MENU_X={13,74,143,235}, MENU_W={55,55,61,66};
  private static final int[] SEARCH_X={13,109,149}, SEARCH_W={92,35,47};
  private Image waitingCard, playingCard, lockArt;
  private Image codeArt, enterArt, refreshArt, onlineArt;
@@ -62,6 +64,13 @@ final class DungeonScreen {
   c.all();
   if(background==null)background=c.combatRoomArt("dungeon-room-browser");
   c.img(background,0,0);
+  // Free 14 px under the fixed header for the moved search toolbar.
+  // Move only the gray list texture, not the decorative outer frame.
+  // This preserves the original pixel ratio and trims 14 px from the empty
+  // dark area above the bottom buttons (E72: 320x240, E6: scaled by c.s).
+  c.part(background,7,153,306,14,7,35,false); // dark strip behind toolbar
+  c.part(background,7,35,306,118,7,49,false); // gray room rows down 14px
+  c.part(background,8,23,42,15,8,23,false); // preserve "Danh sach phong" tab
   if(waitingCard==null){
    waitingCard=c.combatRoomArt("dungeon-room-available");
    playingCard=c.combatRoomArt("dungeon-room-playing");
@@ -70,7 +79,17 @@ final class DungeonScreen {
    int[] x={6,55,105,246}, y={217,217,209,209}, w={48,48,61,66}, h={12,12,26,26};
    for(int i=0;i<menuArt.length;i++){
     Image button=Image.createImage(source,x[i]*c.s,y[i]*c.s,w[i]*c.s,h[i]*c.s,0);
-    menuArt[i]=NativeUi.fit(button,MENU_W[i]*c.s,(i<2?12:22)*c.s,2*c.s);
+    if(i<2){
+        menuArt[i]=NativeUi.fit(
+            button,
+            MENU_W[i]*c.s,
+            12*c.s,
+            2*c.s
+        );
+    }else{
+        // Giữ nguyên ảnh nút PvP
+        menuArt[i]=button;
+    }
    }
    codeArt=NativeUi.fit(c.combatRoomArt("roomlist-search"),SEARCH_W[0]*c.s,14*c.s,3*c.s);
    enterArt=Image.createImage(source,231*c.s,15*c.s,35*c.s,14*c.s,0);
@@ -79,13 +98,13 @@ final class DungeonScreen {
   }
   int count=cardsOnPage();
   for(int slot=0;slot<count;slot++)drawRoomCard(page*PAGE_SIZE+slot,roomX(slot),roomY(slot));
-  if(n.dungeonListLoading&&count==0)c.pcCenter("Đang tải phòng viễn chinh...",160,91);
-  else if(count==0)c.pcCenter("Chưa có phòng • Tạo phòng để bắt đầu",160,91);
+  if(n.dungeonListLoading&&count==0)c.pcCenter("Đang tải phòng viễn chinh...",160,106);
+  else if(count==0)c.pcCenter("Chưa có phòng • Tạo phòng để bắt đầu",160,106);
   drawSearch();
   for(int i=0;i<menuArt.length;i++){
-   int y=i<2?177:172;
+   int y=i<2?177:167;
    c.img(menuArt[i],MENU_X[i],y);
-   if(focus==MENU[i])c.drawSelectionGlow(MENU_X[i]-1,y-1,MENU_W[i]+2,(i<2?14:24));
+   if(focus==MENU[i])c.drawSelectionGlow(MENU_X[i]-1,y-1,MENU_W[i]+2,(i<2?14:28));
   }
   n.rooms.drawToolbar(focus);
   n.rooms.drawToolTip(focus);
@@ -144,7 +163,7 @@ final class DungeonScreen {
  private int listFocusY(int id){
   if(id>=41)return n.rooms.focusY(id);
   if(id>=CODE&&id<=REFRESH)return SEARCH_Y+7;
-  for(int i=0;i<menuArt.length;i++)if(id==MENU[i])return 183;
+  for(int i=0;i<menuArt.length;i++)if(id==MENU[i])return i<2?183:180;
   return roomY((id-2)%PAGE_SIZE)+CARD_HEIGHT/2;
  }
  private void refresh(){
@@ -211,8 +230,12 @@ final class DungeonScreen {
   if(y>=SEARCH_Y&&y<SEARCH_Y+15)for(int i=0;i<SEARCH_X.length;i++){
    if(x>=SEARCH_X[i]&&x<SEARCH_X[i]+SEARCH_W[i]){focus=CODE+i;activateList();return;}
   }
-  if(y>=170&&y<195)for(int i=0;i<menuArt.length;i++){
-   if(x>=MENU_X[i]&&x<MENU_X[i]+MENU_W[i]){focus=MENU[i];activateList();return;}
+  // Hitbox follows each button after its Y position changes.
+  for(int i=0;i<menuArt.length;i++){
+   int top=i<2?177:167, height=i<2?12:26;
+   if(x>=MENU_X[i]&&x<MENU_X[i]+MENU_W[i]&&y>=top&&y<top+height){
+    focus=MENU[i];activateList();return;
+   }
   }
  }
  void drawWaiting() {
