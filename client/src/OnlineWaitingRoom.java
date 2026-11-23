@@ -205,15 +205,15 @@ final class OnlineWaitingRoom {
                     : (net.closedSlots & (1 << actor)) != 0 ? c.loadout.closed : c.loadout.waiting, x, 76);
             if (net.present[actor]) {
                 c.pcText(c.pcShort(net.names[actor], 73), x + 5, 79);
-                portrait(actor, x + 24, 97);
+                drawClassicPortrait(actor, x);
                 if ((net.wornMasks[actor] & 1) != 0)
                     c.img(c.weapons[net.weapon[actor]], x + 8, 143);
                 if (!(net.host && actor == self()) && (net.readyMask & (1 << actor)) != 0)
-                    c.img(c.roomReady, x + 7, 125);
+                    c.img(c.roomReady, x + 12, 127);
                 if (net.rewardWaitingMask != 0 && !net.bots[actor])
                     c.pcCenter(rewardLabel(actor), x + 50, 169);
                 else if (actor == net.hostActor)
-                    hostBadge(actor, x + 7, 169);
+                    hostBadge(actor, x + 4, 169);
                 else
                     c.pcCenter(actor == self() ? "Bạn" : net.bots[actor] ? "AI đồng minh" : "Đồng minh", x + 50, 169);
             }
@@ -227,6 +227,27 @@ final class OnlineWaitingRoom {
         c.g.translate(0, 28 * c.s);
         c.loadout.draw(true);
         focus();
+    }
+
+    void drawClassicPortrait(int actor, int slotX) {
+        final int portraitX = slotX + 24;
+        final int portraitY = 101;
+        final int ringX = slotX + 52;
+        final int feetY = 166;
+        final int levelX = slotX + 70;
+        final int levelY = 90;
+
+        c.net.chat.roomSpeech.head(actor, slotX + 49, 82);
+        try {
+            if (portraits[actor] == null || !net.standingKeys[actor].equals(portraitKeys[actor])) {
+                portraits[actor] = net.buildStanding(actor, 52, 64);
+                portraitKeys[actor] = net.standingKeys[actor];
+            }
+            c.vip.back(net.actorVip[actor], net.actorWing[actor], ringX, feetY, 0, false);
+            c.img(portraits[actor], portraitX, portraitY);
+            c.drawLevel(net.actorExperience[actor], levelX, levelY);
+        } catch (Exception ignored) {
+        }
     }
 
     void mapPreview(int x, int y) {
