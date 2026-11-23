@@ -11,6 +11,9 @@ final class OnlineWaitingRoom {
     Image slotClose, slotEmote;
     Image soloFrame, slot, closed, redLabel, blueLabel, redSwitch, blueSwitch, button, exit, exitSelected, inviteArt,
             startArt, readyArt, actionGround, randomPreview, classic;
+    // Cache mini-map when searching for an Online opponent; do not rescale every frame.
+    Image previewScaled;
+    int previewIndex = -1;
     final Image[] portraits = new Image[6];
     final String[] portraitKeys = new String[6];
 
@@ -21,6 +24,8 @@ final class OnlineWaitingRoom {
 
     void reset() {
         c.roomSelection = versus() ? 4 : 2;
+        previewScaled = null;
+        previewIndex = -1;
         for (int i = 0; i < 6; i++) {
             portraits[i] = null;
             portraitKeys[i] = null;
@@ -29,6 +34,8 @@ final class OnlineWaitingRoom {
 
     void releaseArt() {
         soloFrame = slot = closed = redLabel = blueLabel = redSwitch = blueSwitch = button = exit = exitSelected = inviteArt = startArt = readyArt = actionGround = randomPreview = classic = null;
+        previewScaled = null;
+        previewIndex = -1;
         for (int i = 0; i < 6; i++) {
             portraits[i] = null;
             portraitKeys[i] = null;
@@ -63,9 +70,9 @@ final class OnlineWaitingRoom {
                 portraitKeys[actor] = net.standingKeys[actor];
             }
             c.vip.back(net.actorVip[actor], net.actorWing[actor], x + (net.count == 6 ? 14 : 26),
-                    y + (net.count == 6 ? 43 : 70), net.count == 6 ? 1 : 0, false);
+                    y + (net.count == 6 ? 43 : 64), net.count == 6 ? 1 : 0, false);
             c.img(portraits[actor], x, y);
-            c.drawLevel(net.actorExperience[actor], x + (net.count == 6 ? 14 : 45), y - 4);
+            c.drawLevel(net.actorExperience[actor], x + (net.count == 6 ? 14 : 35), y - 4);
         } catch (Exception ignored) {
         }
     }
@@ -224,8 +231,19 @@ final class OnlineWaitingRoom {
 
     void mapPreview(int x, int y) {
         int index = !enemyPresent() || net.roomMap < 0 ? 0 : net.roomMap + 1;
-        c.img(index == 0 ? randomPreview : c.maps.banner(index), x, y);
-        c.pcCenter(index == 0 ? "Ngẫu nhiên" : c.pcShort(PhoneCanvas.MAPS[net.roomMap], 88), x + 44, y + 31);
+
+        // Scale once per map instead of allocating a new Image every paint frame.
+        if (previewScaled == null || previewIndex != index) {
+            Image source = index == 0 ? randomPreview : c.maps.banner(index);
+            if (source != null) {
+                // Fill the entire arena map preview, including the old caption area.
+                previewScaled = NativeUi.fit(source, 94 * c.s, 40 * c.s, 0);
+                previewIndex = index;
+            }
+        }
+
+        if (previewScaled != null) c.img(previewScaled, x, y);
+        // No separate caption: the map image fills the lower part of the frame.
     }
 
     void drawVersus() {
@@ -253,7 +271,7 @@ final class OnlineWaitingRoom {
         c.pcText("Phòng #" + net.roomId + " • Đấu đơn", 8, 181);
         if (enemyPresent())
             c.pcText("Đã tìm thấy người chơi", 8, 194);
-        mapPreview(160, 187);
+        mapPreview(157, 189);
     }
 
     void focus() {
