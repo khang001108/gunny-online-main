@@ -37,6 +37,25 @@ if args.code_only:
     raise SystemExit(0)
 downloads = root.parent/'public/downloads'
 release_errors=[]
+APP_VERSION = "7.9.18"
+APP_VENDOR = "Ronin-Lap"
+APP_DESCRIPTION = "Gunny Java Online - Tac gia: Ronin-Lap"
+
+def upsert_prop_bytes(data, key, value):
+    line = (key + ": " + value).encode("utf-8")
+    pattern = rb"(?m)^" + re.escape(key.encode("utf-8")) + rb": [^\r\n]+"
+    if re.search(pattern, data):
+        return re.sub(pattern, line, data)
+    ending = b"" if data.endswith((b"\n", b"\r")) else b"\n"
+    return data + ending + line + b"\n"
+
+def upsert_prop_text(text, key, value):
+    line = key + ": " + value
+    pattern = r"(?m)^" + re.escape(key) + r": [^\r\n]+"
+    if re.search(pattern, text):
+        return re.sub(pattern, line, text)
+    ending = "" if text.endswith(("\n", "\r")) else "\n"
+    return text + ending + line + "\n"
 # These sizes/effects have no runtime references; do not reintroduce them via overlays.
 def retired_asset(name):
     return name == 'fx-pow-ring.png' or bool(re.fullmatch(r'vip-ring-[0-2]-216\.png', name))
@@ -53,7 +72,9 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
                     continue
                 data = original.read(info.filename)
                 if info.filename.upper() == 'META-INF/MANIFEST.MF':
-                    data = re.sub(rb"(?m)^MIDlet-Version: [^\r\n]+", b"MIDlet-Version: 7.9.18", data).replace(b"socket://gunnyjava.xubi.org:22122", b"socket://gunnyjava.xubi.org:22123")
+                    data = upsert_prop_bytes(data, "MIDlet-Version", APP_VERSION).replace(b"socket://gunnyjava.xubi.org:22122", b"socket://gunnyjava.xubi.org:22123")
+                    data = upsert_prop_bytes(data, "MIDlet-Vendor", APP_VENDOR)
+                    data = upsert_prop_bytes(data, "MIDlet-Description", APP_DESCRIPTION)
                 output.writestr(info, data)
             for filename,data in overlays.items():
                 entry=zipfile.ZipInfo(filename,(2000,1,1,0,0,0));entry.create_system=0;entry.extra=b"";entry.flag_bits=0;entry.external_attr=0x20
@@ -90,7 +111,9 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
         jad = downloads/(name+'.jad')
         jad_seed = jad if jad.exists() else downloads/(name.replace('7918','7917')+'.jad')
         text = jad_seed.read_text(encoding="utf-8").replace(":22122", ":22123")
-        text = re.sub(r"(?m)^MIDlet-Version: [^\r\n]+", "MIDlet-Version: 7.9.18", text)
+        text = upsert_prop_text(text, "MIDlet-Version", APP_VERSION)
+        text = upsert_prop_text(text, "MIDlet-Vendor", APP_VENDOR)
+        text = upsert_prop_text(text, "MIDlet-Description", APP_DESCRIPTION)
         text = re.sub(r"(?m)^MIDlet-Jar-URL: [^\r\n]+", "MIDlet-Jar-URL: "+name+".jar", text)
         text = re.sub(r'MIDlet-Jar-Size: \d+', 'MIDlet-Jar-Size: '+str(jar.stat().st_size), text)
         jad.write_text(text, encoding='utf-8')

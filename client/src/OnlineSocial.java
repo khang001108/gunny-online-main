@@ -425,7 +425,7 @@ final class OnlineSocial implements CommandListener {
                         4 * c.s, 4 * c.s, 0, 360);
             }
             c.img(popupInvite, 198, y + 3);
-            c.pcCenter(friendsPopup ? (tab == 3 ? "Nhận" : tab == 0 ? "Xem" : "Kết bạn") : "Mời", 218, y + 8);
+            c.pcCenter(friendsPopup ? (tab == 3 ? "Nhận" : tab == 0 ? "Xem" : "Kết bạn") : (tab == 2 && !offlineInvite && botAlreadyInRoom(i) ? "Đã có" : "Mời"), 218, y + 8);
             if (nav == 1 && selected == slot)
                 c.drawSelectionGlow(70, y, 169, 23);
         }
@@ -571,6 +571,14 @@ final class OnlineSocial implements CommandListener {
                 public void accept(String value){searchQuery=value;runSearch();}
             });
     }
+    boolean botAlreadyInRoom(int botId) {
+        if (botId < 0 || botId >= PhoneCanvas.BOT_NAMES.length || net.roomId <= 0 || net.phase != 0) return false;
+        String name = PhoneCanvas.BOT_NAMES[botId];
+        for (int i = 0; i < net.count; i++)
+            if (net.present[i] && net.bots[i] && name.equals(net.names[i])) return true;
+        return false;
+    }
+
     void choose() {
         if (friendsSearchTab() && selected < 0) {
             id();
@@ -600,6 +608,10 @@ final class OnlineSocial implements CommandListener {
             }
             if (!inviting) {
                 c.message("Mở Mời trong phòng để chọn AI.");
+                return;
+            }
+            if (botAlreadyInRoom(i)) {
+                c.message(PhoneCanvas.BOT_NAMES[i] + " đã có trong phòng");
                 return;
             }
             bot = i;
@@ -699,6 +711,7 @@ final class OnlineSocial implements CommandListener {
             inviteSeen = 0;
             return;
         }
+        if(net.soloSearching())return;
         if (room == inviteSeen)
             return;
         inviteSeen = room;

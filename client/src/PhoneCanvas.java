@@ -48,16 +48,19 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     static final String[] BOT_NAMES = { "Minh Anh", "Tuấn Phong", "Hoàng Nam", "Gia Huy", "Ngọc Linh", "Thu Hà",
             "Mai Chi", "Bảo Ngọc" };
 
+    static final int[] BOT_SKINS = {1,3,5,7,0,2,4,6}, BOT_WEAPONS = {9,0,3,5};
+    static final int[] LOOK_ORDER = {0,3,2,1,4};
+
     int botSex(int id) {
         return id / 4;
     }
 
     int botSkin(int id) {
-        return new int[] { 1, 3, 5, 7, 0, 2, 4, 6 }[id];
+        return BOT_SKINS[id];
     }
 
     int botWeapon(int id) {
-        int w = new int[] { 9, 0, 3, 5 }[id % 4];
+        int w = BOT_WEAPONS[id % 4];
         return w == equipped ? nextWeapon(w, 1) : w;
     }
 
@@ -174,6 +177,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             loadTicks++;
             if (canFinishLoading()) {
                 mode = 1;
+                releaseLoadingArt();
                 if (game.dungeonStage > 0) {
                     Battle.Unit player=game.units[0];
                     cameraX=Battle.clamp(player.x-160,0,160);
@@ -210,11 +214,13 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
 
     String pcShort(String name, int width) {
         if(name==null)return "";
-        if (pcWidth(name) <= width)
-            return name;
-        while (name.length() > 1 && pcWidth(name + "...") > width)
-            name = name.substring(0, name.length() - 1);
-        return name + "...";
+        int measured=pcWidth(name);
+        if(measured<=width)return name;
+        int end=name.length(), dots=pcWidth("...");
+        while(end>1&&measured+dots>width){
+            measured-=(widths[glyph(name.charAt(--end))]*8+5)/11;
+        }
+        return name.substring(0,end)+"...";
     }
 
     String layerName(int sex, int k, int item, int mask, String prefix) {
@@ -230,7 +236,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             throws IOException {
         int[] source = new int[80 * 100 * s * s];
         if (custom) {
-            int[] order = { 0, 3, 2, 1, 4 };
+            int[] order = LOOK_ORDER;
             for (int i = 0; i < 5; i++) {
                 int k = order[i];
                 String name = layerName(sex, k, parts[k], mask, "cutin");
@@ -298,7 +304,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             pcCenter(pcShort(actorName(i),width+8),center,165);
         }
         pcText(offlineDungeon.active?"Huyệt Ma Kiến • Ải "+offlineDungeon.stage:onlineBattle()&&net.roomKind==3?(net.dungeonStage>=3?"Bộ Lạc Tà Thần • Ải "+DungeonRewards.tribalNumber(net.dungeonStage):"Huyệt Ma Kiến • Ải "+net.dungeonStage):game.unitCount == 6 ? "Tổ đội • 3 đấu 3"
-                : game.teams ? "Phòng riêng • 2 đấu 2" : "Phòng riêng • 1 đấu 1", 8, 179);
+                : game.teams ? "Phòng riêng • 2 đấu 2" : onlineBattle()&&net.roomKind==1?"Đấu đơn • 1 đấu 1":"Phòng riêng • 1 đấu 1", 8, 179);
         pcText("Chuẩn bị nhân vật và vũ khí", 8, 190);
         pcText(loadTicks<60?"Đang tải tài nguyên...":allLoadingReady()?"Tất cả đã OK. Chuẩn bị vào trận...":"Chờ người chơi khác tải xong...",8,201);
         if (roomMaps[map] == null) {
@@ -459,7 +465,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 if ((mask & 2) != 0)
                     blendCutin(pixels, load("cutin" + sex + "_0_" + net.skin[powCutinActor]), blend);
                 else {
-                    int[] order = { 0, 3, 2, 1, 4 };
+                    int[] order = LOOK_ORDER;
                     for (int i = 0; i < 5; i++) {
                         int k = order[i];
                         String layer = layerName(sex, k, net.look[powCutinActor][k], mask, "cutin");
@@ -471,7 +477,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 if ((wornMask & 2) != 0)
                     blendCutin(pixels, load("cutin" + gender + "_0_" + skin), blend);
                 else {
-                    int[] order = { 0, 3, 2, 1, 4 };
+                    int[] order = LOOK_ORDER;
                     for (int i = 0; i < 5; i++) {
                         int k = order[i];
                         String layer = layerName(gender, k, look[k], wornMask, "cutin");
@@ -599,7 +605,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     int[] slopePixels, slopeRotated, slopeLayer;
     Image dialFace;
     int dialSlope = 999;
-    int[] dialPixels;
+    int[] dialPixels, dialRotated;
     Image aimSector;
     int aimSectorMin = -1, aimSectorMax = -1;
     int held, fireKey, pressTouch = -1, frame, shootSound, hitSound, oldWin;
@@ -957,7 +963,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
 
     void appearance(int sex, int anim, int x, int y, boolean flip) {
         if (sex == gender && customLook) {
-            int[] order = { 0, 3, 2, 1, 4 };
+            int[] order = LOOK_ORDER;
             for (int i = 0; i < 5; i++)
                 part(lookLayers[order[i]],
                         (s == 1 ? (anim >= 16 ? 8 + anim - 16
@@ -969,7 +975,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
 
     void standingAppearance(int x, int y) {
         if (customLook) {
-            int[] order = { 0, 3, 2, 1, 4 };
+            int[] order = LOOK_ORDER;
             for (int i = 0; i < 5; i++)
                 img(standingLayers[order[i]], x, y);
         } else
@@ -1394,10 +1400,33 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         queenCall=queenBow=queenDeath=queenArrow=queenIdle=queenShade=queenHit=queenTitle=speechFont=null;
         for(int i=0;i<2;i++){antIdle[i]=antWalk[i]=antBeat[i]=null;for(int j=0;j<antPoses[i].length;j++)antPoses[i][j]=null;}
         for(int i=0;i<queenArrowRotations.length;i++)queenArrowRotations[i]=null;
+        for(int i=0;i<npc780.length;i++)npc780[i]=npcHud780[i]=npcHeader780[i]=null;
+        bossFrame=bossHp=bossPortrait=null;
+        for(int i=0;i<antWasDead.length;i++){antWasDead[i]=false;antDeathFrame[i]=antLastWalk[i]=antLastMoveFrame[i]=0;}
         tribalArt.release();conditions.reset();
     }
+    void releaseLoadingArt(){
+        versusBg=versusLogo=versusOK=versusMode=versusTime=versusDigits=null;
+        for(int i=0;i<loadingHeroes.length;i++){loadingHeroes[i]=versusPortrait[i]=null;loadingWidths[i]=0;}
+        for(int i=0;i<dungeonLoadingCovers.length;i++)dungeonLoadingCovers[i]=null;
+        vip.releaseLoadingArt();
+    }
+    // Only call when leaving the encounter, never when opening a pause/menu overlay.
+    void releaseBattleArt(){
+        releaseNpcArt();releaseLoadingArt();vip.release();
+        background=miniTerrain=opponentStanding=powCutin=aimSector=dialFace=fadeBuffer=null;
+        pixels=scratch=slopePixels=slopeRotated=slopeLayer=fadePixels=dialPixels=dialRotated=miniSample=null;
+        onlineGround=hardTerrain=null;
+        powShotPending=false;powCutinTicks=0;resetPowWorld();
+        aimSectorMin=aimSectorMax=-1;miniDirty=true;
+        for(int i=0;i<tiles.length;i++){tiles[i]=null;dirty[i]=true;}
+        for(int i=0;i<fadedUnits.length;i++){fadedUnits[i]=null;slopeBody[i]=null;}
+        for(int i=0;i<actors.length;i++)actors[i]=actorStand[i]=null;
+        for(int i=0;i<impactArt.length;i++)impactArt[i]=null;
+        if(net!=null){for(int i=0;i<net.layers.length;i++)for(int j=0;j<5;j++)net.layers[i][j]=null;}
+    }
     void beginMatch(int battleMap) throws IOException {
-        releaseNpcArt();loadout.releaseMenuArt();gifts.releaseArt();home.releaseArt();ranking.releaseArt();bag.releaseArt();shop.releaseArt();forge.releaseArt();vip.release();tooltip.releaseArt();popup.releaseArt();ui.releaseArt();typing.releaseArt();
+        releaseBattleArt();loadout.releaseMenuArt();gifts.releaseArt();home.releaseArt();ranking.releaseArt();bag.releaseArt();shop.releaseArt();forge.releaseArt();tooltip.releaseArt();popup.releaseArt();ui.releaseArt();typing.releaseArt();
         if(dungeon!=null)dungeon.releaseArt();if(net!=null){net.waiting.releaseArt();net.rooms.releaseArt();for(int i=0;i<net.standing.length;i++)net.standing[i]=null;}
         for(int i=0;i<stoneShop.icons.length;i++)stoneShop.icons[i]=null;
 
@@ -1408,8 +1437,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             loadingRequested = false;
             return;
         }
-        for (int i = 0; i < 6; i++)
-            fadedUnits[i] = null;
+
         freeCamera = cameraReturning = cameraOnPlayer = false;
         cameraHeld = 0;
         onlineGround = null;opponentStanding=null;
@@ -1447,7 +1475,6 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         System.gc();
         aimSector = null;
         aimSectorMin = aimSectorMax = -1;
-        tribalArt.release();conditions.reset();
         map = battleMap;
         background = load("bg" + map);
         Image terrain = load("land" + map);
@@ -1553,7 +1580,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void openLobby() {
-        releaseNpcArt();background=null;
+        releaseBattleArt();
         if(net!=null&&!net.inBattle)for(int i=0;i<net.layers.length;i++)for(int j=0;j<5;j++)net.layers[i][j]=null;
         offlineDungeon.active=false;forge.running=false;
         toastTicks = 0;
@@ -1831,12 +1858,14 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         }
         if(mode==0&&ranking.opened)ranking.draw();
         if (mode == 0 && net.social.opened) net.social.draw();
-        if (net.chat.lobby()) net.chat.draw();
-        net.chat.roomSpeech.draw();
-        presentation.draw();
-        popup.draw();
-        typing.draw();
-        if(presentation.boot==2&&toastTicks>0&&!popup.opened)drawBattleNotice();
+        if(!net.soloSearching()){
+            if (net.chat.lobby()) net.chat.draw();
+            net.chat.roomSpeech.draw();
+            presentation.draw();
+            popup.draw();
+            typing.draw();
+        }
+        if(!net.soloSearching()&&presentation.boot==2&&toastTicks>0&&!popup.opened)drawBattleNotice();
         if (presentation.showFps) {
             long now = System.currentTimeMillis();
             if (fpsWindowStart == 0) fpsWindowStart = now;
@@ -2254,9 +2283,11 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         int oldX = ox, oldY = oy;
         boolean zoom = showingPowCutin();
         int tribalShake=(SulanRules.active(game)?SulanRules.shake(game):TribalRules.swordShaking(game)||TribalRules.active(game)&&game.tribalPhase==2&&game.tribalFx>0&&game.tribalState!=TribalRules.DEAD)?(frame%2==0?1:-1):0;cameraX+=tribalShake;
-        if (!zoom)
+        if (!zoom && (powWorld != null || powWorldPixels != null))
             resetPowWorld();
+        if (!zoom && powCutinTicks <= 0) powCutin=null;
         if (!zoom || powWorldPixels == null) {
+            vip.pruneBattleWings();
             if (zoom) {
                 if (powWorld == null)
                     powWorld = Image.createImage(320 * s, 240 * s);
@@ -2944,14 +2975,14 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             stampSlopeLayer(backArt(u.weapon), anim - 1, u.face < 0);
             int sex = index == 0 ? gender : 1 - gender;
             if (onlineBattle() && net.custom[index]) {
-                int[] order = { 0, 3, 2, 1, 4 };
+                int[] order = LOOK_ORDER;
                 int cell = s == 1
                         ? (anim >= 16 ? 8 + anim - 16 : anim == 0 ? 0 : anim < 10 ? 1 + (anim - 1) % 5 : 6 + anim % 2)
                         : anim;
                 for (int i = 0; i < 5; i++)
                     stampSlopeLayer(net.layers[index][order[i]], cell, u.face < 0);
             } else if (!onlineBattle() && index == 0 && customLook) {
-                int[] order = { 0, 3, 2, 1, 4 };
+                int[] order = LOOK_ORDER;
                 int cell = s == 1
                         ? (anim >= 16 ? 8 + anim - 16 : anim == 0 ? 0 : anim < 10 ? 1 + (anim - 1) % 5 : 6 + anim % 2)
                         : anim;
@@ -3192,10 +3223,12 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             drawSelectionGlow(x - 2, y - 2, 28, 28);
     }
 
+    int[] miniSample;
     void drawMiniMap() {
         if (miniTerrain == null || miniDirty) {
             int width = 70 * s, height = 34 * s;
-            int[] sample = new int[width * height];
+            if(miniSample==null)miniSample=new int[width*height];
+            int[] sample=miniSample;
             if (pixels != null)
                 for (int y = 0; y < height; y++)
                     for (int x = 0; x < width; x++)
@@ -3301,15 +3334,15 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 dialPixels = new int[side * side];
                 hudAngle.getRGB(dialPixels, 0, side, 0, 0, side, side);
             }
-            int[] rotated = new int[side * side];
+            if(dialRotated==null)dialRotated=new int[side*side];
+            int[] rotated=dialRotated;
             int cs = Battle.cos(u.slope), sn = Battle.sin(u.slope), middle = side - 1;
             for (int py = 0; py < side; py++)
                 for (int px = 0; px < side; px++) {
                     int dx = 2 * px - middle, dy = 2 * py - middle;
                     int sx = (cs * dx - sn * dy + middle * 1024 + 1024) / 2048,
                             sy = (sn * dx + cs * dy + middle * 1024 + 1024) / 2048;
-                    if (sx >= 0 && sx < side && sy >= 0 && sy < side)
-                        rotated[py * side + px] = dialPixels[sy * side + sx];
+                    rotated[py * side + px] = sx >= 0 && sx < side && sy >= 0 && sy < side ? dialPixels[sy * side + sx] : 0;
                 }
             dialFace = Image.createRGBImage(rotated, side, side, true);
             dialSlope = u.slope;
@@ -3454,39 +3487,36 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     Image noticeSource, noticePanel, noticeFont;
-    int noticeW, noticeH;
+    int noticeW, noticeH, noticeCount;
+    final String[] noticeRows=new String[5];
+    String noticeText;
 
     void drawBattleNotice() {
         if (noticeSource == null) {
             noticeSource = combatRoomArt("notice754-bg");
             noticeFont = combatRoomArt("font-pc-yellow");
         }
-        String[] rows = new String[5];
-        String rest = toast==null?"":toast;
-        int count = 0, w = 0;
-        while (rest.length() > 0 && count < rows.length) {
-            int end = rest.length();
-            while (end > 1 && pcWidth(rest.substring(0, end)) > 280)
-                end--;
-            if (end < rest.length()) {
-                int space = rest.lastIndexOf(' ', end);
-                if (space > 0)
-                    end = space;
+        String value=toast==null?"":toast;
+        if(!value.equals(noticeText)||noticePanel==null){
+            noticeText=value;
+            String rest=value;
+            int count=0,w=0;
+            while(rest.length()>0&&count<noticeRows.length){
+                int end=rest.length();
+                while(end>1&&pcWidth(rest.substring(0,end))>280)end--;
+                if(end<rest.length()){int space=rest.lastIndexOf(' ',end);if(space>0)end=space;}
+                noticeRows[count]=rest.substring(0,end);
+                w=Math.max(w,pcWidth(noticeRows[count++]));rest=rest.substring(end).trim();
             }
-            rows[count] = rest.substring(0, end);
-            w = Math.max(w, pcWidth(rows[count++]));
-            rest = rest.substring(end).trim();
+            noticeCount=count;
+            for(int i=count;i<noticeRows.length;i++)noticeRows[i]=null;
+            w=Math.max(110,w+18);int h=count*12+10;
+            if(noticePanel==null||noticeW!=w||noticeH!=h){
+                noticeW=w;noticeH=h;noticePanel=NativeUi.fit(noticeSource,w*s,h*s,4*s);
+            }
         }
-        w = Math.max(110, w + 18);
-        int h = count * 12 + 10;
-        if (noticePanel == null || noticeW != w || noticeH != h) {
-            noticeW = w;
-            noticeH = h;
-            noticePanel = NativeUi.fit(noticeSource, w * s, h * s, 4 * s);
-        }
-        img(noticePanel, (320 - w) / 2, 63);
-        for (int i = 0; i < count; i++)
-            tooltip.colored(rows[i], 160 - pcWidth(rows[i]) / 2, 68 + i * 12, noticeFont);
+        img(noticePanel,(320-noticeW)/2,63);
+        for(int i=0;i<noticeCount;i++)tooltip.colored(noticeRows[i],160-pcWidth(noticeRows[i])/2,68+i*12,noticeFont);
     }
 
     void message(String value) {
@@ -3575,6 +3605,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     protected synchronized void keyPressed(int key) {
+        if(net.soloSearching()){int mapped=keyBindings.map(key);if(key==-7||mapped==-7||key=='0')net.cancelSolo();else if(key=='h'||key=='H'||mapped=='h'||mapped=='H')net.soloBot();return;}
         if (typing.key(key)) { repaint(); return; }
         if(mode==1&&game.dungeonStage>0&&(key=='m'||key=='M')){conditions.toggle();repaint();return;}
         int rawKey = key;
@@ -4042,6 +4073,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     boolean roomKitContext(){return !presentation.settings&&!net.social.opened&&!net.create.opened&&!net.chat.opened&&!net.inBattle&&(mode==10||mode==19||mode==16&&net.logged&&net.roomId>0&&net.phase==0&&!dungeon.picker&&!dungeon.rewardsOpen);}
     protected synchronized void pointerPressed(int px, int py) {
         int mappedX=pointerX(px,py),mappedY=pointerY(px,py);px=mappedX;py=mappedY;
+        if(net.soloSearching()){int sx=(px-ox)/s,sy=(py-oy)/s;if(sx>=5&&sx<149){if(sy>=200&&sy<212)net.soloBot();else if(sy>=212&&sy<229)net.cancelSolo();}return;}
         if (typing.pointer((px-ox)/s,(py-oy)/s)) { repaint(); return; }
         if (mode == 1 && powShotPending)
             return;

@@ -18,6 +18,7 @@ public final class SoloMatchmaking7918Check {
   ok(r.members[0]!=null&&r.members[1]!=null&&r.battle.units[0].human&&r.battle.units[1].human,"Both actors are real players");
   ok(server.sessions.get(a.token).room==id&&server.sessions.get(b.token).room==id,"Both sessions share the same battle");
   ok(!a.call("cancelquick",null).readBoolean(),"Late cancel cannot abandon a matched battle");
+  ok(a.call("botvote",null).readInt()==id&&!r.botMatch,"Late H cannot replace a real opponent");
   a.sync(0,0,0);b.sync(0,0,0);TcpGameplayCheck.await(()->r.phase==1,"Both players complete loading before combat");
   a.call("leave",null);b.call("leave",null);
  }
@@ -30,12 +31,18 @@ public final class SoloMatchmaking7918Check {
     ok(waiting.kind==1&&waiting.queued&&waiting.phase==0&&waiting.queueSince>0,"Solo waits with server-side 60-second timer");
     ok(b.call("rooms",null).readUnsignedShort()==0,"Solo queue hidden from room browser");
     ok(denied(b,"join",o->{o.writeInt(id);o.writeByte(1);o.writeUTF("");}),"Cannot join solo queue manually");
-    ok(denied(a,"botvote",null),"Solo does not start against a bot");
     ok(quick(b)==id,"Solo vs solo shares first ticket");pair(server,id,a,b);
+    int botId=quick(a);var bot=server.rooms.get(botId);
+    ok(a.call("botvote",null).readInt()==botId,"H starts a solo bot match");
+    ok(bot.phase==3&&bot.count==2&&bot.kind==1&&bot.botMatch&&bot.selectedBots[1]>=0&&bot.members[1]==null&&bot.battle.units[0].human&&!bot.battle.units[1].human,"One human and one bot in normal loading");
+    ok(bot.map>=0&&bot.map<6&&bot.requestedMap==-1&&bot.returnRooms.isEmpty(),"Random map, no private return room for solo bot");
+    ok(a.call("botvote",null).readInt()==botId,"Repeated H does not restart a match");
+    a.sync(0,0,0);TcpGameplayCheck.await(()->bot.phase==1,"Solo bot match completes loading with only one human");a.call("leave",null);
     int privateId=room(b);int q=quick(a);ok(server.rooms.get(q).phase==0,"Unqueued private room is not eligible");
     int joined=b.call("start",null).readInt();ok(joined==q&&!server.rooms.containsKey(privateId),"Private host start finds waiting solo");pair(server,q,a,b);
     privateId=room(b);b.call("start",null);ok(server.rooms.get(privateId).queued,"Private host queues first");q=quick(a);ok(!server.rooms.containsKey(privateId),"Solo finds one-player private room already queued");pair(server,q,a,b);
     q=quick(a);var expired=server.rooms.get(q);synchronized(expired){expired.queueSince=System.currentTimeMillis()-60001;expired.tick();}ok(expired.timedOut&&!expired.queued&&expired.phase==0,"Timeout stops search at 60 seconds");
+    ok(a.call("botvote",null).readInt()==q&&expired.phase==0&&expired.timedOut,"H after timeout cannot start a bot match");
     int q2=quick(b);ok(q2!=q&&server.rooms.get(q2).phase==0,"Expired ticket cannot be matched");cancel(a);cancel(b);
     int team=c.call("create3",o->{o.writeByte(1);o.writeByte(0);o.writeByte(-1);o.writeByte(12);o.writeUTF("Two allies");o.writeUTF("");}).readInt();
     d.call("join",o->{o.writeInt(team);o.writeByte(0);o.writeUTF("");});d.call("ready",o->o.writeBoolean(true));c.call("start",null);

@@ -5,7 +5,25 @@ import javax.microedition.lcdui.AlertType;
 
 /** Installable MIDP 2.0 entry point for Nokia S40 and Symbian Java. */
 public final class GunnyMIDlet extends MIDlet {
+    static final String FALLBACK_VERSION = "7.9.18";
+    static final String FALLBACK_VENDOR = "Ronin-Lap";
+    static final String FALLBACK_DESCRIPTION = "Gunny Java Online - Tac gia: Ronin-Lap";
     PhoneCanvas game;
+
+    String appVersion(){
+        String value = getAppProperty("MIDlet-Version");
+        return value != null && value.length() > 0 ? value : FALLBACK_VERSION;
+    }
+
+    String appVendor(){
+        String value = getAppProperty("MIDlet-Vendor");
+        return value != null && value.length() > 0 ? value : FALLBACK_VENDOR;
+    }
+
+    String appDescription(){
+        String value = getAppProperty("MIDlet-Description");
+        return value != null && value.length() > 0 ? value : FALLBACK_DESCRIPTION;
+    }
     protected void startApp(){
         try{
             if(game==null)game=new PhoneCanvas(this);

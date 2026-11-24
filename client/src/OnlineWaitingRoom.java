@@ -26,6 +26,7 @@ final class OnlineWaitingRoom {
         c.loadout.resetFocus();c.roomSelection = versus() ? RoomLoadout.AVAILABLE : 2;
         previewScaled = null;
         previewIndex = -1;
+        soloHero = soloRandomMap = null; soloHeroKey = null;
         for (int i = 0; i < 6; i++) {
             portraits[i] = null;
             portraitKeys[i] = null;
@@ -36,6 +37,7 @@ final class OnlineWaitingRoom {
         soloFrame = slot = closed = redLabel = blueLabel = redSwitch = blueSwitch = button = exit = exitSelected = inviteArt = startArt = readyArt = actionGround = randomPreview = classic = null;
         previewScaled = null;
         previewIndex = -1;
+        soloHero = soloRandomMap = null; soloHeroKey = null;
         for (int i = 0; i < 6; i++) {
             portraits[i] = null;
             portraitKeys[i] = null;
@@ -145,10 +147,58 @@ final class OnlineWaitingRoom {
                         : (net.readyMask & (1 << self())) != 0 ? "Đã sẵn" : "Sẵn sàng";
     }
 
+    // Reuse the native loading screen exactly; only the local actor is drawn
+    // until the server starts the matched battle.
+    Image soloHero;
+    String soloHeroKey;
+    Image soloRandomMap;
+    void drawSoloSearch() {
+        c.all();
+        if(c.versusBg==null)c.versusBg=c.combatRoomArt("room-loading-bg");
+        if(c.versusLogo==null)c.versusLogo=c.combatRoomArt("room-loading-vs");
+        if(c.versusMode==null)c.versusMode=c.combatRoomArt("room-loading-mode");
+        if(c.versusTime==null)c.versusTime=c.combatRoomArt("room-loading-time");
+        if(c.versusDigits==null)c.versusDigits=c.combatRoomArt("room-loading-digits");
+        c.img(c.versusBg,0,0);
+        c.img(c.versusLogo,124,15);
+        c.img(c.versusMode,139,73);
+        c.img(c.versusTime,137,110);
+        int seconds=Battle.clamp(net.queueSeconds(),0,60);
+        c.part(c.versusDigits,seconds/10*17,0,17,21,143,120,false);
+        c.part(c.versusDigits,seconds%10*17,0,17,21,160,120,false);
+        int actor=self();
+        if(net.present[actor]) {
+            String key=net.standingKeys[actor];
+            try {
+                if(soloHero==null||key==null||!key.equals(soloHeroKey)) {
+                    soloHero=net.buildStanding(actor,76,92);
+                    soloHeroKey=key;
+                }
+                c.vip.backStatic(net.actorVip[actor],net.actorWing[actor],75,145,0);
+                c.img(soloHero,37,53);
+                int weapon=net.weapon[actor];
+                if(weapon>=0&&weapon<c.weapons.length)c.img(c.weapons[weapon],92,127);
+                c.pcCenter(c.pcShort(net.names[actor],84),75,165);
+            }catch(java.io.IOException ignored){}
+        }
+        // Right-hand opponent slot is intentionally completely empty.
+        c.pcText("Đấu đơn 1v1",8,179);
+        c.pcText("Đang chờ người chơi vào",8,190);
+        c.pcText("H: Đấu bot",8,201);
+        c.pcText("Mềm phải: Trở về",8,213);
+        if(soloRandomMap==null) {
+            Image source=c.combatRoomArt("map-room-random-preview");
+            if(source==null)source=c.maps.banner(0);
+            if(source!=null)soloRandomMap=NativeUi.fit(source,94*c.s,39*c.s,0);
+        }
+        c.img(soloRandomMap,157,189);
+    }
+
     void draw() {
+        if(versus()&&net.phase==0){drawSoloSearch();return;}
         load();
         c.all();
-        if (versus())
+        if (versus() && net.phase > 0)
             drawVersus();
         else if (net.count == 6)
             drawTeams();
@@ -186,7 +236,13 @@ final class OnlineWaitingRoom {
                         c.pcCenter(net.controls[actor] ? "Bạn" : net.bots[actor] ? "AI" : "Chờ", x + 25, y + 63);
                 }
             }
-        c.pcText("Tổ đội 3 đấu 3 • Chờ sẵn sàng", 9, 188);
+        int seat = c.roomSelection - 60;
+        String hint = "Tổ đội 3 đấu 3 • Chờ sẵn sàng";
+        if (net.host && net.phase == 0 && seat >= 0 && seat < net.count && seat != self()) {
+            if (net.present[seat] && net.bots[seat]) hint = "OK: Đuổi AI và đóng ô";
+            else if (!net.present[seat]) hint = (net.closedSlots & (1 << seat)) != 0 ? "OK: Mở ô chờ" : "OK: Đóng ô chờ";
+        }
+        c.pcText(hint, 9, 188);
         c.loadout.draw(true);
         focus();
     }
@@ -290,9 +346,9 @@ final class OnlineWaitingRoom {
                     c.pcCenter("Sẵn sàng", x + 20, 166);
             }
         c.pcText("Phòng #" + net.roomId + " • Đấu đơn", 8, 181);
-        if (enemyPresent())
+        if (enemyPresent() && !c.presentation.searching())
             c.pcText("Đã tìm thấy người chơi", 8, 194);
-        mapPreview(edit?100:157, 189);
+        mapPreview(157, 189);
         if(edit){c.loadout.load();c.clip(214,0,106,145);c.img(c.loadout.panel,214,0);c.pcCenter("Đấu đơn",267,18);c.loadout.drawGroups(true);c.all();c.loadout.drawGroupInfo(true);}
     }
 
@@ -335,7 +391,9 @@ final class OnlineWaitingRoom {
                 c.popup.notice("Ô chờ", "Chỉ chủ phòng được đóng hoặc mở ô");
                 return;
             }
-            if (net.present[seat]) {
+            if (seat >= net.count || seat == self() || net.phase != 0 || net.inBattle)
+                return;
+            if (net.present[seat] && !net.bots[seat]) {
                 c.popup.notice("Ô chờ", "Ô đã có người chơi");
                 return;
             }
@@ -510,12 +568,12 @@ final class OnlineWaitingRoom {
                 return;
             }
         }
-        if (net.waitBotCap && net.queueSeconds() > 0 && !net.inBattle && y >= 203 && x < 145) {
+        if (!versus() && net.waitBotCap && net.queueSeconds() > 0 && !net.inBattle && y >= 203 && x < 145) {
             net.request("botvote");
             return;
         }
         if (versus()) {
-            if (x >= 164 && x < 258 && y >= 185)
+            if (x >= 155 && x < 253 && y >= 187 && y < 230)
                 c.roomSelection = 4;
             else
                 return;

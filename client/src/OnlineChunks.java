@@ -60,7 +60,7 @@ final class OnlineChunks {
             for (int i=0;i<segment.count;i++) finalFrame=frame(block);
             received=next;
             if (terminal) { ownPending=true;ownSince=System.currentTimeMillis();finish(); }
-            else { completed=id;finalFrame=null; }
+            else { completed=id;finalFrame=previousFrame=null; }
             return;
         }
         queued.addElement(segment);received=next;
@@ -76,7 +76,7 @@ final class OnlineChunks {
             net.c.held=net.c.fireKey=0;net.revision=0;net.lastPoll=0;return false;
         }
     }
-    byte[] frame(DataInputStream in)throws IOException {previousFrame=SnapshotDelta.read(in,previousFrame);return previousFrame;}
+    byte[] frame(DataInputStream in)throws IOException {previousFrame=SnapshotDelta.readReusable(in,previousFrame);return previousFrame;}
     void advance() throws IOException {
         if (queued.isEmpty()) return;
         Segment segment=(Segment)queued.elementAt(0);queued.removeElementAt(0);
@@ -104,7 +104,7 @@ final class OnlineChunks {
             for (int i=0;i<net.c.game.ballCount;i++) net.c.game.stampTrail(net.c.game.balls[i]);
             net.resolutionSeen=false;
             if (--remaining==0) {
-                frames=null;completed=id;
+                frames=null;previousFrame=null;completed=id;
                 net.c.game.pendingNext=terminal&&resolved;
                 net.resolutionSeen=terminal&&(resolved||net.c.game.over);if(net.resolutionSeen)net.processingSince=0;
                 if (queued.isEmpty()) { playing=false;waitingSince=0; }
@@ -125,7 +125,7 @@ final class OnlineChunks {
         try {
             net.c.resetOnlineTerrain();net.readSnapshot(new DataInputStream(new ByteArrayInputStream(finalFrame)));
             net.c.game.pendingNext=resolved;net.predicting=false;net.resolutionSeen=resolved||net.c.game.over;
-            completed=id;ownPending=false;ownSince=0;finalFrame=null;if(net.resolutionSeen)net.processingSince=0;net.lastPoll=0;
+            completed=id;ownPending=false;ownSince=0;finalFrame=previousFrame=null;if(net.resolutionSeen)net.processingSince=0;net.lastPoll=0;
         } catch (IOException error) { net.disconnect("Không đọc được kết quả."); }
     }
 }

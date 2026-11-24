@@ -16,6 +16,7 @@ final class GamePresentation {
 
  void draw(){if(gear==null)gear=c.combatRoomArt("settings-icon");if(boot<2){c.all();c.rect(0,0,320,240,0);if(boot==0){c.popup.render("Âm thanh","Bật âm thanh khi chơi game?",new String[]{"Bật","Tắt"},music?0:1);return;}if(logo==null)logo=c.combatRoomArt("intro-logo");c.img(logo,40,55);int t=(int)(System.currentTimeMillis()-intro);if(t>900){int[] shade=new int[320*c.s];for(int y=0;y<240*c.s;y++){int alpha=Battle.clamp((t-900)*255/700-(240-y/c.s)*2,0,255);for(int x=0;x<shade.length;x++)shade[x]=alpha<<24;c.g.drawRGB(shade,0,shade.length,c.ox,c.oy+y,shade.length,1,true);}}if(t>2100)boot=2;return;}if(c.keyBindings.capture>=0){c.keyBindings.draw();return;}if(settings){if(settingsPanel==null){settingsPanel=c.combatRoomArt("settings743-popup");checkOn=c.combatRoomArt("settings743-on");checkOff=c.combatRoomArt("settings743-off");settingsClose=c.combatRoomArt("bag715-close");}
  c.img(logoutPanel(),32,56);HeaderArt.center(c,HeaderArt.SETTINGS,160,71);c.img(settingsClose,263,61);
+ c.pcText(c.app.appVendor(),46,67);c.pcText("Ver " + c.app.appVersion(),46,77);
  c.pcText("Âm thanh",51,91);c.img(music?checkOn:checkOff,243,87);
  c.pcText("Hiệu ứng đạn",51,115);c.img(effects?checkOn:checkOff,243,111);
  c.pcText("Hiển thị FPS",51,139);c.img(showFps?checkOn:checkOff,243,135);

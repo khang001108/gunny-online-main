@@ -17,10 +17,14 @@ final class RoomLoadout {
     Image background, panel, left, cell, selected, invite, server, start, ready, card, waiting, closed, teamCard,
             teamWaiting, teamClosed, chat, tooltip, randomMap;
     final Image[] icons = new Image[6], grayIcons = new Image[6];
+    Image mapPreview;
+    int mapPreviewKey = Integer.MIN_VALUE;
 
     void releaseMenuArt() {
         dungeonMapCover = dungeonMapGreen = dungeonMapYellow = null;
         dungeonCoverStage = -1;
+        mapPreview = null;
+        mapPreviewKey = Integer.MIN_VALUE;
         squareCancel = squareInvite = squareStart = squareReady = background = panel = left = cell = selected = invite = server = start = ready = card = waiting = closed = teamCard = teamWaiting = teamClosed = chat = tooltip = randomMap = toolBar = null;
         for (int i = 0; i < tools.length; i++)
             tools[i] = null;
@@ -402,6 +406,18 @@ final class RoomLoadout {
         draw(online, false);
     }
 
+    void drawMapPreviewImage(int map) {
+        if (map <= 0)
+            return;
+        if (mapPreview == null || mapPreviewKey != map) {
+            Image source = c.maps.banner(map);
+            mapPreview = source == null ? null : NativeUi.fit(source, 90 * c.s, 40 * c.s, 0);
+            mapPreviewKey = map;
+        }
+        if (mapPreview != null)
+            c.img(mapPreview, 222, 150);
+    }
+
     void draw(boolean online, boolean dungeon) {
         load();
         int f = c.roomSelection;
@@ -419,7 +435,8 @@ final class RoomLoadout {
                 c.img(randomMap, 220, 147);
                 c.pcCenter((online ? c.net.roomSeconds : c.turnSeconds) + " giây", 266, 181);
             } else {
-                // c.img(c.maps.banner(map), 223, 149);
+                c.img(randomMap, 220, 147);
+                drawMapPreviewImage(map);
                 c.pcCenter(c.pcShort(PhoneCanvas.MAPS[map - 1], 88), 267, 181);
             }
         }
