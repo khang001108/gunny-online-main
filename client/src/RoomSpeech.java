@@ -15,6 +15,9 @@ final class RoomSpeech {
     private final long[] until = new long[6];
     private final int[] headX = new int[6], headY = new int[6];
     private final boolean[] seen = new boolean[6];
+    private final String[] bubbleTexts=new String[6];
+    private final String[][] bubbleLines=new String[6][];
+    private final boolean[] bubbleHud=new boolean[6];
     boolean supported;
     private boolean bar, picker;
     private int selected, lastContext, lastRoom, sendRoom, sendPhase, sendEmoji;
@@ -43,7 +46,7 @@ final class RoomSpeech {
         bar = picker = false;
         outgoing = null;
         pollAt = 0;
-        for (int i = 0; i < until.length; i++) { until[i] = 0; seen[i] = false; }
+        for (int i = 0; i < until.length; i++) { until[i] = 0; seen[i] = false; messages[i]=bubbleTexts[i]=null;bubbleLines[i]=null; }
     }
 
     private int refresh() {
@@ -211,16 +214,19 @@ final class RoomSpeech {
     }
 
     private void bubble(int actor,int x,int y,String text,int emoji,boolean hud) {
-        String[] lines;
-        int widthLimit=hud?115:145;
-        if(text.length()==0)lines=hud?new String[]{"     ","     "}:new String[]{"     "};
-        else if(c.pcShort(text,widthLimit).equals(text))lines=new String[]{text};
-        else {
-            int split=1;
-            while(split<text.length()&&c.pcWidth(text.substring(0,split+1))<=widthLimit)split++;
-            int space=text.lastIndexOf(' ',split);
-            if(space>0)split=space;
-            lines=new String[]{text.substring(0,split),c.pcShort(text.substring(split).trim(),widthLimit)};
+        String[] lines=bubbleLines[actor];
+        if(lines==null||bubbleHud[actor]!=hud||!text.equals(bubbleTexts[actor])){
+            int widthLimit=hud?115:145;
+            if(text.length()==0)lines=hud?new String[]{"     ","     "}:new String[]{"     "};
+            else if(c.pcShort(text,widthLimit).equals(text))lines=new String[]{text};
+            else {
+                int split=1;
+                while(split<text.length()&&c.pcWidth(text.substring(0,split+1))<=widthLimit)split++;
+                int space=text.lastIndexOf(' ',split);
+                if(space>0)split=space;
+                lines=new String[]{text.substring(0,split),c.pcShort(text.substring(split).trim(),widthLimit)};
+            }
+            bubbleTexts[actor]=text;bubbleHud[actor]=hud;bubbleLines[actor]=lines;
         }
         int top=36+actor/2*36;
         if(hud)c.drawSpeechBubble(x,y,lines,top,true);

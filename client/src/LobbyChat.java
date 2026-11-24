@@ -35,6 +35,7 @@ final class LobbyChat {
     private static final class Message {
         long id;
         String author, body;
+        String[] wrappedBody;
         int emoji;
         String portraitKey; int sex,skin,mask; boolean custom; int[] look;
 
@@ -255,6 +256,7 @@ final class LobbyChat {
                 long anchor = first < historyCount ? history[first].id : 0;
                 historyCount = Math.min(count, history.length);
                 for (int i = 0; i < historyCount; i++) history[i] = new Message(in);
+                for(int i=historyCount;i<history.length;i++)history[i]=null;
                 for(int i=historyCount;i<count;i++)new Message(in);
                 if(in.available()>0 && in.readUnsignedByte()==15){int portraits=in.readUnsignedByte();if(portraits!=count)throw new IOException("Sai ảnh chat.");for(int i=0;i<portraits;i++){Message m=i<historyCount?history[i]:null;if(m!=null)m.readPortrait(in);else if(in.readBoolean())for(int k=0;k<9;k++)in.readUnsignedByte();}}
                 more = count > history.length;
@@ -634,13 +636,13 @@ final class LobbyChat {
     private int portraitNext;
     private Image avatar(Message m){
         if(m.portraitKey==null)return null;
-        String key=m.portraitKey+":"+c.s;
+        String key=m.portraitKey;
         for(int i=0;i<portraitKeys.length;i++)if(key.equals(portraitKeys[i]))return portraitImages[i];
         Image image=null;
         try{
             // Same composed head layers as the ranking board, cropped at the head.
             int[] pixels=new int[80*100*c.s*c.s];
-            if(m.custom){int[] order={0,3,2,1,4};for(int k=0;k<5;k++){String layer=c.layerName(m.sex,order[k],m.look[order[k]],m.mask,"cutin");if(layer!=null)c.blendCutin(pixels,c.load(layer));}}
+            if(m.custom){int[] order=PhoneCanvas.LOOK_ORDER;for(int k=0;k<5;k++){String layer=c.layerName(m.sex,order[k],m.look[order[k]],m.mask,"cutin");if(layer!=null)c.blendCutin(pixels,c.load(layer));}}
             else c.blendCutin(pixels,c.load("cutin"+m.sex+"_0_"+m.skin));
             int side=24*c.s;int[] crop=new int[side*side];for(int y=0;y<side;y++)for(int x=0;x<side;x++)crop[y*side+x]=pixels[(y*65*c.s/side)*80*c.s+x*80*c.s/side];
             image=Image.createRGBImage(crop,side,side,true);
@@ -662,7 +664,8 @@ final class LobbyChat {
             int index=drawn-1-i;Message m=history[first+index];boolean mine=m.author.equals(c.playerName);int y=ROW_Y+i*MESSAGE_H;
             int ax=mine?269:26;Image head=avatar(m);c.rect(ax,y+9,24,24,0xf0e3c6);
             if(head!=null)c.img(head,ax,y+9);else c.pcCenter("?",ax+12,y+16);
-            String[] lines=wrapBody(m.body,m.emoji>=0?174:194);
+            if(m.wrappedBody==null)m.wrappedBody=wrapBody(m.body,m.emoji>=0?174:194);
+            String[] lines=m.wrappedBody;
             int textW=Math.max(c.textWidth(lines[0]),c.textWidth(lines[1]));int w=Math.min(204,Math.max(36,textW+(m.emoji>=0?28:10)));
             int x=mine?263-w:56, tail=mine?x+w:x, tip=mine?tail+6:tail-6;
             c.pcText(c.pcShort(m.author,w),x+2,y);
