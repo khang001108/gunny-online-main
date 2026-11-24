@@ -84,6 +84,8 @@ final class OnlineAuth {
 
     int[] box(int id) {
         int n = fields();
+        if (id == n + 6)
+            return new int[] { 80, 207, 160, 25 };
         if (id >= 100) {
             int x = id == 100 ? 22 : id == 101 ? 64 : id == 103 ? 108 : 300;
             return new int[] { x - 20, 199, 40, 40 };
@@ -133,10 +135,11 @@ final class OnlineAuth {
                 + "s" : net.registration ? "Đăng ký" : "Đăng nhập", 160, submitY() + 7);
         c.pcText("Máy chủ", 112, linksY());
         c.pcText(net.registration ? "Đã có TK? Đăng nhập" : "Chưa có TK? Đăng ký", 171, linksY());
-        if (selected < 100) {
+        c.button("Test BOT Offline", 80, 207, 160, 25, selected == fields() + 6);
+        if (selected < 100 && selected != fields() + 6) {
             int[] b = box(selected);
             c.drawSelectionGlow(b[0], b[1], b[2], b[3]);
-        } else {
+        } else if (selected >= 100) {
             int old = c.lobbySelection;
             c.lobbySelection = selected - 100;
             c.drawLobbyTooltip();
@@ -224,6 +227,10 @@ final class OnlineAuth {
         }
         if (blocked())
             return;
+        if (selected == n + 6) {
+            c.startOfflineTest();
+            return;
+        }
         if (selected >= 100) {
             footerAction(selected - 100);
             return;
@@ -264,13 +271,21 @@ final class OnlineAuth {
             selected = n - 1;
             return;
         }
+        if (selected == n + 6 && dir == 4) {
+            selected = n + 2;
+            return;
+        }
+        if ((selected == n + 1 || selected == n + 2) && dir == 8) {
+            selected = n + 6;
+            return;
+        }
         if (selected == n && dir == 4) {
             selected = n + 4;
             return;
         }
         int[] ids = new int[n + 10];
         int count = 0;
-        for (int i = 0; i < n + 6; i++)
+        for (int i = 0; i < n + 7; i++)
             ids[count++] = i;
         ids[count++] = 104;
         int[] from = box(selected);
@@ -349,7 +364,7 @@ final class OnlineAuth {
             selected = 100 + id;
             return;
         }
-        for (int i = 0; i < n + 6; i++) {
+        for (int i = 0; i < n + 7; i++) {
             int[] b = box(i);
             if (x >= b[0] && x < b[0] + b[2] && y >= b[1] && y < b[1] + b[3]) {
                 selected = i;

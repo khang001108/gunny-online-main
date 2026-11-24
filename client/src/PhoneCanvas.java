@@ -19,6 +19,35 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     int economySequence;String nextEconomyKey(){return "g780-"+System.currentTimeMillis()+"-"+(++economySequence)+"-"+Math.abs(game.rand(1000000));}
     OnlineClient net;
 
+    volatile boolean offlineTest;
+    int testSavedMask, testSavedOwned, testSavedWeapon;
+    boolean testSavedAim;
+
+    void startOfflineTest() {
+        if(onlineAccount()||net.inBattle||net.busy||net.pending.length()>0||net.operation.length()>0||net.wake.waiting||resetPending)return;
+        if(!offlineTest){
+            testSavedMask=wornMask;testSavedOwned=owned;testSavedWeapon=equipped;testSavedAim=game.cheatAim;
+            offlineTest=true;
+        }
+        if(!enabledWeapon(equipped))equipped=0;
+        wornMask|=1;
+        for(int i=0;i<ACTIVE_WEAPONS.length;i++)owned|=1<<ACTIVE_WEAPONS[i];
+        game.cheatAim=false;
+        net.startupTried=true;net.auth.clearEditor();net.auth.releaseArt();
+        training=false;offlineDungeon.active=false;twoPlayers=false;allyMode=0;chosenAllyBot=-1;
+        randomMap=false;selectedMap=0;turnSeconds=12;
+        popup.opened=false;popup.resumeOffline();presentation.settings=false;presentation.showFps=true;
+        held=fireKey=0;game.charging=false;
+        frameGap.reset();
+        loadingRequested=true;resetPending=true;
+    }
+
+    void finishOfflineTest(){
+        if(!offlineTest)return;
+        offlineTest=false;wornMask=testSavedMask;owned=testSavedOwned;equipped=testSavedWeapon;game.cheatAim=testSavedAim;
+        net.loginForm(false);
+    }
+
     boolean onlineBattle() {
         return net != null && net.inBattle;
     }
@@ -791,6 +820,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void saveExperience() {
+        if(offlineTest)return;
         if (onlineAccount())
             return;
         try {
@@ -858,6 +888,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void saveSettings() {
+        if(offlineTest)return;
         if (onlineAccount())
             return;
         saveBag();
@@ -1071,6 +1102,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void openCheats() {
+        if(offlineTest){message("Test Offline: không dùng cheat");return;}
         if (onlineAccount()) {
             if(!economy.testCheats){message("Admin chưa bật cheat cho tài khoản này");return;}
         }
@@ -1144,6 +1176,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void saveProfile() {
+        if(offlineTest)return;
         if (onlineAccount()) {
             net.request("appearance");
             return;
@@ -1315,8 +1348,11 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                         } catch (Throwable e) {
                             message("Không đủ bộ nhớ. Hãy khởi động lại game.");
                             mode = 0;
+                            if(offlineTest){releaseBattleArt();finishOfflineTest();}
                         }
                     }
+                    if(presentation.showFps&&mode==1&&!popup.pausedOffline)frameGap.sample(began,projectilePacing());
+                    else frameGap.idle();
                     if(mode!=1||!onlineBattle())pacer.reset();
                     if (mode == 1 && onlineBattle()) {
                         int steps=pacer.steps(System.currentTimeMillis(),projectilePacing());
@@ -1363,7 +1399,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                         if (game.over&&mode==1) {
                             mode = 5;
                             held = 0;
-                            if(offlineDungeon.active){offlineDungeon.finish();}else if (training) {
+                            if(offlineTest){ /* diagnostic match: no rewards or profile writes */ }
+                            else if(offlineDungeon.active){offlineDungeon.finish();}else if (training) {
                                 if (game.winner == 0) {
                                     tutorialDone = true;
                                     saveProfile();
@@ -1628,6 +1665,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         game.charging = false;
         mode = 0;
         menuSelection = 0;
+        if(offlineTest){finishOfflineTest();return;}
         loadPortraits();
         try {
             if (smallTitle == null)
@@ -1811,6 +1849,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     private String fpsText = "FPS 0",netText="",netText2="";
     private long lastNetRx,lastNetTx;
     private volatile int updateMs,paintMs;
+    final FrameGapMonitor frameGap=new FrameGapMonitor();
+    String gapText="";
     boolean portraitViewport;Image portraitSurface;
     int pointerX(int x,int y){return portraitViewport?y-(getHeight()-320*s)/2:x;}
     int pointerY(int x,int y){return portraitViewport?240*s-1-(x-(getWidth()-240*s)/2):y;}
@@ -1894,7 +1934,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             fpsWindowFrames++;
             if (now - fpsWindowStart >= 1000) {
                 fpsValue = (int)(fpsWindowFrames * 1000L / Math.max(1L, now - fpsWindowStart));
-                fpsText = "FPS " + fpsValue + (onlineBattle()?" U"+updateMs+" P"+paintMs:""); // Once per second.
+                fpsText = "FPS " + fpsValue + ((onlineBattle()||offlineTest)?" U"+updateMs+" P"+paintMs:"");
+                gapText=(onlineBattle()||offlineTest)?"Gap "+frameGap.takeWindowPeak()+"ms Shot "+frameGap.shotPeak()+"ms":"";
                 if(onlineBattle()){
                     long rx=net.tcp.rxBytes+net.events.transport.rxBytes,tx=net.tcp.txBytes+net.events.transport.txBytes;
                     long ms=Math.max(1,now-fpsWindowStart);
@@ -1907,9 +1948,10 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 fpsWindowStart = now;
             }
             all();
-            rect(0,0,onlineBattle()?Math.min(160,Math.max(48,pcWidth(fpsText)+6)):48,14,0x21170e);
+            rect(0,0,Math.min(180,Math.max(48,pcWidth(fpsText)+6)),14,0x21170e);
             pcText(fpsText,3,2);
             if(onlineBattle()&&netText.length()>0){rect(0,14,240,26,0x21170e);pcText(netText,3,15);pcText(netText2,3,28);}
+            if((onlineBattle()||offlineTest)&&mode==1&&gapText.length()>0){int y=onlineBattle()?40:14;rect(0,y,Math.min(240,pcWidth(gapText)+6),13,0x21170e);pcText(gapText,3,y+1);}
         } else {
             fpsWindowStart = 0;
             fpsWindowFrames = fpsValue = 0;
@@ -3502,6 +3544,15 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void drawResult() {
+        if(offlineTest){
+            all();rect(0,0,320,240,0x192b45);
+            img(game.winner==0?hudResultWin:game.winner==1?hudResultLose:hudResultTie,game.winner==0?65:game.winner==1?101:125,43);
+            pcCenter("TEST BOT OFFLINE - Không tính thưởng",160,105);
+            pcCenter("Shot gap: "+frameGap.shotPeak()+" ms",160,123);
+            button("Chơi lại",80,150,160,25,true);
+            button("Về đăng nhập",80,185,160,25,false);
+            return;
+        }
         if (net != null) {
             net.results.draw();
             return;
@@ -3676,7 +3727,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             return;
         }
         if(mode==0&&ranking.opened){ranking.key(key,dir,ok);return;}
-        if(!onlineAccount()&&mode!=16){net.loginForm(false);return;}
+        if(!onlineAccount()&&!offlineTest&&mode!=16){net.loginForm(false);return;}
         if (net.chat.roomSpeech.key(net.chat.rawBinding(rawKey,key),dir,ok)) return;
         if (net.chat.key(net.chat.rawBinding(rawKey,key), dir, ok)) return;
         if (mode == 10 && (key == -6 || key == -7)) {
@@ -3940,6 +3991,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             return;
         }
         if (mode == 5) {
+            if(offlineTest){if(key==-7||key=='0')openLobby();else if(ok||key==-6)startOfflineTest();return;}
             net.results.key(key, dir, ok);
             return;
         }
@@ -4136,7 +4188,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             return;
         }
         if(mode==0&&ranking.opened){ranking.pointer(x,y);return;}
-        if(!onlineAccount()&&mode!=16){net.loginForm(false);return;}
+        if(!onlineAccount()&&!offlineTest&&mode!=16){net.loginForm(false);return;}
         if (net.chat.roomSpeech.pointer(x,y)) return;
         if (net.chat.pointer(x, y)) return;
         if (mode == 10 && x < 210 && y >= 48 && y < 154)
@@ -4307,6 +4359,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             return;
         }
         if (mode == 5) {
+            if(offlineTest){if(x>=80&&x<240&&y>=150&&y<175)startOfflineTest();else if(x>=80&&x<240&&y>=185&&y<210)openLobby();return;}
             net.results.pointer(x, y);
             return;
         }
