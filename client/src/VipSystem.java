@@ -49,6 +49,8 @@ final class VipSystem {
     }
 
     void release() {
+        battleReady=false; battleBytes=0;
+        for(int i=0;i<6;i++){battleAngles[i]=0; battleWingIds[i]=-1; battleXp[i]=0;}
         for (int i = 0; i < 3; i++)
             for (int j = 0; j < 3; j++)
                 staticRings[i][j] = null;
@@ -78,14 +80,58 @@ final class VipSystem {
         for(int i=0;i<staticWings.length;i++)for(int j=0;j<staticWings[i].length;j++)staticWings[i][j]=null;
     }
 
-    // Drop angles that no living actor can draw this frame, before loading new atlases.
-    void pruneBattleWings() {
-        for(int w=0;w<sideWings.length;w++)for(int a=0;a<sideWings[w].length;a++)
-            if((sideWings[w][a][0]!=null||sideWings[w][a][1]!=null)&&!angleUsed(w,a))
-                sideWings[w][a][0]=sideWings[w][a][1]=null;
+    // Encounter caches are immutable after loading, even as the player changes pose.
+    boolean battleReady;
+    int battleBytes;
+    final int[] battleAngles=new int[6],battleWingIds=new int[6],battleXp=new int[6];
+    boolean battleScreen(){return c.mode==1||c.mode==2||c.mode==14;}
+    boolean roomFor(int bytes){
+        return battleBytes+bytes<=(c.s==1?6:20)*1024*1024
+            && Runtime.getRuntime().freeMemory()>bytes+(c.s==1?1024:3072)*1024;
+    }
+    void loadBattleAngle(int w,int a,boolean essential){
+        if((battleAngles[w]&(1<<a))!=0)return;
+        int bytes=WingBattleArt.bytes(c.s,w,a);
+        if(!essential&&!roomFor(bytes))return;
+        try{
+            Image inner=c.combatRoomArt("wing812-packed-"+w+"-"+a+"-0");
+            Image outer=c.combatRoomArt("wing812-packed-"+w+"-"+a+"-1");
+            if(inner==null||outer==null)return;
+            sideWings[w][a][0]=inner;sideWings[w][a][1]=outer;
+            battleAngles[w]|=1<<a;battleBytes+=bytes;
+        }catch(OutOfMemoryError low){ /* leave the angle absent; never decode in paint */ }
+    }
+    Image preloadSmall(String name,int bytes,boolean essential){
+        if(!essential&&!roomFor(bytes))return null;
+        try{Image image=c.combatRoomArt(name);if(image!=null)battleBytes+=bytes;return image;}
+        catch(OutOfMemoryError low){return null;}
+    }
+    void prepareBattle(){
+        if(battleReady)return;
+        int wingMask=0,ringMask=0;
+        for(int i=0;i<6;i++){
+            battleWingIds[i]=rawActorWing(i);battleXp[i]=rawActorExp(i);
+            if(c.onlineBattle()&&i<c.net.count&&c.net.roomKind==3&&!c.net.present[i]){battleWingIds[i]=-1;battleXp[i]=0;}
+            if(battleWingIds[i]>=0&&battleWingIds[i]<6)wingMask|=1<<battleWingIds[i];
+            int lv=VipRules.level(battleXp[i]);if(lv>0)ringMask|=1<<((lv-1)/3);
+        }
+        // First guarantee a neutral pose for each equipped wing; then load HUD and other angles.
+        for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,2,true);
+        for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)for(int context=1;context<=2;context++){
+            int size=WING_SIZE[context];
+            wings[w][context]=preloadSmall("wing796-show-"+w+"-"+size,20*size*WING_HEIGHT[context]*4*c.s*c.s,false);
+        }
+        for(int k=0;k<3;k++)if((ringMask&(1<<k))!=0)for(int context=1;context<=2;context++){
+            int size=SIZE[context];rings[k][context]=preloadSmall("vip-ring-"+k+"-"+size,16*size*size*4*c.s*c.s,false);
+        }
+        int[] angles={1,3,0,4};
+        for(int i=0;i<angles.length;i++)for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,angles[i],false);
+        for(int k=0;k<3;k++)if((ringMask&(1<<k))!=0){int size=SIZE[3];rings[k][3]=preloadSmall("vip-ring-"+k+"-"+size,16*size*size*4*c.s*c.s,false);}
+        battleReady=true;
     }
 
     void releaseLargeEffects() {
+        if(battleReady&&battleScreen())return;
         for (int i = 0; i < 3; i++)
             rings[i][0] = rings[i][3] = null;
         for (int i = 0; i < 6; i++)
@@ -171,8 +217,8 @@ final class VipSystem {
     void ring(int kind, int context, int frame, int x, int y) {
         int size = SIZE[context];
         // Small avatar rings may show several VIP tiers in the same frame.
-        if(context==0||context==3)for(int k=0;k<3;k++)if(k!=kind)rings[k][context]=null;
-        if (rings[kind][context] == null)
+        if(!battleScreen()&&(context==0||context==3))for(int k=0;k<3;k++)if(k!=kind)rings[k][context]=null;
+        if (rings[kind][context] == null && !battleScreen())
             rings[kind][context] = c.combatRoomArt("vip-ring-" + kind + "-" + size);
         c.part(rings[kind][context], frame % 16 * size, 0, size, size, x - size / 2, y - size, false);
     }
@@ -196,7 +242,7 @@ final class VipSystem {
             ring((lv - 1) / 3, context, (int) (System.currentTimeMillis() / 75 % 16), x, feet);
         if (wing >= 0 && wing < 6 && context < 3) {
             int size = WING_SIZE[context], h = WING_HEIGHT[context];
-            if (wings[wing][context] == null)
+            if (wings[wing][context] == null && !battleScreen())
                 wings[wing][context] = c.combatRoomArt("wing796-show-" + wing + "-" + size);
             c.part(wings[wing][context], (int) (System.currentTimeMillis() / 65 % 20) * size, 0, size, h, x - size / 2,
                     feet - h * 3 / 4 - wingLift, false);
@@ -204,7 +250,7 @@ final class VipSystem {
     }
 
     void backStatic(int xp, int wing, int x, int feet, int context) {
-        releaseBattleWings();
+        if(!battleScreen())releaseBattleWings();
         int lv = VipRules.level(xp);
         if (lv > 0) {
             int kind = (lv - 1) / 3, size = SIZE[context];
@@ -221,6 +267,8 @@ final class VipSystem {
     }
 
     void releaseBattleWings() {
+        battleReady=false; battleBytes=0;
+        for(int w=0;w<6;w++)battleAngles[w]=0;
         for (int w = 0; w < 6; w++)
             for (int a = 0; a < 5; a++)
                 sideWings[w][a][0] = sideWings[w][a][1] = null;
@@ -237,27 +285,18 @@ final class VipSystem {
         if (u.face > 0)
             tilt = -tilt;
         int angle = Battle.clamp((tilt + 30 + 7) / 15, 0, 4), layer = outer ? 1 : 0;
-        if (sideWings[wing][angle][layer] == null)
-            sideWings[wing][angle][layer] = c.combatRoomArt("wing795-game-" + wing + "-" + angle + "-" + layer);
+        // The paint path is cache-only. Under pressure use the closest preloaded angle.
+        angle=WingBattleArt.nearest(battleAngles[wing],angle);
+        if(angle<0)return;
+        int[] bounds=WingBattleArt.bounds(c.s);int p=WingBattleArt.index(wing,angle,layer);
+        int width=bounds[p+2],height=bounds[p+3];
+        int offsetX=u.face<0?96-bounds[p]-width:bounds[p];
         boolean shooting = c.attackPose(actor) || c.freezeHolding(actor);
         int bodySlope = shooting ? 0 : u.slope;
         int spineY = shooting ? -10 : -13, cs = Battle.cos(bodySlope), sn = -Battle.sin(bodySlope), spineX = -u.face;
         int anchorX = (spineX * cs - spineY * sn) / 1024, anchorY = (spineX * sn + spineY * cs) / 1024;
-        c.part(sideWings[wing][angle][layer], c.frame / 2 % 19 * 96, 0, 96, 96, u.x - c.cameraX + anchorX - 48,
-                u.y - c.cameraY + anchorY - 48+10, u.face < 0);
-    }
-
-    boolean angleUsed(int wing, int angle) {
-        for (int i = 0; i < c.game.unitCount; i++)
-            if (actorWing(i) == wing && c.game.units[i].hp>0) {
-                Battle.Unit u = c.game.units[i];
-                int tilt = c.attackPose(i) || c.freezeHolding(i) ? 0 : u.slope;
-                if (u.face > 0)
-                    tilt = -tilt;
-                if (Battle.clamp((tilt + 37) / 15, 0, 4) == angle)
-                    return true;
-            }
-        return false;
+        c.part(sideWings[wing][angle][layer], c.frame / 2 % 19 * width, 0, width, height, u.x - c.cameraX + anchorX - 48+offsetX,
+                u.y - c.cameraY + anchorY - 48+10+bounds[p+1], u.face < 0);
     }
 
     int trialWing = -2;
@@ -281,11 +320,19 @@ final class VipSystem {
     }
 
     int actorExp(int actor) {
+        return battleReady&&battleScreen()&&actor>=0&&actor<6?battleXp[actor]:rawActorExp(actor);
+    }
+
+    int rawActorExp(int actor) {
         return actor < 0 || actor >= 6 || actor >= c.game.unitCount || c.game.units[actor].npc != 0 ? 0
                 : c.onlineBattle() ? c.net.actorVip[actor] : actor == 0 ? exp() : 0;
     }
 
     int actorWing(int actor) {
+        return battleReady&&battleScreen()&&actor>=0&&actor<6?battleWingIds[actor]:rawActorWing(actor);
+    }
+
+    int rawActorWing(int actor) {
         return actor < 0 || actor >= 6 || actor >= c.game.unitCount || c.game.units[actor].npc != 0 ? -1
                 : c.onlineBattle() ? c.net.actorWing[actor] : actor == 0 ? wing() : -1;
     }

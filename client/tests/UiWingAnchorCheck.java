@@ -49,12 +49,13 @@ public class UiWingAnchorCheck {
         c.beginMatch(0);n.inBattle=true;n.count=2;c.game.unitCount=2;c.mode=1;n.actorWing[0]=4;n.actorVip[0]=0;c.game.units[0].x=180;c.game.units[0].y=160;c.game.active=0;c.game.units[0].weapon=0;c.game.units[0].hp=30000;
         for(int i=0;i<2;i++){n.names[i]="Player "+i;n.present[i]=true;n.wornMasks[i]=3;n.custom[i]=false;c.actors[i]=c.load("look"+n.sex[i]+"_0_"+n.skin[i]);c.actorStand[i]=n.buildStanding(i,32,40);}
         c.game.units[1].x=450;
+        c.vip.prepareBattle();
         for(int face=-1;face<=1;face+=2)for(int slope=-30;slope<=30;slope+=30)for(int pose=0;pose<3;pose++){
             var u=c.game.units[0];u.face=face;u.slope=slope;u.walk=pose==1?4:0;u.attackTicks=pose==2?6:0;c.frame=8;
             shot(c,"wing-anchor-"+face+"-"+slope+"-"+pose);
         }
         var target=javax.microedition.lcdui.Image.createImage(320*scale,240*scale);
-        for(int wing=0;wing<6;wing++){n.actorWing[0]=wing;for(int slope=-30;slope<=30;slope+=15)for(int frame=0;frame<38;frame++){c.frame=frame;c.game.units[0].slope=slope;c.paint(target.getGraphics());}}
+        for(int wing=0;wing<6;wing++){c.vip.release();n.actorWing[0]=wing;c.vip.prepareBattle();for(int slope=-30;slope<=30;slope+=15)for(int frame=0;frame<38;frame++){c.frame=frame;c.game.units[0].slope=slope;c.paint(target.getGraphics());}}
         n.actorWing[0]=2;c.game.units[0].attackTicks=0;n.expansionCap=false;c.mode=5;n.results.stage=1;
         shot(c,"wing-result-raised");
         n.expansionCap=true;n.roomKind=3;n.dungeonStage=1;n.results.hero=null;n.results.load();

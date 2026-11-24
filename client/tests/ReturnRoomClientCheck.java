@@ -22,12 +22,12 @@ public final class ReturnRoomClientCheck {
    c.mode=1;net.phase=1;net.showRoomState("emote");
    check(c.mode==1,"Late room response preserves combat");
    c.game.units[0].npc=0;c.game.units[0].hp=100;net.actorWing[0]=0;
-   var dummy=javax.microedition.lcdui.Image.createImage(1,1);
-   for(int a=0;a<5;a++)for(int l=0;l<2;l++)c.vip.sideWings[0][a][l]=dummy;
-   c.vip.pruneBattleWings();int retained=0;
+   c.vip.prepareBattle();int retained=0;
    for(int a=0;a<5;a++)for(int l=0;l<2;l++)if(c.vip.sideWings[0][a][l]!=null)retained++;
-   check(retained==2,"Only the living player's current wing angle remains cached");net.actorWing[0]=-1;
+   check(retained>=2,"Equipped wing cached before combat");
+   c.vip.releaseLargeEffects();check(c.vip.battleAngles[0]!=0,"Combat effect reset preserves wing cache");net.actorWing[0]=-1;
    net.returnToWaitingRoom();
+   check(!c.vip.battleReady&&c.vip.battleAngles[0]==0,"Wing cache cleared when leaving the encounter");
    check(c.pixels==null&&c.scratch==null&&c.background==null&&c.hardTerrain==null&&c.onlineGround==null,"Terrain released after returning to waiting room");
    for(int i=0;i<c.tiles.length;i++)if(c.tiles[i]!=null)throw new AssertionError("Retained terrain tile");
    for(int i=0;i<c.fadedUnits.length;i++)if(c.fadedUnits[i]!=null||c.slopeBody[i]!=null)throw new AssertionError("Retained actor cache");

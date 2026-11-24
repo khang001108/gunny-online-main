@@ -12,6 +12,16 @@ final class TribalArt {
  int size(int kind){return kind>=14?96:kind==8||kind==9?72:56;}
  Image smallCover(){if(small==null)small=c.combatRoomArt("tribal797-banner");return small;}
  Image cover(int legacy){int number=legacy>=3?3:legacy;if(cover==null||coverStage!=number){coverStage=number;cover=c.combatRoomArt("tribal797-cover-"+number);}return cover;}
+ void preloadBattle(){
+  cachedStage=c.game.dungeonStage;
+  // Present NPCs plus small common battle effects; spawned bosses retain stage-local lazy fallback.
+  for(int i=0;i<c.game.unitCount;i++){
+   int k=c.game.units[i].npc;
+   if(k>=4&&k<=15){atlas(k);if(headers[k]==null)headers[k]=c.combatRoomArt("tribal797-portrait-"+k);}
+  }
+  missiles=c.combatRoomArt("tribal797-projectiles");
+  healthFrame=c.combatRoomArt("npc780-boss-frame");healthBar=c.combatRoomArt("npc780-boss-hp");
+ }
  void header(int kind){if(headers[kind]==null)headers[kind]=c.combatRoomArt("tribal797-portrait-"+kind);c.img(headers[kind],0,10);}
  void draw(int actor){
   Battle b=c.game;Battle.Unit u=b.units[actor];int kind=u.npc;

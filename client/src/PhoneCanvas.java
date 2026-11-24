@@ -72,7 +72,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     int cameraHeld, cameraActor = -1;
     int mode = 0; // 0 lobby, 1 battle, 2 pause, 3 tools, 4 help, 5 result
     int muzzleTicks;
-    int allyMode, loadTicks, chosenAllyBot = -1, botChoice, mapCursor;
+    volatile int loadTicks;
+    int allyMode, chosenAllyBot = -1, botChoice, mapCursor;
     boolean loadingRequested, randomMap = true;
     static final String[] BOT_NAMES = { "Minh Anh", "Tuấn Phong", "Hoàng Nam", "Gia Huy", "Ngọc Linh", "Thu Hà",
             "Mai Chi", "Bảo Ngọc" };
@@ -200,10 +201,12 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         return net.playerUiCap?(net.loadingMask&(1<<actor))!=0:net.phase==1;
     }
     boolean allLoadingReady(){for(int i=0;i<game.unitCount&&i<6;i++)if(loadingParticipant(i)&&!loadingReady(i))return false;return true;}
-    boolean canFinishLoading(){return loadTicks>=60&&(!onlineBattle()||net.phase==1);}
+    boolean canFinishLoading(){return loadTicks>=60&&vip.battleReady&&(!onlineBattle()||net.phase==1);}
     void tickLoading() {
         if (mode == 14) {
-            loadTicks++;
+            // Never report ready to the server until local assets have been prepared.
+            if(loadTicks==59&&!vip.battleReady)prepareBattleAssets();
+            if(loadTicks<60)loadTicks++;
             if (canFinishLoading()) {
                 mode = 1;
                 releaseLoadingArt();
@@ -1351,6 +1354,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                             if(offlineTest){releaseBattleArt();finishOfflineTest();}
                         }
                     }
+                    if(mode==1&&!vip.battleReady)prepareBattleAssets();
                     if(presentation.showFps&&mode==1&&!popup.pausedOffline)frameGap.sample(began,projectilePacing());
                     else frameGap.idle();
                     if(mode!=1||!onlineBattle())pacer.reset();
@@ -1459,6 +1463,51 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         bossFrame=bossHp=bossPortrait=null;
         for(int i=0;i<antWasDead.length;i++){antWasDead[i]=false;antDeathFrame[i]=antLastWalk[i]=antLastMoveFrame[i]=0;}
         tribalArt.release();conditions.reset();
+    }
+    // Local JAR resources only. Called while Loading, never from paint.
+    void prepareBattleAssets(){
+        if(vip.battleReady)return;
+        System.gc();
+        vip.prepareBattle();
+        // Current weapons, common item effects, HUD and projectiles already in base cache.
+        int mask=0;
+        for(int i=0;i<game.unitCount;i++){
+            Battle.Unit u=game.units[i];int weapon=u.weapon;
+            if(onlineBattle()&&i<net.count&&net.present[i]&&u.npc==0)weapon=net.weapon[i];
+            if(weapon>=0&&weapon<10)mask|=1<<weapon;
+            if(i<6&&u.npc==0)try{levelIcon(actorExp(i));}catch(OutOfMemoryError low){}
+        }
+        if(game.dungeonStage>=3)mask|=(1<<0)|(1<<5);
+        for(int w=0;w<10;w++)if((mask&(1<<w))!=0){
+            if(Runtime.getRuntime().freeMemory()<(s==1?1024:3072)*1024)break;
+            try{heldArt(w);backArt(w);impactArt(w);}catch(OutOfMemoryError low){break;}
+        }
+        try{
+            if(Runtime.getRuntime().freeMemory()<(s==1?1024:3072)*1024)return;
+            if(fxLanding==null)fxLanding=combatEffect("flight-landing");
+            if(fxBuff==null)fxBuff=combatEffect("buff-flash");
+            if(iceDirections==null)iceDirections=combatRoomArt("ice762-directions");
+            for(int i=0;i<6;i++){loadout.icon(i);loadout.grayIcon(i);}
+            for(int i=0;i<grayProps.length;i++)grayProp(i);
+            if(loadout.frost==null)loadout.frost=loadout.effect("frost");
+            if(loadout.freezeImpact==null)loadout.freezeImpact=loadout.effect("freeze-impact");
+            loadout.ice();
+            if(game.dungeonStage>0&&game.dungeonStage<3){
+                if(speechFont==null)speechFont=combatRoomArt("font-dungeon-speech");
+                for(int type=1;type<=2;type++){
+                    npc780[type]=combatRoomArt("npc780-"+type);
+                    antIdle[type-1]=combatRoomArt("npc780-idle-"+type);
+                    antWalk[type-1]=combatRoomArt("npc780-walk-"+type);
+                    antBeat[type-1]=combatRoomArt("npc780-beat-"+type);
+                }
+                if(game.dungeonStage==2){
+                    npc780[3]=combatRoomArt("npc780-3");queenArrow=combatRoomArt("npc780-queen-arrow");
+                    queenIdle=combatRoomArt("npc780-queen-idle");queenBow=combatRoomArt("npc780-queen-bow");
+                    queenCall=combatRoomArt("npc780-queen-call");queenHit=combatRoomArt("npc780-queen-hit");
+                }
+            }
+            if(game.dungeonStage>=3)tribalArt.preloadBattle();
+        }catch(OutOfMemoryError low){ /* optional art may retain its original lazy fallback */ }
     }
     void releaseLoadingArt(){
         versusBg=versusLogo=versusOK=versusMode=versusTime=versusDigits=null;
@@ -2365,7 +2414,6 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             resetPowWorld();
         if (!zoom && powCutinTicks <= 0) powCutin=null;
         if (!zoom || powWorldPixels == null) {
-            vip.pruneBattleWings();
             if (zoom) {
                 if (powWorld == null)
                     powWorld = Image.createImage(320 * s, 240 * s);
@@ -3898,6 +3946,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         if (mode == 14) {
             if (ok && canFinishLoading()) {
                 mode = 1;
+                releaseLoadingArt();
                 toast = "Đến lượt bạn!";
                 toastTicks = 55;
             }
@@ -4304,8 +4353,9 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             return;
         }
         if (mode == 14) {
-            if (canFinishLoading())
-                mode = 1;
+            if (canFinishLoading()){
+                mode = 1;releaseLoadingArt();
+            }
             return;
         }
         if (mode == 12) {
