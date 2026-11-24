@@ -58,7 +58,9 @@ final class Battle {
     static {for(int i=0;i<=90;i++)SIN[i]=(int)(Math.sin(i*Math.PI/180)*1024);}
     static final int[] ITEM_COST={50,150,170,150,120,120};
     static final String[] ITEM_NAMES={"Tàng hình","Đạn băng","Hồi máu nhóm","Tàng hình nhóm","Dẫn đường","Kích nộ"};
-    static boolean validKit(int[] kit){return kit!=null&&kit.length==3&&kit[0]>=0&&kit[0]<6&&kit[1]>=0&&kit[1]<6&&kit[2]>=0&&kit[2]<6&&kit[0]!=kit[1]&&kit[0]!=kit[2]&&kit[1]!=kit[2];}
+    static final int EMPTY_ITEM=6;
+    static boolean validKit(int a,int b,int c){return a>=0&&a<=EMPTY_ITEM&&b>=0&&b<=EMPTY_ITEM&&c>=0&&c<=EMPTY_ITEM&&(a==EMPTY_ITEM||a!=b&&a!=c)&&(b==EMPTY_ITEM||b!=c);}
+    static boolean validKit(int[] kit){return kit!=null&&kit.length==3&&validKit(kit[0],kit[1],kit[2]);}
     static final class Unit {
         int wingHp;final int[] weaponForge=new int[10];int forgeWeaponBonus;int npc;int maxHp=MAXHP,maxEnergy=240,attackBonus,defense,luck,experience,forgeAttack,forgeDefense,forgeLuck,wornMask=3;boolean god,statsEnabled;final int[] kit={0,1,2};int itemUsed,frozen,freezeTurns,invisible,flyCooldown;boolean assist,flightAim;int team,botStyle=-1;boolean human;int x,y,vy,hp=MAXHP,energy=240,rage,angle=45,power=60,face=1,walk,weapon,attackTicks,slope,heals=5,deathX,deathY,lastPower=-1,pendingPower=-1,flashTicks,landingTicks,lastBuff;boolean dead;}
     static final class Ball {int x,y,vx,vy,owner,age,damage,radius,weapon;boolean guided,freeze,fly,homing,powered;}

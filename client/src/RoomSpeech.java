@@ -30,7 +30,7 @@ final class RoomSpeech {
     }
 
     int context() {
-        if (c.mode == 1 && !c.game.over) return FIGHT;
+        if ((c.mode == 1 || c.mode == 3) && !c.game.over) return FIGHT;
         if (c.mode == 10 || c.mode == 19 && !c.offlineDungeon.picker) return WAITING;
         if (c.mode == 16 && net.logged && net.roomId > 0 && net.phase == 0
                 && !net.social.opened && !net.create.opened && !c.dungeon.picker) return WAITING;
@@ -75,9 +75,13 @@ final class RoomSpeech {
             c.held = c.fireKey = c.cameraHeld = 0;
             return true;
         }
+        if (key == 13 || key == 10) {
+            if (current==FIGHT && (c.fireKey!=0 || c.game.charging && c.isLocalTurn())) { c.message("Thả phím bắn trước khi chat."); return true; }
+            if(c.mode==3)c.exitBuffs();
+            compose(); return true;
+        }
         if (current != WAITING) return false;
         if (key == '@') { bar = picker = true; selected = 0; return true; }
-        if (key == 13 || key == 10) { compose(); return true; }
         if (bar && key == -7) { bar = false; return true; }
         return false;
     }
@@ -85,7 +89,7 @@ final class RoomSpeech {
     private void compose() {
         bar = true;
         c.typing.field("Trò chuyện","",96,false,false,14,210,224,new InlineText.Done() {
-            public void accept(String value) { send(value,-1); }
+            public void accept(String value) { if(context()==FIGHT)bar=false; send(value,-1); }
         });
     }
 
@@ -200,6 +204,7 @@ final class RoomSpeech {
         if(current==FIGHT)for(int i=0;i<seen.length;i++)
             if(seen[i]&&until[i]<=now&&c.emotions.until[i]>now)
                 bubble(i,headX[i],headY[i],"",c.emotions.values[i],true);
+        if(current==FIGHT && !c.typing.active())bar=false;
         if (bar) drawBar();
         if (picker) drawPicker();
         if (quick.opened) quick.draw();

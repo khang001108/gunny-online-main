@@ -1,7 +1,7 @@
 import javax.microedition.lcdui.*;
 /** Cooperative browser, a three-seat staging room, and its own map/difficulty picker. */
 final class DungeonScreen {
-    void releaseArt(){for(int i=0;i<3;i++){seatPortraits[i]=null;seatKeys[i]=null;}rewardFrame=pickerPanel=rewardCell=portraitFrame=null;for(int i=0;i<8;i++)rewardIcons[i]=null;for(int i=0;i<2;i++)pickerCards[i]=portraitCards[i]=null;previewCover=rewardWing=null;previewStage=-1;banner=background=smallCover=seatCard=emptyCard=localPortrait=allyPortrait=closedCard=null;portraitKey="";for(int i=0;i<stageCovers.length;i++)stageCovers[i]=null;}
+    void releaseArt(){closeRewards();for(int i=0;i<8;i++)largeRewardIcons[i]=null;for(int i=0;i<3;i++){seatPortraits[i]=null;seatKeys[i]=null;}rewardFrame=pickerPanel=rewardCell=portraitFrame=rewardPopupFrame=rewardPopupClose=rewardPopupCell=null;for(int i=0;i<8;i++)rewardIcons[i]=null;for(int i=0;i<2;i++)pickerCards[i]=portraitCards[i]=null;previewCover=rewardWing=null;previewStage=-1;banner=background=smallCover=seatCard=emptyCard=localPortrait=allyPortrait=closedCard=null;portraitKey="";for(int i=0;i<stageCovers.length;i++)stageCovers[i]=null;}
 
  static final int CONFIRM_SOLO = 6, CONFIRM_LEAVE_CAMPAIGN = 35;
  static final String TITLE = "Ải Viễn Chinh";
@@ -240,6 +240,7 @@ final class DungeonScreen {
  }
  void drawWaiting() {
   boolean sameRoom = observedRoom == n.roomId;
+  if(!sameRoom||n.phase!=0||(rewardsOpen&&(rewardStage!=n.dungeonStage||rewardDifficulty!=n.dungeonDifficulty)))closeRewards();
   observedRoom = n.roomId;
   for (int actor = 0; actor < 6; actor += 2) {
    String name = n.present[actor] ? n.names[actor] : null;
@@ -250,6 +251,7 @@ final class DungeonScreen {
   }
   drawRoom(true);
   if (picker) drawPicker();
+  else if(rewardsOpen)drawRewardPopup();
 
  }
 
@@ -272,6 +274,7 @@ final class DungeonScreen {
   int stage = online ? n.dungeonStage : c.offlineDungeon.stage;
   // Reward preview is room content, not a floating overlay. Draw before toolbar/tooltips.
   drawRewards(stage,online?n.dungeonDifficulty:c.offlineDungeon.difficulty);
+  if(c.roomSelection==DungeonRewardPreview.FOCUS)c.drawSelectionGlow(119,110,84,82);
   c.loadout.draw(online, true);
 
  }
@@ -281,7 +284,45 @@ final class DungeonScreen {
  Image rewardWing;
  Image rewardCell;final Image[] rewardIcons=new Image[8];
  void rewardItem(int index,Image icon,String percent){int x=125+index%3*24,y=116+index/3*23;c.clip(x,y,23,23);c.img(icon,x+4,y+1);c.maps.smallText(percent,x+11,y+15);c.all();}
- void drawRewards(int stage,int diff){if(rewardFrame==null)rewardFrame=NativeUi.fit(c.combatRoomArt("item752-tooltip"),82*c.s,80*c.s,5*c.s);c.img(rewardFrame,120,111);int factor=stage==6?(diff==2?11:diff==1?15:18):18;for(int g=0;g<5;g++){if(rewardIcons[g]==null)rewardIcons[g]=NativeUi.fit(c.stoneShop.icon(g),14*c.s,14*c.s,0);int p=(StoneDrops.WEIGHTS[diff][g]*factor*10+9)/18;rewardItem(g,rewardIcons[g],p/10+"."+p%10+"%");}int index=5;if(stage==6&&diff>0){if(rewardIcons[5]==null)rewardIcons[5]=NativeUi.fit(c.weapons[8],14*c.s,14*c.s,0);rewardItem(index++,rewardIcons[5],diff==2?"33.3%":"16.7%");if(diff==2){if(rewardIcons[6]==null)rewardIcons[6]=NativeUi.fit(c.combatRoomArt("tribal-wing"),14*c.s,14*c.s,0);rewardItem(index++,rewardIcons[6],"5.6%");}}if(stage==2||stage==6){if(rewardIcons[7]==null)rewardIcons[7]=NativeUi.fit(c.gifts.icon(1),14*c.s,14*c.s,0);rewardItem(index,rewardIcons[7],"100%");}}
+ boolean rewardsOpen,rewardInfo;int rewardFocus,rewardStage,rewardDifficulty;
+ final Image[] largeRewardIcons=new Image[8];
+ Image rewardPopupFrame,rewardPopupClose,rewardPopupCell;int rewardPopupCellW;
+ Image rewardSource(int item){if(item<5)return c.stoneShop.icon(item);if(item==DungeonRewardPreview.WEAPON)return c.weapons[8];if(item==DungeonRewardPreview.WING)return c.combatRoomArt("tribal-wing");return c.gifts.icon(1);}
+ void drawRewards(int stage,int diff){
+  if(rewardFrame==null)rewardFrame=NativeUi.fit(c.combatRoomArt("item752-tooltip"),82*c.s,80*c.s,5*c.s);
+  c.img(rewardFrame,120,111);
+  int count=DungeonRewardPreview.count(stage,diff);
+  for(int i=0;i<count;i++){int item=DungeonRewardPreview.item(stage,diff,i);if(rewardIcons[item]==null)rewardIcons[item]=NativeUi.fit(rewardSource(item),14*c.s,14*c.s,0);rewardItem(i,rewardIcons[item],DungeonRewardPreview.percent(stage,diff,item));}
+ }
+ void closeRewards(){rewardsOpen=rewardInfo=false;rewardFocus=0;}
+ void openRewards(boolean online){rewardStage=online?n.dungeonStage:c.offlineDungeon.stage;rewardDifficulty=online?n.dungeonDifficulty:c.offlineDungeon.difficulty;rewardFocus=0;rewardInfo=false;rewardsOpen=true;c.roomSelection=DungeonRewardPreview.FOCUS;}
+ int rewardCount(){return DungeonRewardPreview.count(rewardStage,rewardDifficulty);}
+ Image largeRewardIcon(int item){if(largeRewardIcons[item]==null){Image src=rewardSource(item);int w=src.getWidth(),h=src.getHeight(),limit=40*c.s;largeRewardIcons[item]=NativeUi.fit(src,Math.max(1,w*limit/Math.max(w,h)),Math.max(1,h*limit/Math.max(w,h)),0);}return largeRewardIcons[item];}
+ void drawRewardPopup(){
+  c.all();
+  if(rewardPopupFrame==null){rewardPopupFrame=NativeUi.popupFrame(c.combatRoomArt("settings743-popup"),DungeonRewardPreview.PANEL_W,DungeonRewardPreview.PANEL_H,c.s);rewardPopupClose=c.combatRoomArt("bag715-close");}
+  c.img(rewardPopupFrame,DungeonRewardPreview.PANEL_X,DungeonRewardPreview.PANEL_Y);
+  c.center("Quà thưởng",160,DungeonRewardPreview.PANEL_Y+8);
+  int count=rewardCount(),w=DungeonRewardPreview.width(count);
+  if(rewardPopupCell==null||rewardPopupCellW!=w){rewardPopupCellW=w;rewardPopupCell=NativeUi.fit(c.combatRoomArt("bag715-cell"),w*c.s,72*c.s,4*c.s);}
+  for(int i=0;i<count;i++){
+   int item=DungeonRewardPreview.item(rewardStage,rewardDifficulty,i),x=DungeonRewardPreview.x(count,i),y=DungeonRewardPreview.y(count,i);
+   c.img(rewardPopupCell,x,y);
+   Image icon=largeRewardIcon(item);c.img(icon,x+(w-icon.getWidth()/c.s)/2,y+5+(40-icon.getHeight()/c.s)/2);
+   c.center(DungeonRewardPreview.percent(rewardStage,rewardDifficulty,item),x+w/2,y+51);
+   if(i==rewardFocus)c.drawItemSelection(x,y,w,72,rewardInfo);
+  }
+  if(rewardInfo){
+   int item=DungeonRewardPreview.item(rewardStage,rewardDifficulty,rewardFocus);int[] anchor={DungeonRewardPreview.x(count,rewardFocus),DungeonRewardPreview.y(count,rewardFocus),w,72};
+   if(item<5)c.stoneShop.drawInfo(item,anchor);
+   else if(item==DungeonRewardPreview.WEAPON)c.tooltip.draw(0,8,anchor);
+   else if(item==DungeonRewardPreview.WING)c.tooltip.goods(c.vip.wingName(5),"Cánh","Cánh thưởng phó bản. Trang bị vĩnh viễn.",anchor);
+   else c.tooltip.goods(c.gifts.name(1),"Quà","Thưởng: đá Lv2 x20-70. Thẻ VIP 1 ngày: 10%.",anchor);
+  }
+  c.all();c.img(rewardPopupClose,DungeonRewardPreview.CLOSE_X,DungeonRewardPreview.CLOSE_Y);
+ }
+ void keyRewards(int key,int dir,boolean ok){if(key==-7){if(rewardInfo)rewardInfo=false;else closeRewards();return;}if(key==-6||ok){rewardInfo=!rewardInfo;return;}if(dir!=0){rewardInfo=false;rewardFocus=DungeonRewardPreview.move(rewardFocus,rewardCount(),dir);}}
+ void pointerRewards(int x,int y){if(DungeonRewardPreview.closeHit(x,y)){closeRewards();return;}int hit=DungeonRewardPreview.hit(rewardCount(),x,y);if(hit>=0){if(hit==rewardFocus)rewardInfo=!rewardInfo;else{rewardFocus=hit;rewardInfo=false;}}}
  private void drawSeat(int seat, boolean online) {
   int actor = seat * 2;
   int x = 18 + (seat % 2) * 102;
@@ -431,6 +472,7 @@ final class DungeonScreen {
  }
 
  void keyRoom(boolean online, int key, int dir, boolean ok) {
+  if(rewardsOpen){keyRewards(key,dir,ok);return;}
   if (online ? picker : c.offlineDungeon.picker) {
    if(key==-7){if(pickerStep>0)pickerStep--;else setPicker(online,false);}else if(dir==1||dir==2){if(pickerStep==0)draftDungeon=1-draftDungeon;else if(pickerStep==1)draftDifficulty=(draftDifficulty+(dir==1?2:1))%3;}else if(dir==4&&pickerStep>0)pickerStep--;else if(ok||key==-6){if(pickerStep==0&&!levelAllowed(draftDungeon))return;if(pickerStep<2)pickerStep++;else confirmPicker(online);}
 
@@ -455,7 +497,8 @@ final class DungeonScreen {
 
  private void activateRoom(boolean online, int action) {
   c.roomSelection = action;
-  if(action==60||action==62||action==64){
+  if(action==DungeonRewardPreview.FOCUS){openRewards(online);}
+  else if(action==60||action==62||action==64){
    if(action!=60)toggleSeat(online,action-60);
   } else if (action == 4 || action == 29) {
    openPicker(online);
@@ -556,13 +599,14 @@ final class DungeonScreen {
  }
 
  void pointerRoom(boolean online, int x, int y) {
+  if(rewardsOpen){pointerRewards(x,y);return;}
   if (online ? picker : c.offlineDungeon.picker) {
    if(x>=14&&x<194&&y>=29&&y<205){draftDungeon=x<106?0:1;if(levelAllowed(draftDungeon))pickerStep=1;}else if(x>=212&&x<311&&y>=53&&y<74){draftDifficulty=Battle.clamp((x-213)/33,0,2);pickerStep=2;}else if(c.maps.hitConfirm(x,y)){if(pickerStep==0&&!levelAllowed(draftDungeon))return;if(pickerStep<2)pickerStep++;else confirmPicker(online);}else if(x>=295&&y<30)setPicker(online,false);
 
    return;
   }
   if (c.loadout.pressToolbar(x,y)) return;
-  if(x>=120&&x<202&&y>=111&&y<191){openPicker(online);return;}
+  if(x>=120&&x<202&&y>=111&&y<191){openRewards(online);return;}
   for(int seat=0;seat<3;seat++){
    int sx=18+seat%2*102,sy=28+seat/2*83;
    if(x>=sx&&x<sx+82&&y>=sy&&y<sy+80){activateRoom(online,60+seat*2);return;}

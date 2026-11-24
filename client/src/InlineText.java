@@ -1,4 +1,5 @@
 import javax.microedition.lcdui.Canvas;
+import javax.microedition.lcdui.Image;
 
 /** Edits a Canvas field using the device's key events. */
 final class InlineText {
@@ -8,7 +9,21 @@ final class InlineText {
     private Done done;
     private String label, value;
     private int mode, room, max, cursor, x, y, width;
-    private boolean numeric, secret, panel;
+    private boolean numeric, secret, panel, chatField, telex = true;
+    private Image popupFrame, popupClose, popupInput, popupButton;
+    private int skinScale;
+    // Boxed editor: 248 x 86; input and buttons retain their original anchors.
+    private static final int PANEL_X=36,PANEL_Y=76,PANEL_W=248,PANEL_H=86;
+    private static final int CLOSE_X=PANEL_X+PANEL_W-25,CLOSE_Y=PANEL_Y+5;
+    void releaseArt(){popupFrame=popupClose=popupInput=popupButton=null;skinScale=0;}
+    private void loadSkin(){
+        if(popupFrame!=null&&skinScale==c.s)return;
+        releaseArt();skinScale=c.s;
+        popupFrame=NativeUi.popupFrame(c.combatRoomArt("settings743-popup"),PANEL_W,PANEL_H,c.s);
+        popupClose=c.combatRoomArt("bag715-close");
+        popupInput=NativeUi.fit(c.combatRoomArt("auth714-input"),230*c.s,16*c.s,4*c.s);
+        popupButton=NativeUi.fit(c.combatRoomArt("popup751-button"),74*c.s,22*c.s,5*c.s);
+    }
 
     InlineText(PhoneCanvas canvas) { c = canvas; }
 
@@ -24,6 +39,7 @@ final class InlineText {
     private void start(String title, String initial, int limit, boolean digits, boolean masked,
                        int left, int top, int w, boolean boxed, Done action) {
         label = title;
+        chatField = "Trò chuyện".equals(title);
         value = initial;
         cursor = initial.length();
         max = limit;
@@ -63,6 +79,7 @@ final class InlineText {
                 && key == Canvas.KEY_POUND) {
             key = '@';
         }
+        if (chatField && key == Canvas.KEY_POUND) { telex = !telex; return true; }
         if (key == -7 || key == 27) cancel();
         else if (key == 13 || key == 10 || key == -6 || key == -5) finish();
         else if (key == 8 || key == -8 || key == 127) {
@@ -78,20 +95,23 @@ final class InlineText {
                 if (action == Canvas.FIRE) finish();
             } catch (IllegalArgumentException ignored) {}
         } else if (key >= 32 && key <= 0xffff && (key < 127 || key >= 160)
-                && (!numeric || key >= '0' && key <= '9') && value.length() < max) {
-            value = value.substring(0, cursor) + (char)key + value.substring(cursor);
-            cursor++;
+                && (!numeric || key >= '0' && key <= '9')  ) {
+            String left = chatField && telex ? VietnameseInput.compose(value.substring(0,cursor),(char)key) : null;
+            if(left==null)left=value.substring(0,cursor)+(char)key;
+            if(left.length()+value.length()-cursor<=max){value=left+value.substring(cursor);cursor=left.length();}
         }
         return true;
     }
 
     boolean pointer(int px, int py) {
         if (!active()) return false;
-        if (py >= y && py < y + 16 && px >= x + width && px < x + width + 24) finish();
-        else if (panel && py >= y + 20 && py < y + 38) {
-            if (px >= x && px < x + width / 2) cancel();
-            else if (px < x + width) finish();
-        } else if (!panel && (px < x || px >= x + width || py < y || py >= y + 16)) finish();
+        if (panel) {
+            if (px>=CLOSE_X&&px<CLOSE_X+21&&py>=CLOSE_Y&&py<CLOSE_Y+19) cancel();
+            else if (py>=y+22&&py<y+44) {
+                if(px>=x+8&&px<x+82)cancel();
+                else if(px>=x+width-82&&px<x+width-8)finish();
+            }
+        } else if (px < x || px >= x + width || py < y || py >= y + 16) finish();
         return true;
     }
 
@@ -99,24 +119,30 @@ final class InlineText {
         if (!active()) return;
         c.all();
         if (panel) {
-            c.panel(x - 9, y - 23, width + 18, 64);
-            c.pcCenter(label, x + width / 2, y - 17);
-            c.ui.button("Hủy",x + 8,y + 20,74,17,false);
-            c.ui.button("Xong",x + width - 82,y + 20,74,17,false);
-        }
-        c.rect(x,y,width,16,0x292119);
+            loadSkin();
+            c.img(popupFrame,PANEL_X,PANEL_Y);
+            c.pcCenter(c.pcShort(label,196),160,PANEL_Y+9);
+            c.img(popupClose,CLOSE_X,CLOSE_Y);
+            c.img(popupInput,x,y);
+            c.img(popupButton,x+8,y+22);
+            c.img(popupButton,x+width-82,y+22);
+            c.pcCenter("Hủy",x+45,y+28);
+            c.pcCenter("Xong",x+width-45,y+28);
+        }else c.rect(x,y,width,16,0x292119);
         String display = value;
         if (secret) {
             StringBuffer masked = new StringBuffer();
             for (int i = 0; i < value.length(); i++) masked.append('*');
             display = masked.toString();
         }
+        int usable=width-(chatField?32:10);
         int start = 0;
-        while (start < cursor && c.pcWidth(display.substring(start,cursor)) > width - 10) start++;
+        while (start < cursor && c.pcWidth(display.substring(start,cursor)) > usable) start++;
         int end = display.length();
-        while (end > cursor && c.pcWidth(display.substring(start,end)) > width - 10) end--;
+        while (end > cursor && c.pcWidth(display.substring(start,end)) > usable) end--;
         c.pcText(display.substring(start,end),x + 4,y + 3);
+        if(chatField)c.pcText(telex?"VI":"EN",x+width-22,y+3);
         if (System.currentTimeMillis() / 400 % 2 == 0)
-            c.rect(x + 4 + c.pcWidth(display.substring(start,cursor)),y + 3,1,10,0xffdf95);
+            c.rect(x + 4 + c.pcWidth(display.substring(start,cursor)),y + 3,1,10,panel?0x392918:0xffdf95);
     }
 }

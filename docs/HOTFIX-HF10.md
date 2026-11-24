@@ -1,0 +1,2 @@
+# Gunny 7.9.18 HF10 — popup UI
+Apply over HF7–HF9; no server changes. Both boxed input and reward preview use settings743-popup and bag715-close already shipped in the JARs. Boxed input keeps Hủy/Xong and masked password handling; X cancels. Reward popup has native bag grid, original icons/percentages, no bottom buttons; left softkey/OK show item information, right softkey backs out, X closes. Touching a selected reward toggles item details. Retains existing backend and previous changes. Rebuild client/Build.bat. Java ME build and emulator not performed in this environment.

@@ -142,7 +142,7 @@ final class BagScreen {
         c.all();
         c.img(c.lobbyBackground, 0, 0);
         c.img(frame, 3, 8);
-        c.pcText("Túi (B)", 14, 17);
+        HeaderArt.left(c,HeaderArt.BAG,14,21);
         if(c.gifts.vipUntil()>System.currentTimeMillis()/1000)c.pcText("VIP "+((c.gifts.vipUntil()-System.currentTimeMillis()/1000+3599)/3600)+"h",76,17);
 
         c.img(close, 289, 12);

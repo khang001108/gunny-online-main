@@ -3,7 +3,7 @@ import javax.microedition.lcdui.*;
 /** Draft selection is local; only Confirm changes the authoritative room. */
 final class MapPicker {
     final PhoneCanvas c;boolean online;int choice,seconds=12,focus,stage;
-    static final int CONFIRM_X=236,CONFIRM_Y=210,CONFIRM_W=50,CONFIRM_H=20;
+    static final int CONFIRM_X=231,CONFIRM_Y=208,CONFIRM_W=58,CONFIRM_H=24;
     Image frame,blueButton;final Image[] banners=new Image[7];
     Image dungeonCover, tribalCover, compactFont;
     private static final String DUNGEON_DESCRIPTION =

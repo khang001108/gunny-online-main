@@ -23,7 +23,7 @@ final class OnlineWaitingRoom {
     }
 
     void reset() {
-        c.roomSelection = versus() ? 4 : 2;
+        c.loadout.resetFocus();c.roomSelection = versus() ? RoomLoadout.AVAILABLE : 2;
         previewScaled = null;
         previewIndex = -1;
         for (int i = 0; i < 6; i++) {
@@ -273,11 +273,12 @@ final class OnlineWaitingRoom {
             c.versusMode = c.combatRoomArt("room-loading-mode");
         }
         c.img(c.versusBg, 0, 0);
-        c.img(c.versusLogo, 124, 15);
-        c.img(c.versusMode, 139, 73);
+        boolean edit=net.phase==0;
+        c.img(c.versusLogo, edit?70:124, 15);
+        c.img(c.versusMode, edit?85:139, 73);
         for (int i = 0; i < 2; i++)
             if (net.present[i]) {
-                int x = i == 0 ? (enemyPresent() ? 40 : 25) : 230;
+                int x = i == 0 ? (enemyPresent() ? 40 : 25) : edit?140:230;
                 portrait(i, x, 91);
                 c.img(c.weapons[net.weapon[i]], x + 27, 130);
                 c.pcCenter(c.pcShort(net.names[i], 90), x + 20, 153);
@@ -291,7 +292,8 @@ final class OnlineWaitingRoom {
         c.pcText("Phòng #" + net.roomId + " • Đấu đơn", 8, 181);
         if (enemyPresent())
             c.pcText("Đã tìm thấy người chơi", 8, 194);
-        mapPreview(157, 189);
+        mapPreview(edit?100:157, 189);
+        if(edit){c.loadout.load();c.clip(214,0,106,145);c.img(c.loadout.panel,214,0);c.pcCenter("Đấu đơn",267,18);c.loadout.drawGroups(true);c.all();c.loadout.drawGroupInfo(true);}
     }
 
     void focus() {
@@ -421,6 +423,7 @@ final class OnlineWaitingRoom {
     }
 
     void key(int key, int dir, boolean ok) {
+        if(versus()&&net.phase==0){if(dir!=0){c.roomSelection=dir==4?RoomLoadout.EQUIPPED:dir==8?RoomLoadout.AVAILABLE:c.roomSelection;return;}if(ok&&c.loadout.group(c.roomSelection)){c.loadout.enterGroup(c.roomSelection,true);return;}}
         if (!versus() && dir != 0) {
             c.loadout.move(dir, true);
             return;
@@ -449,6 +452,7 @@ final class OnlineWaitingRoom {
     }
 
     void pointer(int x, int y) {
+        if(versus()&&net.phase==0){int f=c.loadout.hit(x,y);if(c.loadout.group(f)){c.loadout.enterGroup(f,true);return;}}
         if (net.count == 6 && x >= 46 && x < 208 && y >= 16 && y < 180) {
             int col = (x - 46) / 54, row = (y - 16) / 88;
             c.roomSelection = 60 + col * 2 + row;

@@ -379,7 +379,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         else if (roomSelection == 2)
             inviteBot();
         else if (roomSelection == 3) {
-            roomSelection = 23;
+            roomSelection = RoomLoadout.AVAILABLE;
         } else if (roomSelection == 4) {
             maps.open(false);
         } else if (roomSelection == 5) {
@@ -1397,7 +1397,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         tribalArt.release();conditions.reset();
     }
     void beginMatch(int battleMap) throws IOException {
-        releaseNpcArt();loadout.releaseMenuArt();gifts.releaseArt();home.releaseArt();ranking.releaseArt();bag.releaseArt();shop.releaseArt();forge.releaseArt();vip.release();tooltip.releaseArt();popup.releaseArt();ui.releaseArt();
+        releaseNpcArt();loadout.releaseMenuArt();gifts.releaseArt();home.releaseArt();ranking.releaseArt();bag.releaseArt();shop.releaseArt();forge.releaseArt();vip.release();tooltip.releaseArt();popup.releaseArt();ui.releaseArt();typing.releaseArt();
         if(dungeon!=null)dungeon.releaseArt();if(net!=null){net.waiting.releaseArt();net.rooms.releaseArt();for(int i=0;i<net.standing.length;i++)net.standing[i]=null;}
         for(int i=0;i<stoneShop.icons.length;i++)stoneShop.icons[i]=null;
 
@@ -3580,7 +3580,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         int rawKey = key;
         if (keyBindings.press(key)) return;
         key = keyBindings.map(key);
-        if (mode == 1 && powShotPending)
+        if (mode == 1 && powShotPending && rawKey!=13 && rawKey!=10)
             return;
         int dir = direction(key);
         boolean ok = fire(key);
@@ -3588,9 +3588,11 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             popup.key(key, dir, ok);
             return;
         }
+        if(mode==16&&net.roomKind==3&&net.roomId>0&&dungeon.rewardsOpen&&!net.social.opened){dungeon.keyRewards(key,dir,ok);return;}
         if((key=='g'||key=='G')&&onlineAccount()&&economy.testCheats&&mode!=9){openCheats();return;}
         if (net.chat.opened && !presentation.settings && net.chat.key(net.chat.rawBinding(rawKey,key), dir, ok))
             return;
+        if(roomKitContext()&&loadout.groupKey(key,dir,ok,mode!=10))return;
         if (presentation.key(key, dir, ok))
             return;
         if (mode == 0 && net.social.opened) {
@@ -4037,6 +4039,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         }
     }
 
+    boolean roomKitContext(){return !presentation.settings&&!net.social.opened&&!net.create.opened&&!net.chat.opened&&!net.inBattle&&(mode==10||mode==19||mode==16&&net.logged&&net.roomId>0&&net.phase==0&&!dungeon.picker&&!dungeon.rewardsOpen);}
     protected synchronized void pointerPressed(int px, int py) {
         int mappedX=pointerX(px,py),mappedY=pointerY(px,py);px=mappedX;py=mappedY;
         if (typing.pointer((px-ox)/s,(py-oy)/s)) { repaint(); return; }
@@ -4047,6 +4050,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             popup.pointer(x, y);
             return;
         }
+        if(mode==16&&net.roomKind==3&&net.roomId>0&&dungeon.rewardsOpen&&!net.social.opened){dungeon.pointerRewards(x,y);return;}
+        if(roomKitContext()&&loadout.groupPointer(x,y,mode!=10))return;
         if (presentation.pointer(x, y))
             return;
         if (mode == 0 && net.social.opened) {

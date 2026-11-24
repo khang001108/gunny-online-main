@@ -5,7 +5,8 @@ import javax.microedition.lcdui.*;
 
 final class LobbyChat {
     private static final int PUBLIC = 0, CONTACTS = -1, CLOSED = -2;
-    private static final int VISIBLE = 8;
+    private static final int VISIBLE = 8, MESSAGE_ROWS = 3, MESSAGE_H = 40;
+    private int visibleRows(){return channel==CONTACTS?VISIBLE:MESSAGE_ROWS;}
     private static final int[] BUTTON_X = { 20, 231, 254, 276 };
     private static final int[] BUTTON_W = { 210, 22, 22, 22 };
     private static final int PANEL_X = 12, PANEL_Y = 20, PANEL_W = 296, PANEL_H = 216;
@@ -35,6 +36,7 @@ final class LobbyChat {
         long id;
         String author, body;
         int emoji;
+        String portraitKey; int sex,skin,mask; boolean custom; int[] look;
 
         Message(DataInputStream in) throws IOException {
             id = in.readLong();
@@ -43,6 +45,14 @@ final class LobbyChat {
             emoji = in.readByte();
         }
 
+        void readPortrait(DataInputStream in)throws IOException{
+            if(!in.readBoolean())return;
+            sex=in.readUnsignedByte();skin=in.readUnsignedByte();custom=in.readBoolean();mask=in.readUnsignedByte();look=new int[5];
+            portraitKey=sex+":"+skin+":"+mask+":"+custom;
+            boolean valid=sex<=1&&skin<=9;
+            for(int i=0;i<5;i++){look[i]=in.readUnsignedByte();portraitKey+=":"+look[i];if(look[i]>9)valid=false;}
+            if(!valid)portraitKey=null;
+        }
         String text() { return author + ": " + body; }
     }
 
@@ -117,6 +127,7 @@ final class LobbyChat {
         completedMention = "";
         draftEmoji = -1;
         for (int i = 0; i < history.length; i++) history[i] = null;
+        for(int i=0;i<portraitKeys.length;i++){portraitKeys[i]=null;portraitImages[i]=null;}
         names = new String[0];
         channel = PUBLIC;
         blockedReadUntil = 0;
@@ -222,6 +233,7 @@ final class LobbyChat {
             sentCursor = opened ? cursor : 0;
             out.writeInt(sentChannel);
             out.writeLong(sentCursor);
+            if(opened && channel>=PUBLIC)out.writeByte(15);
         } else if (op.equals("chatfriends")) {
             sentGeneration = generation;
         } else if (op.equals("chatmentions")) {
@@ -243,13 +255,15 @@ final class LobbyChat {
                 long anchor = first < historyCount ? history[first].id : 0;
                 historyCount = Math.min(count, history.length);
                 for (int i = 0; i < historyCount; i++) history[i] = new Message(in);
+                for(int i=historyCount;i<count;i++)new Message(in);
+                if(in.available()>0 && in.readUnsignedByte()==15){int portraits=in.readUnsignedByte();if(portraits!=count)throw new IOException("Sai ảnh chat.");for(int i=0;i<portraits;i++){Message m=i<historyCount?history[i]:null;if(m!=null)m.readPortrait(in);else if(in.readBoolean())for(int k=0;k<9;k++)in.readUnsignedByte();}}
                 more = count > history.length;
                 if (!loading && first > 0) {
                     for (int i = 0; i < historyCount; i++)
                         if (history[i].id == anchor) { first = i; break; }
                 }
-                first = Math.min(first, Math.max(0, historyCount - VISIBLE));
-                selected = Math.min(selected, Math.max(0, Math.min(VISIBLE, historyCount - first) - 1));
+                first = Math.min(first, Math.max(0, historyCount - MESSAGE_ROWS));
+                selected = Math.min(selected, Math.max(0, Math.min(MESSAGE_ROWS, historyCount - first) - 1));
                 loading = false;
             }
         } else if (op.equals("chatfriends")) {
@@ -407,9 +421,9 @@ final class LobbyChat {
     }
 
     private void older() {
-        int last = Math.max(0, historyCount - VISIBLE);
+        int last = Math.max(0, historyCount - MESSAGE_ROWS);
         if (first < last) {
-            first = Math.min(first + VISIBLE, last);
+            first = Math.min(first + MESSAGE_ROWS, last);
             selected = 0;
         } else olderPage();
     }
@@ -422,7 +436,7 @@ final class LobbyChat {
             olderPage();
         } else if (i >= 0 && i < count) {
             first = Math.min(first, i);
-            first = Math.max(first, i - VISIBLE + 1);
+            first = Math.max(first, i - visibleRows() + 1);
             selected = i - first;
         }
     }
@@ -514,9 +528,9 @@ final class LobbyChat {
             }
         } else if (y >= 48 && y < 65 && x >= 22 && x < 194) {
             switchChannel(x < 110 ? PUBLIC : CONTACTS, "");
-        } else if (x >= 27 && x < 293 && y >= ROW_Y && y < ROW_Y + VISIBLE * 14) {
-            int row = (y - ROW_Y) / 14;
-            int index = channel == CONTACTS ? row : Math.min(VISIBLE, historyCount - first) - 1 - row;
+        } else if (x >= 27 && x < 293 && y >= ROW_Y && y < ROW_Y + visibleRows() * (channel==CONTACTS?14:MESSAGE_H)) {
+            int row = (y - ROW_Y) / (channel==CONTACTS?14:MESSAGE_H);
+            int index = channel == CONTACTS ? row : Math.min(MESSAGE_ROWS, historyCount - first) - 1 - row;
             if (index >= 0) {
                 selected = index;
                 chooseRow(index);
@@ -571,7 +585,7 @@ final class LobbyChat {
         c.clip(PANEL_X + 5, 47, PANEL_W - 10, 13);
         c.img(backdrop,PANEL_X,PANEL_Y - 13);
         c.all();
-        c.pcCenter("TRÒ CHUYỆN",160,29);
+        HeaderArt.center(c,HeaderArt.CHAT,160,33);
         c.img(closeIcon,283,25);
         // Approved chat layout: white message surface inside the shared yellow popup.
         c.rect(20,66,280,126,0x9b6d31);
@@ -615,19 +629,51 @@ final class LobbyChat {
         selected = 0;
     }
 
+    private final String[] portraitKeys=new String[8];
+    private final Image[] portraitImages=new Image[8];
+    private int portraitNext;
+    private Image avatar(Message m){
+        if(m.portraitKey==null)return null;
+        String key=m.portraitKey+":"+c.s;
+        for(int i=0;i<portraitKeys.length;i++)if(key.equals(portraitKeys[i]))return portraitImages[i];
+        Image image=null;
+        try{
+            // Same composed head layers as the ranking board, cropped at the head.
+            int[] pixels=new int[80*100*c.s*c.s];
+            if(m.custom){int[] order={0,3,2,1,4};for(int k=0;k<5;k++){String layer=c.layerName(m.sex,order[k],m.look[order[k]],m.mask,"cutin");if(layer!=null)c.blendCutin(pixels,c.load(layer));}}
+            else c.blendCutin(pixels,c.load("cutin"+m.sex+"_0_"+m.skin));
+            int side=24*c.s;int[] crop=new int[side*side];for(int y=0;y<side;y++)for(int x=0;x<side;x++)crop[y*side+x]=pixels[(y*65*c.s/side)*80*c.s+x*80*c.s/side];
+            image=Image.createRGBImage(crop,side,side,true);
+        }catch(Exception ignored){}catch(OutOfMemoryError ignored){}
+        portraitKeys[portraitNext]=key;portraitImages[portraitNext]=image;portraitNext=(portraitNext+1)%portraitKeys.length;return image;
+    }
+    private String[] wrapBody(String body,int limit){
+        String[] lines={"",""};int end=0;
+        while(end<body.length()&&c.textWidth(body.substring(0,end+1))<=limit)end++;
+        if(end==body.length()){lines[0]=body;return lines;}
+        int space=body.lastIndexOf(' ',end);if(space>0)end=space;
+        end=Math.max(1,end);lines[0]=body.substring(0,end);String tail=body.substring(end).trim();
+        if(c.textWidth(tail)>limit){while(tail.length()>0&&c.textWidth(tail+"...")>limit)tail=tail.substring(0,tail.length()-1);tail+="...";}
+        lines[1]=tail;return lines;
+    }
     private void drawMessages() {
-        int drawn = Math.min(VISIBLE, historyCount - first);
-        for (int i = 0; i < drawn; i++) {
-            Message m = history[first + drawn - 1 - i];
-            boolean mine = m.author.equals(c.playerName);
-            int y = ROW_Y + i * 14;
-            String label = c.pcShort(mine ? m.body : m.text(), 206);
-            int textWidth = c.pcWidth(label);
-            int bubbleWidth = Math.max(12, textWidth + (m.emoji < 0 ? 10 : 29));
-            int x = mine ? 294 - bubbleWidth : 26;
-            c.rect(x, y + 1, bubbleWidth, 13, mine ? 0xddeed0 : 0xeae4d8);
-            c.pcText(label, x + 5, y + 2);
-            if (m.emoji >= 0) drawEmoji(m.emoji, x + bubbleWidth - 19, y - 1);
+        int drawn=Math.min(MESSAGE_ROWS,historyCount-first);
+        for(int i=0;i<drawn;i++){
+            int index=drawn-1-i;Message m=history[first+index];boolean mine=m.author.equals(c.playerName);int y=ROW_Y+i*MESSAGE_H;
+            int ax=mine?269:26;Image head=avatar(m);c.rect(ax,y+9,24,24,0xf0e3c6);
+            if(head!=null)c.img(head,ax,y+9);else c.pcCenter("?",ax+12,y+16);
+            String[] lines=wrapBody(m.body,m.emoji>=0?174:194);
+            int textW=Math.max(c.textWidth(lines[0]),c.textWidth(lines[1]));int w=Math.min(204,Math.max(36,textW+(m.emoji>=0?28:10)));
+            int x=mine?263-w:56, tail=mine?x+w:x, tip=mine?tail+6:tail-6;
+            c.pcText(c.pcShort(m.author,w),x+2,y);
+            int h=lines[1].length()>0?30:18;if(m.emoji>=0)h=Math.max(h,20);
+            int by=y+9;int color=mine?0xddeed0:0xf1e6d2;
+            c.g.setColor(0xa18b66);c.g.fillRoundRect(c.ox+x*c.s,c.oy+by*c.s,w*c.s,h*c.s,8*c.s,8*c.s);
+            c.g.setColor(color);c.g.fillRoundRect(c.ox+(x+1)*c.s,c.oy+(by+1)*c.s,(w-2)*c.s,(h-2)*c.s,7*c.s,7*c.s);
+            c.g.fillTriangle(c.ox+tail*c.s,c.oy+(by+6)*c.s,c.ox+tail*c.s,c.oy+(by+12)*c.s,c.ox+tip*c.s,c.oy+(by+9)*c.s);
+            c.text(lines[0],x+4,by+2);if(lines[1].length()>0)c.text(lines[1],x+4,by+15);
+            if(m.emoji>=0)drawEmoji(m.emoji,x+w-21,by+2);
+            if(index==selected)c.drawSelectionGlow(x-1,by-1,w+2,h+1);
         }
         if (historyCount == 0) c.pcCenter(loading ? "Đang tải..." : "Chưa có tin nhắn", 160, 114);
         if (channel > PUBLIC && drawn > 0 && first == 0 && cursor == 0 && !c.typing.active() && !c.popup.opened

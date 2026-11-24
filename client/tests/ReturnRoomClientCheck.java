@@ -44,6 +44,14 @@ public final class ReturnRoomClientCheck {
   c.loadout.move(8,true,true);check(c.roomSelection==64,"Down focuses third dungeon slot");
   c.dungeon.keyWaiting(-5,0,true);check(net.pending.equals("slot")&&net.slotDraft==4,"OK targets focused dungeon slot");
   net.pending="";c.dungeon.pointerWaiting(150,100);check(c.roomSelection==62&&net.slotDraft==2,"Full second card is touch selectable");
+  net.pending="";net.roomId=1018;net.dungeonStage=6;net.dungeonDifficulty=2;c.dungeon.picker=false;
+  c.roomSelection=64;c.loadout.move(2,true,true);check(c.roomSelection==DungeonRewardPreview.FOCUS,"Right from third slot focuses rewards");
+  c.dungeon.keyWaiting(-5,0,true);check(c.dungeon.rewardsOpen&&c.dungeon.rewardCount()==8,"OK opens hard final reward grid");
+  c.dungeon.keyWaiting(0,2,false);check(c.dungeon.rewardFocus==1,"Grid focus moves right");
+  c.dungeon.keyWaiting(-6,0,false);check(c.dungeon.rewardInfo,"Left softkey opens item information");
+  c.dungeon.keyWaiting(-7,0,false);check(c.dungeon.rewardsOpen&&!c.dungeon.rewardInfo,"Back closes only item info");
+  c.dungeon.keyWaiting(-7,0,false);check(!c.dungeon.rewardsOpen&&c.roomSelection==DungeonRewardPreview.FOCUS,"Back restores reward card focus");
+  c.dungeon.pointerWaiting(150,150);check(c.dungeon.rewardsOpen&&!c.dungeon.picker,"Reward card touch opens rewards not map picker");c.dungeon.closeRewards();
   net.pending="";c.game.dungeonStage=2;c.game.active=0;c.cameraActor=0;c.freeCamera=c.cameraReturning=c.cameraOnPlayer=false;
   c.game.units[1].x=405;c.game.units[1].y=150;c.game.botPhase=AntCaveRules.QUEEN_HIT;
   c.game.balls[0]=new Battle.Ball();c.game.balls[0].x=80*256;c.game.balls[0].y=100*256;c.game.ballCount=1;c.cameraX=160;

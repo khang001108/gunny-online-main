@@ -1,0 +1,4 @@
+public final class VietnameseInputCheck {
+    private static String type(String text){String result="";for(int i=0;i<text.length();i++){char k=text.charAt(i);String next=VietnameseInput.compose(result,k);result=next==null?result+k:next;}return result;}
+    public static void main(String[] args){String[][] cases={{"Tieengs Vieetj","Tiếng Việt"},{"xin chaof","xin chào"},{"dduowngf","đường"},{"ddawng nhaapj","đăng nhập"},{"Tror chuyeenj","Trỏ chuyện"},{"camr own","cảm ơn"},{"hoaf","hòa"},{"quas","quá"},{"giar","giả"},{"chuwx","chữ"},{"dduwfng","đừng"},{"aaj","ậ"},{"as","á"},{"af","à"},{"ar","ả"},{"ax","ã"},{"aj","ạ"},{"asz","a"},{"ass","as"},{"DD","Đ"},{"Tiếng Việt","Tiếng Việt"},{"123 !","123 !"}};for(int i=0;i<cases.length;i++){String actual=type(cases[i][0]);if(!actual.equals(cases[i][1]))throw new AssertionError(cases[i][0]+" -> "+actual+" expected "+cases[i][1]);}System.out.println("PASS "+cases.length+" Telex cases");}
+}

@@ -94,7 +94,10 @@ final class LobbyChatServer {
         var state = Json.obj(query(session, "poll", peer, cursor, "", -1));
         out.writeBoolean(Boolean.TRUE.equals(state.get("unread")));
         writeMessages(out, (List<?>) state.get("preview"), expandedEmoji);
-        writeMessages(out, (List<?>) state.get("history"), expandedEmoji);
+        List<?> history = (List<?>) state.get("history");
+        writeMessages(out, history, expandedEmoji);
+        // Optional suffix: older clients still receive the original message format.
+        if(in.available()>0 && in.readUnsignedByte()==15)writePortraits(out,history);
     }
 
     record Speech(GunnyServer.Session author, int phase, String text, int emoji, long sentAt) {}
@@ -150,6 +153,31 @@ final class LobbyChatServer {
             int emoji = Json.num(message, "emoji", -1);
             out.writeByte(!expandedEmoji && emoji > 5 ? 3 : emoji);
         }
+    }
+
+    private record Portrait(int sex,int skin,boolean custom,int mask,int[] look) {
+        static Portrait of(CloudStore.Profile p){return new Portrait(p.gender,p.skin,p.custom,p.wornMask,p.look.clone());}
+        void write(DataOutputStream out)throws IOException{out.writeByte(sex);out.writeByte(skin);out.writeBoolean(custom);out.writeByte(mask);for(int v:look)out.writeByte(v);}
+    }
+    private record CachedPortrait(Portrait portrait,long expires){}
+    private final Map<String,CachedPortrait> portraitCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private void writePortraits(DataOutputStream out,List<?> rows)throws IOException{
+        var portraits=new java.util.HashMap<String,Portrait>();var missing=new java.util.LinkedHashSet<String>();long now=clock.millis();
+        for(Object row:rows){String name=Json.str(Json.obj(row),"sender_name");missing.add(name);}
+        for(var peer:server.sessions.values()){var p=peer.profile;if(p!=null&&missing.remove(p.name))portraits.put(p.name,Portrait.of(p));}
+        if(server.store instanceof CloudStore.Memory memory){for(var a:memory.accounts.values()){var p=a.profile();if(missing.remove(p.name))portraits.put(p.name,Portrait.of(p));}}
+        for(var it=missing.iterator();it.hasNext();){String name=it.next();var entry=portraitCache.get(name);if(entry!=null&&entry.expires>now){if(entry.portrait!=null)portraits.put(name,entry.portrait);it.remove();}}
+        if(!missing.isEmpty()&&!(server.store instanceof CloudStore.Memory))try{
+            // Quote and URL-encode every name as a PostgREST in-list literal.
+            var names=new ArrayList<String>();for(String name:missing)names.add("\""+name.replace("\\","\\\\").replace("\"","\\\"")+"\"");
+            String filter=java.net.URLEncoder.encode("("+String.join(",",names)+")",java.nio.charset.StandardCharsets.UTF_8);
+            var found=(List<?>)server.store.request("/rest/v1/profiles?display_name=in."+filter+"&select=display_name,gender,skin,custom_look,worn_mask,look&limit=17","GET",null,true);
+            for(Object row:found){var m=Json.obj(row);String name=Json.str(m,"display_name");if(!missing.contains(name))continue;int[] look=new int[5];if(m.get("look") instanceof List<?> values)for(int i=0;i<Math.min(5,values.size());i++)if(values.get(i) instanceof Number n)look[i]=n.intValue();boolean custom=Boolean.TRUE.equals(m.get("custom_look"));portraits.put(name,new Portrait(Json.num(m,"gender",0),Json.num(m,"skin",0),custom,Json.num(m,"worn_mask",custom?125:3),look));}
+        }catch(Exception ignored){} // Chat remains usable if cosmetics cannot be loaded.
+        if(portraitCache.size()>512)portraitCache.clear();
+        for(String name:missing)portraitCache.put(name,new CachedPortrait(portraits.get(name),now+60000));
+        out.writeByte(15);out.writeByte(rows.size());
+        for(Object row:rows){Portrait a=portraits.get(Json.str(Json.obj(row),"sender_name"));out.writeBoolean(a!=null);if(a!=null)a.write(out);}
     }
 
     void purge() {

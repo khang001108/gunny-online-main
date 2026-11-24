@@ -5,7 +5,7 @@ import javax.microedition.lcdui.*;
  * forge.
  */
 final class ForgeScreen {
-    void releaseArt(){resultSuccess=resultFailure=glow=star=null;frame=stone=stoneSmall=left=inventoryPanel=cell=equipTab=equipment=material=percent=on=off=action=fill=success=slotSuccess=continuousText=stoneLabel=hammer=closeButton=luckyIcon=protectIcon=null;for(int i=0;i<strength.length;i++)strength[i]=null;running=false;}
+    void releaseArt(){resultSuccess=resultFailure=glow=star=null;frame=stone=stoneSmall=left=inventoryPanel=cell=equipTab=equipment=material=percent=on=off=action=fill=success=slotSuccess=continuousText=stoneLabel=hammer=closeButton=luckyIcon=protectIcon=titleLabel=null;for(int i=0;i<strength.length;i++)strength[i]=null;running=false;}
 
     Image resultSuccess,resultFailure,glow,star;int resultKind;long resultUntil;
     final PhoneCanvas c;
@@ -13,7 +13,7 @@ final class ForgeScreen {
     final int[] kinds = new int[130], items = new int[130];
     final Image[] strength = new Image[16];
     String requestKey = "";
-    Image closeButton,luckyIcon,protectIcon;
+    Image closeButton,luckyIcon,protectIcon,titleLabel;
     Image frame, stone, stoneSmall, left, inventoryPanel, cell, equipTab, equipment, material, percent, on, off, action, fill,
             success, slotSuccess, continuousText, stoneLabel, hammer;
     int grade=1,quantity=1;
@@ -86,6 +86,7 @@ final class ForgeScreen {
         inventoryPanel = NativeUi.fit(left, 142 * c.s, 168 * c.s, 5 * c.s);
         cell = NativeUi.fit(c.bag.cell, 25 * c.s, 25 * c.s, 2 * c.s);
         equipTab = NativeUi.fit(c.bag.equipOn, 21 * c.s, 43 * c.s, 2 * c.s);
+        if(titleLabel==null)titleLabel = c.combatRoomArt("home-label-7");
         equipment = c.combatRoomArt("forge780-equipment");
         material = c.combatRoomArt("forge780-material");
         percent = NativeUi.fit(c.combatRoomArt("forge780-percent"), 82 * c.s, 10 * c.s, 3 * c.s);
@@ -121,11 +122,10 @@ final class ForgeScreen {
         c.all();
         c.img(c.lobbyBackground, 0, 0);
         c.img(frame, 4, 8);
-        c.pcText("Tiệm rèn", 13, 14);
+        if(titleLabel!=null)c.img(titleLabel,14,31); else c.center("Tiệm rèn",68,32);
         c.img(closeButton,289,10);
         c.wallet(153, 34);
         c.img(left, 12, 55);
-        c.pcText("Trang bị", 22, 57);
         c.pcText("Đá cường hóa", 84, 57);
         c.img(equipment, 24, 72);
         c.img(material, 94, 72);
@@ -162,8 +162,7 @@ final class ForgeScreen {
             c.drawSelectionGlow(48, 198, 78, 21);
         c.img(inventoryPanel, 149, 55);
         c.img(c.bag.input, 153, 57);
-        c.pcText(c.pcShort(step==1&&gradeCount>0?StoneShop.NAMES[ownedGrades[stoneSelection]-1]:count>0?c.bag.itemName(kind,item):"Trang bị",120),160,62);
-        c.img(equipTab, 292, 57);
+        c.pcText(c.pcShort(step==1&&gradeCount>0?StoneShop.NAMES[ownedGrades[stoneSelection]-1]:count>0?c.bag.itemName(kind,item):"",120),160,62);
         for (int n = 0; n < 25; n++) {
             int i = page * 25 + n, x = 154 + n % 5 * 26, y = 78 + n / 5 * 26;
             c.img(cell, x, y);

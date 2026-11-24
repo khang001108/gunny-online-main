@@ -38,6 +38,11 @@ final class OnlineSocial implements CommandListener {
     int infoSex, infoSkin, infoMask, infoWeapon, infoExp, infoWins, infoRank;
     final int[] infoForge=new int[3],infoRanks=new int[130];
     final int[] infoLook = new int[5];
+    final int[] profileSkin = new int[2], profileMask = new int[2];
+    final int[][] profileLook = new int[2][5];
+    final boolean[] profileAvailable = new boolean[2];
+    final int[][] profileForge = new int[2][3];
+
     Image infoHero;
     final Image[] infoIcons = new Image[7];
 
@@ -56,17 +61,21 @@ final class OnlineSocial implements CommandListener {
         for(int i=0;i<130;i++)infoRanks[i]=0;
         if(in.available()>=130)for(int i=0;i<130;i++)infoRanks[i]=in.readUnsignedByte();
         if(net.vipCap){infoVip=in.readInt();infoWing=in.readByte();}
-        infoHero = c.equipmentPreview(infoSex, infoSkin, (infoMask & 2) == 0, infoLook, infoMask, 64, 80);
-        for (int k = 0; k < 7; k++) {
-            infoIcons[k] = null;
-            if ((infoMask & (1 << k)) != 0)
-                infoIcons[k] = k == 0 ? c.weapons[infoWeapon]
-                        : c.load("item" + infoSex + "_" + (k - 1) + "_" + (k == 1 ? infoSkin : infoLook[k - 2]));
+        profileAvailable[0]=profileAvailable[1]=false;
+        savePreview(infoSex,infoSkin,infoMask,infoLook);
+        System.arraycopy(infoForge,0,profileForge[infoSex],0,3);
+        if(in.available()>=9&&in.readUnsignedByte()==0x12){
+            int other=in.readUnsignedByte(),skin=in.readUnsignedByte(),mask=in.readUnsignedByte();int[] look=new int[5];
+            for(int k=0;k<5;k++)look[k]=in.readUnsignedByte();
+            boolean valid=other>=0&&other<2&&other!=infoSex&&skin<=9&&ItemRules.validMask(mask);
+            for(int k=0;k<5;k++)if(look[k]>9)valid=false;
+            if(valid){savePreview(other,skin,mask,look);int[] forge=ForgeRules.equipped(infoRanks,other,mask,infoWeapon,skin,look);System.arraycopy(forge,0,profileForge[other],0,3);}
         }
+        previewGender(infoSex);
         profileLoading = false;
         profileError = "";
         itemInfo = false;
-        infoFocus = 0;
+        infoFocus = infoSex==1?8:9;
         for (int n = 0; n < 7; n++)
             if (infoIcons[BagScreen.WORN[n]] != null) {
                 infoFocus = n;
@@ -74,15 +83,33 @@ final class OnlineSocial implements CommandListener {
             }
     }
 
+    void savePreview(int sex,int skin,int mask,int[] look){
+        profileSkin[sex]=skin;profileMask[sex]=mask;System.arraycopy(look,0,profileLook[sex],0,5);profileAvailable[sex]=true;
+    }
+    void previewGender(int sex)throws IOException{
+        int skin=profileSkin[sex],mask=profileMask[sex];int[] look=profileLook[sex];
+        Image hero=c.equipmentPreview(sex,skin,(mask&2)==0,look,mask,64,80);
+        Image[] icons=new Image[7];
+        for(int k=0;k<7;k++)if((mask&(1<<k))!=0)icons[k]=k==0?c.weapons[infoWeapon]:c.load("item"+sex+"_"+(k-1)+"_"+(k==1?skin:look[k-2]));
+        infoSex=sex;infoSkin=skin;infoMask=mask;infoHero=hero;
+        System.arraycopy(look,0,infoLook,0,5);System.arraycopy(icons,0,infoIcons,0,7);System.arraycopy(profileForge[sex],0,infoForge,0,3);
+        itemInfo=false;
+    }
+    void selectInfoGender(int sex){
+        itemInfo=false;
+        if(!profileAvailable[sex]){c.message("Cập nhật máy chủ để xem giới tính còn lại");return;}
+        if(sex!=infoSex)try{previewGender(sex);}catch(IOException e){c.message("Không tải được trang bị");}
+    }
+
     int[] infoBox(int n) {
-        int[] b = c.bag.box(n==7?41:31+n);
+        int[] b = c.bag.box(n==7?41:n==8?39:n==9?40:31+n);
         return new int[] { b[0] + 84, b[1], b[2], b[3] };
     }
 
     void infoMove(int dir) {
         int[] a = infoBox(infoFocus);
         int best = infoFocus, score = 999999;
-        for (int n = 0; n < 8; n++)
+        for (int n = 0; n < 10; n++)
             if (n != infoFocus && infoHas(n)) {
                 int[] b = infoBox(n);
                 int dx = b[0] * 2 + b[2] - a[0] * 2 - a[2], dy = b[1] * 2 + b[3] - a[1] * 2 - a[3],
@@ -100,8 +127,9 @@ final class OnlineSocial implements CommandListener {
         itemInfo = false;
     }
 
-    boolean infoHas(int n){return n==7?infoWing>=0:infoIcons[BagScreen.WORN[n]]!=null;}
+    boolean infoHas(int n){return n==8||n==9|| (n==7?infoWing>=0:n>=0&&n<7&&infoIcons[BagScreen.WORN[n]]!=null);}
     void infoToggle() {
+        if(infoFocus==8||infoFocus==9){selectInfoGender(infoFocus==8?1:0);return;}
         if (infoHas(infoFocus))
             itemInfo = !itemInfo;
     }
@@ -142,7 +170,7 @@ final class OnlineSocial implements CommandListener {
         if (infoHas(infoFocus))
             c.drawItemSelection(b[0], b[1], b[2], b[3], itemInfo);
         if(itemInfo&&infoFocus==7){c.tooltip.goods(c.vip.wingName(infoWing),"Cánh","+"+VipRules.hp(infoWing)+" HP khi trang bị.",infoBox(7));return;}
-        if (itemInfo) {
+        if (itemInfo && infoFocus<7) {
             int k = BagScreen.WORN[infoFocus], item = k == 0 ? infoWeapon : k == 1 ? infoSkin : infoLook[k - 2];
             c.tooltip.draw(k,item,b,"Đang trang bị",infoSex,infoRanks[ForgeRules.index(infoSex,k,item)]);
         }
@@ -340,7 +368,7 @@ final class OnlineSocial implements CommandListener {
     void drawInvitePopup() {
         popupLoad();
         c.img(popup, 60, 8);
-        c.pcText(friendsPopup ? "Bạn bè" : "Mời", 71, 18);
+        HeaderArt.center(c,friendsPopup?HeaderArt.FRIENDS:HeaderArt.INVITE,151,23);
         c.img(close, 233, 14);
         String[] labels = friendsPopup ? FRIEND_TAB_LABELS : INVITE_TAB_LABELS;
         for (int n = 0; n < labels.length; n++) {
@@ -631,6 +659,9 @@ final class OnlineSocial implements CommandListener {
             return;
         }
         if (viewing) {
+            if(!profileLoading&&profileError.length()==0)for(int n=8;n<10;n++){
+                int[] b=infoBox(n);if(x>=b[0]&&x<b[0]+b[2]&&y>=b[1]&&y<b[1]+b[3]){infoFocus=n;infoToggle();return;}
+            }
             int[] wingBox = infoBox(7);
             if (infoWing >= 0 && x >= wingBox[0] && x < wingBox[0] + wingBox[2]
                     && y >= wingBox[1] && y < wingBox[1] + wingBox[3]) {
