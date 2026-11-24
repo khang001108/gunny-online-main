@@ -41,13 +41,62 @@ APP_VERSION = "7.9.18"
 APP_VENDOR = "Ronin-Lap"
 APP_DESCRIPTION = "Gunny Java Online - Tac gia: Ronin-Lap"
 
-def upsert_prop_bytes(data, key, value):
-    line = (key + ": " + value).encode("utf-8")
-    pattern = rb"(?m)^" + re.escape(key.encode("utf-8")) + rb": [^\r\n]+"
-    if re.search(pattern, data):
-        return re.sub(pattern, line, data)
-    ending = b"" if data.endswith((b"\n", b"\r")) else b"\n"
-    return data + ending + line + b"\n"
+def repair_manifest(data):
+    # These unsigned Java ME installers use a single main attribute section.
+    # Repair old releases that appended MIDlet-Description after a blank line.
+    lines = data.splitlines()
+    attrs = []
+    seen = set()
+    for line in lines:
+        if not line.strip():
+            continue
+        if line.startswith(b" "):
+            if not attrs:
+                raise ValueError("Invalid manifest continuation")
+            attrs[-1] += line[1:]
+            continue
+        key, sep, value = line.partition(b": ")
+        if not sep or not re.fullmatch(rb"[A-Za-z0-9_-]+", key):
+            raise ValueError("Invalid manifest attribute: " + repr(line))
+        if key.lower() == b"name":
+            raise ValueError("Unexpected named manifest section; refusing to flatten it")
+        attrs.append(line)
+    updates = {
+        b"midlet-version": (b"MIDlet-Version", APP_VERSION.encode("ascii")),
+        b"midlet-vendor": (b"MIDlet-Vendor", APP_VENDOR.encode("ascii")),
+        b"midlet-description": (b"MIDlet-Description", APP_DESCRIPTION.encode("ascii")),
+    }
+    result = []
+    for line in attrs:
+        key = line.split(b":", 1)[0].lower()
+        if key in seen:
+            if key in updates:
+                continue
+            raise ValueError("Duplicate manifest attribute: " + repr(key))
+        seen.add(key)
+        if key in updates:
+            name, value = updates[key]
+            line = name + b": " + value
+        if key == b"gunny-server-url":
+            line = line.replace(b"socket://gunnyjava.xubi.org:22122", b"socket://gunnyjava.xubi.org:22123")
+        result.append(line)
+    for key, (name, value) in updates.items():
+        if key not in seen:
+            result.append(name + b": " + value)
+    if not result or not result[0].lower().startswith(b"manifest-version: "):
+        raise ValueError("Missing Manifest-Version at start of manifest")
+    required = (b"midlet-name", b"midlet-1", b"microedition-configuration", b"microedition-profile")
+    if any(key not in seen for key in required):
+        raise ValueError("Missing required Java ME manifest attribute")
+    # Fold long lines without changing the value; use CRLF throughout.
+    physical = []
+    for line in result:
+        physical.append(line[:70])
+        rest = line[70:]
+        while rest:
+            physical.append(b" " + rest[:69])
+            rest = rest[69:]
+    return b"\r\n".join(physical) + b"\r\n\r\n"
 
 def upsert_prop_text(text, key, value):
     line = key + ": " + value
@@ -72,9 +121,7 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
                     continue
                 data = original.read(info.filename)
                 if info.filename.upper() == 'META-INF/MANIFEST.MF':
-                    data = upsert_prop_bytes(data, "MIDlet-Version", APP_VERSION).replace(b"socket://gunnyjava.xubi.org:22122", b"socket://gunnyjava.xubi.org:22123")
-                    data = upsert_prop_bytes(data, "MIDlet-Vendor", APP_VENDOR)
-                    data = upsert_prop_bytes(data, "MIDlet-Description", APP_DESCRIPTION)
+                    data = repair_manifest(data)
                 output.writestr(info, data)
             for filename,data in overlays.items():
                 entry=zipfile.ZipInfo(filename,(2000,1,1,0,0,0));entry.create_system=0;entry.extra=b"";entry.flag_bits=0;entry.external_attr=0x20
@@ -91,6 +138,15 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
                     entry.create_version=entry.extract_version=10 if "E72" in name else 20
                     entry.external_attr=0x20
                     output.writestr(entry, code.read(info.filename))
+        with zipfile.ZipFile(temp) as candidate:
+            manifest = candidate.read('META-INF/MANIFEST.MF')
+            if repair_manifest(manifest) != manifest:
+                raise SystemExit('Manifest normalization failed: '+str(temp))
+            if 'GunnyMIDlet.class' not in candidate.namelist():
+                raise SystemExit('Missing GunnyMIDlet.class: '+str(temp))
+            bad_entry = candidate.testzip()
+            if bad_entry is not None:
+                raise SystemExit('CRC error: '+bad_entry)
         for attempt in range(6):
             try:
                 os.replace(temp, jar)
@@ -114,8 +170,8 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
         text = upsert_prop_text(text, "MIDlet-Version", APP_VERSION)
         text = upsert_prop_text(text, "MIDlet-Vendor", APP_VENDOR)
         text = upsert_prop_text(text, "MIDlet-Description", APP_DESCRIPTION)
-        text = re.sub(r"(?m)^MIDlet-Jar-URL: [^\r\n]+", "MIDlet-Jar-URL: "+name+".jar", text)
-        text = re.sub(r'MIDlet-Jar-Size: \d+', 'MIDlet-Jar-Size: '+str(jar.stat().st_size), text)
+        text = upsert_prop_text(text, "MIDlet-Jar-URL", name+".jar")
+        text = upsert_prop_text(text, "MIDlet-Jar-Size", str(jar.stat().st_size))
         jad.write_text(text, encoding='utf-8')
 if release_errors:
     raise SystemExit('CHUA cap nhat cac ban cai dang bi khoa: '+', '.join(release_errors))
