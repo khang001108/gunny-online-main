@@ -1,7 +1,7 @@
 import javax.microedition.lcdui.*;
 /** Cooperative browser, a three-seat staging room, and its own map/difficulty picker. */
 final class DungeonScreen {
-    void releaseArt(){closeRewards();for(int i=0;i<8;i++)largeRewardIcons[i]=null;for(int i=0;i<3;i++){seatPortraits[i]=null;seatKeys[i]=null;}rewardFrame=pickerPanel=rewardCell=portraitFrame=rewardPopupFrame=rewardPopupClose=rewardPopupCell=null;for(int i=0;i<8;i++)rewardIcons[i]=null;for(int i=0;i<2;i++)pickerCards[i]=portraitCards[i]=null;previewCover=rewardWing=null;previewStage=-1;banner=background=smallCover=seatCard=emptyCard=localPortrait=allyPortrait=closedCard=null;portraitKey="";for(int i=0;i<stageCovers.length;i++)stageCovers[i]=null;}
+    void releaseArt(){closeRewards();tribalWaitingCard=tribalPlayingCard=null;for(int i=0;i<8;i++)largeRewardIcons[i]=null;for(int i=0;i<3;i++){seatPortraits[i]=null;seatKeys[i]=null;}rewardFrame=pickerPanel=rewardCell=portraitFrame=rewardPopupFrame=rewardPopupClose=rewardPopupCell=null;for(int i=0;i<8;i++)rewardIcons[i]=null;for(int i=0;i<2;i++)pickerCards[i]=portraitCards[i]=null;previewCover=rewardWing=null;previewStage=-1;banner=background=smallCover=seatCard=emptyCard=localPortrait=allyPortrait=closedCard=null;portraitKey="";for(int i=0;i<stageCovers.length;i++)stageCovers[i]=null;}
 
  static final int CONFIRM_SOLO = 6, CONFIRM_LEAVE_CAMPAIGN = 35;
  static final String TITLE = "Ải Viễn Chinh";
@@ -45,6 +45,7 @@ final class DungeonScreen {
  private static final int[] MENU_X={13,74,143,235}, MENU_W={55,55,61,66};
  private static final int[] SEARCH_X={13,109,149}, SEARCH_W={92,35,47};
  private Image waitingCard, playingCard, lockArt;
+ private Image tribalWaitingCard, tribalPlayingCard;
  private Image codeArt, enterArt, refreshArt, onlineArt;
  private final Image[] menuArt=new Image[4];
  String roomCode="";
@@ -126,8 +127,19 @@ final class DungeonScreen {
 
  private void drawRoomCard(int i,int x,int y){
   boolean playing=n.roomPhases[i]!=0;
-  c.img(playing?playingCard:waitingCard,x,y);
-  c.pcText(n.roomTribal[i]?"Bộ Lạc Tà Thần":"Huyệt Ma Kiến",x+5,y+2);
+  boolean tribal=n.roomTribal[i];
+  Image card=playing?playingCard:waitingCard;
+  if(tribal){
+   if(playing){
+    if(tribalPlayingCard==null)tribalPlayingCard=c.combatRoomArt("dungeon-room-tribal-playing");
+    if(tribalPlayingCard!=null)card=tribalPlayingCard;
+   }else{
+    if(tribalWaitingCard==null)tribalWaitingCard=c.combatRoomArt("dungeon-room-tribal-available");
+    if(tribalWaitingCard!=null)card=tribalWaitingCard;
+   }
+  }
+  c.img(card,x,y);
+  c.pcText(tribal?"Bộ Lạc Tà Thần":"Huyệt Ma Kiến",x+5,y+2);
   if(n.roomLocked[i])c.img(lockArt,x+87,y+2);
   c.pcText("Số phòng "+n.roomIds[i],x+5,y+14);
   c.pcCenter(n.roomCounts[i]+"/3",x+128,y+14);

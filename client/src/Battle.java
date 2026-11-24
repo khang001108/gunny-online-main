@@ -5,6 +5,10 @@ final class Battle {
     static final int AIM_RAY_LENGTH=78;
     static final int THROW_WINDUP=6;
     static final int FLIGHT_SUBSTEPS=5;
+    // PvP advances three times as many collision-checked physics steps per tick.
+    // Keep the same launch velocity, wind, gravity and damage; dungeons stay unchanged.
+    static final int PVP_FLIGHT_SUBSTEPS=15;
+    int flightSubsteps(){return dungeonStage==0?PVP_FLIGHT_SUBSTEPS:FLIGHT_SUBSTEPS;}
     static boolean isThrown(int weapon){return weapon==1||weapon==2||weapon==3||weapon==4||weapon==5||weapon==7||weapon==8;}
     // Provisional Java ME tuning, not recovered original-client weapon data.
     static int weaponMinAngle(int weapon){return weapon==5?0:weapon==4?15:weapon==2?20:weapon==7?10:weapon==1?15:weapon==3?10:weapon==9?15:20;}
@@ -205,7 +209,7 @@ final class Battle {
         }
         boolean wasBusy=busy();
         if(bursts>0&&ballCount==0&&--burstDelay<=0){check();if(over){bursts=0;return;}emit();bursts--;burstDelay=isThrown(units[active].weapon)?THROW_WINDUP:2;}
-        for(int sub=0;sub<FLIGHT_SUBSTEPS;sub++)for(int i=ballCount-1;i>=0;i--){
+        for(int sub=0,steps=flightSubsteps();sub<steps;sub++)for(int i=ballCount-1;i>=0;i--){
             Ball b=balls[i];if(sub==0&&!b.fly&&!b.freeze)stampTrail(b);b.age++;if(b.homing){Unit target=units[enemyOf(b.owner)];int dx=target.x*256-b.x,dy=targetY(target)*256-b.y;int len=Math.max(1,(int)Math.sqrt((double)dx*dx+(double)dy*dy));b.vx=dx*1800/len;b.vy=dy*1800/len;}else{b.vx+=windStep(wind,b);b.vy+=gravity(b);if(b.guided)guide(b);}b.x+=b.vx/4;b.y+=b.vy/4;
             int x=b.x/256,y=b.y/256;boolean hit=!b.homing&&ground.solid(x,y);
             if(!b.fly)for(int n=0;n<unitCount;n++){Unit u=units[n];if(u.hp>0&&(n!=b.owner||b.age>24)&&!(TribalRules.active(this)&&TribalRules.payload(b.weapon)&&units[b.owner].npc>0&&u.team==units[b.owner].team)&&hitsUnit(u,x,y))hit=true;}

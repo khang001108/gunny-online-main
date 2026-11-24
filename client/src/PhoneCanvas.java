@@ -3276,6 +3276,14 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     void drawHud() {
         Battle.Unit u = game.units[playerActor()];
         img(hudAngleJoin, 0, 198);
+        // Buff history belongs to the active actor, not the local player.
+        // Show the same ordered list for humans and bots on both teams.
+        for (int i = 0; i < game.usedPropCount; i++) {
+            int x = 46 + i % 6 * 25, y = 189 - i / 6 * 25, id = game.usedPropHistory[i];
+            img(hudPropSlot, x, y);
+            img(buffArt(id), x - 1, y + 1);
+        }
+        // Paint power numbers and pointer over the buff icons.
         drawPowerRuler(u);
         drawAngleDial(u);
         img(hudHealthFrame, 208, 212);
@@ -3297,11 +3305,6 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         if (isLocalTurn() && game.pow) {
             line(272, 188, 311, 188, 0xffe37e);
             line(272, 232, 311, 232, 0xffe37e);
-        }
-        for (int i = 0; isLocalTurn() && i < game.usedPropCount; i++) {
-            int x = 46 + i % 6 * 25, y = 189 - i / 6 * 25, id = game.usedPropHistory[i];
-            img(hudPropSlot, x, y);
-            img(buffArt(id), x - 1, y + 1);
         }
         for (int i = 0; i < 5; i++) {
             img(hudPropSlot, 296, 50 + i * 27);

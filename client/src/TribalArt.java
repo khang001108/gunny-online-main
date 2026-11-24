@@ -1,6 +1,8 @@
 import javax.microedition.lcdui.Image;
 /** Native labeled Flash poses baked for MIDP; caches only the current encounter. */
 final class TribalArt {
+ // Visual-only alignment for tribal NPCs (logical 320x240 pixels).
+ static final int GROUND_DRAW_OFFSET=3;
  final PhoneCanvas c;final Image[] sprites=new Image[16],headers=new Image[16],bossFaces=new Image[16];
  final int[] fireGroundX=new int[9],fireGroundY=new int[9];
  Image cover,small,wing,missiles,healthFrame,healthBar,bulanTitle,bulanShade,sword,sulanTitle,redSpeech;int shadeAlpha=-1;int coverStage,cachedStage;
@@ -34,7 +36,7 @@ final class TribalArt {
    row=b.tribalState==TribalRules.SUMMON?3:b.tribalState==TribalRules.SPECIAL?4:2;
    tick=u.attackTicks>0?Math.min(7,(36-u.attackTicks)*8/36):u.walk/4%8;
   }
-  int x=u.x-c.cameraX,y=u.y-c.cameraY;
+  int x=u.x-c.cameraX,y=u.y-c.cameraY+GROUND_DRAW_OFFSET;
   if(SulanRules.active(b)&&actor==1)y-=SulanRules.drop(b);
   c.part(art,tick*cell,row*cell,cell,cell,x-cell/2,y-cell+5,u.face>0);
   if(u.hp<=0)return;
