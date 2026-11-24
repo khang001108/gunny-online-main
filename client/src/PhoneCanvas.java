@@ -1284,6 +1284,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     public void run() {
+        long onlineClock=0,onlineDebt=0;
         while (alive) {
             long began = System.currentTimeMillis();
             if (running) {
@@ -1309,8 +1310,16 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                             mode = 0;
                         }
                     }
+                    if(mode!=1||!onlineBattle()){onlineClock=onlineDebt=0;}
                     if (mode == 1 && onlineBattle()) {
-                        net.animate();
+                        long now=System.currentTimeMillis();
+                        if(onlineClock==0)onlineDebt=33;
+                        else onlineDebt=Math.min(66,onlineDebt+Math.max(0L,now-onlineClock));
+                        onlineClock=now;
+                        int steps=0;
+                        while(onlineDebt>=33&&steps<2&&mode==1&&onlineBattle()){
+                            onlineDebt-=33;steps++;net.animate();
+                        }
                         followCamera();
                         if (game.shotSerial != shootSound) {
                             shootSound = game.shotSerial;
@@ -1373,6 +1382,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 repaint();
                 serviceRepaints();
             }
+            if(!running)onlineClock=onlineDebt=0;
             long wait = 33 - (System.currentTimeMillis() - began);
             try {
                 Thread.sleep(wait > 2 ? wait : 2);
