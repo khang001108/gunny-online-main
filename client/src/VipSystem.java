@@ -73,18 +73,6 @@ final class VipSystem {
         progress = fill = sparkle = null;
     }
 
-    void releaseLoadingArt() {
-        for(int i=0;i<staticRings.length;i++)for(int j=0;j<staticRings[i].length;j++)staticRings[i][j]=null;
-        for(int i=0;i<staticWings.length;i++)for(int j=0;j<staticWings[i].length;j++)staticWings[i][j]=null;
-    }
-
-    // Drop angles that no living actor can draw this frame, before loading new atlases.
-    void pruneBattleWings() {
-        for(int w=0;w<sideWings.length;w++)for(int a=0;a<sideWings[w].length;a++)
-            if((sideWings[w][a][0]!=null||sideWings[w][a][1]!=null)&&!angleUsed(w,a))
-                sideWings[w][a][0]=sideWings[w][a][1]=null;
-    }
-
     void releaseLargeEffects() {
         for (int i = 0; i < 3; i++)
             rings[i][0] = rings[i][3] = null;
@@ -249,7 +237,7 @@ final class VipSystem {
 
     boolean angleUsed(int wing, int angle) {
         for (int i = 0; i < c.game.unitCount; i++)
-            if (actorWing(i) == wing && c.game.units[i].hp>0) {
+            if (actorWing(i) == wing) {
                 Battle.Unit u = c.game.units[i];
                 int tilt = c.attackPose(i) || c.freezeHolding(i) ? 0 : u.slope;
                 if (u.face > 0)

@@ -19,7 +19,7 @@ final class OnlineResult {
     boolean tribal(){return online()&&net.roomKind==3&&net.dungeonStage>=3;}
     int experienceReward(){return tribal()?(won()?150*(net.dungeonDifficulty+1):50):won()?300:100;}
     boolean team(){return online()?net.roomKind==2:c.game.teams;}
-    void returnOfflineRoom(){c.releaseBattleArt();reset();if(c.offlineDungeon.active){c.offlineDungeon.active=false;c.offlineDungeon.stage=1;c.roomSelection=5;c.mode=19;}else{c.roomSelection=5;c.mode=10;}}
+    void returnOfflineRoom(){if(c.offlineDungeon.active){c.offlineDungeon.active=false;c.offlineDungeon.stage=1;c.roomSelection=5;c.mode=19;}else{c.roomSelection=5;c.mode=10;}}
     boolean solo(){return net.roomKind==1;}
     String returnOperation(){return solo()?"leave":"returnroom";}
     void leave(){if(antStage()&&!online()){c.offlineDungeon.returnForBoss();}else if(online())net.request(returnOperation());else returnOfflineRoom();}
