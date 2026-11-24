@@ -10,7 +10,7 @@ final class TribalRules {
  static final int BULAN_LEFT_AT=45,BULAN_RIGHT_AT=135,BULAN_TITLE_AT=225,BULAN_INTRO_END=BULAN_TITLE_AT+AntCaveRules.QUEEN_TITLE_REVEAL+AntCaveRules.QUEEN_TITLE_HOLD;
  static final String[] STAGES={"Lính Bộ Lạc","Anh em Bulan","Anh em Bulan","Đền thờ Sulan"};
  static final int[] HP={850,850,1500,3000,6500,6500,1000,1000,1400,1000,10500,14000};
- static final int[] DAMAGE={540,690,900}; // HF4: all enemy attacks in the level-30 expedition are tripled.
+ static final int[] DAMAGE={1080,1380,1800}; // HF5: level-30 enemy base damage, twice HF4.
  static final int[] WAVES={4,4,4},STONE_MIN={10,50,100},STONE_MAX={100,200,300};
  static final int GOAL=20;
  static final int[] ENEMIES={1,3,5,6,7,8,9,10,11,12,13};
@@ -165,7 +165,7 @@ final class TribalRules {
   p.vx=(v.x*256-p.x)*4/steps;p.vy=((Battle.targetY(v)+(u.npc==ELITE?0:offset))*256-p.y)*4/steps-Battle.gravity(p)*(steps+1)/2;
   if(u.npc==ELITE){int vx=p.vx,vy=p.vy,cs=Battle.cos(offset),sn=Battle.sin(offset);p.vx=(vx*cs-vy*sn)/1024;p.vy=(vx*sn+vy*cs)/1024;}
   p.radius=weapon==FIRE_SHOT?11:4;p.damage=DAMAGE[b.dungeonDifficulty]*(u.npc==RAGE?130:100)/100;
-  if(u.npc==ELITE)p.damage=Math.max(1,p.damage/3);
+  // Each elite spear has full base damage; the three-hit volley is no longer divided.
   b.balls[b.ballCount++]=p;
  }
  static boolean meleeRange(Battle.Unit u,Battle.Unit v){return Math.abs(u.x-v.x)<=32&&Math.abs(u.y-v.y)<=28;}

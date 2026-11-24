@@ -10,7 +10,7 @@ final class OnlineChunks {
     boolean terminal, resolved, ownPending, resetTerrain, playing;boolean recovering;int recoveryFailures;
     DataInputStream frames;
     byte[] finalFrame,previousFrame;
-    long waitingSince;
+    long waitingSince,ownSince;
 
     static final class Segment {
         int id, kind, count;
@@ -20,7 +20,7 @@ final class OnlineChunks {
     OnlineChunks(OnlineClient owner) { net=owner; }
     void reset() {
         turn=completed=received=-1;queued.removeAllElements();
-        frames=null;finalFrame=previousFrame=null;remaining=0;id=-1;kind=0;terminal=resolved=resetTerrain=false;ownPending=false;playing=false;waitingSince=0;
+        frames=null;finalFrame=previousFrame=null;remaining=0;id=-1;kind=0;terminal=resolved=resetTerrain=false;ownPending=false;playing=false;waitingSince=ownSince=0;
     }
     int requestTurn(int displayedTurn) {
         return net.prefetchCap&&turn>=0 ? turn : displayedTurn;
@@ -59,7 +59,7 @@ final class OnlineChunks {
             id=next;resolved=done;terminal=segment.terminal;kind=segment.kind;
             for (int i=0;i<segment.count;i++) finalFrame=frame(block);
             received=next;
-            if (terminal) { ownPending=true;finish(); }
+            if (terminal) { ownPending=true;ownSince=System.currentTimeMillis();finish(); }
             else { completed=id;finalFrame=null; }
             return;
         }
@@ -106,7 +106,7 @@ final class OnlineChunks {
             if (--remaining==0) {
                 frames=null;completed=id;
                 net.c.game.pendingNext=terminal&&resolved;
-                net.resolutionSeen=terminal&&(resolved||net.c.game.over);
+                net.resolutionSeen=terminal&&(resolved||net.c.game.over);if(net.resolutionSeen)net.processingSince=0;
                 if (queued.isEmpty()) { playing=false;waitingSince=0; }
                 else advance();
                 net.lastPoll=0;
@@ -118,11 +118,14 @@ final class OnlineChunks {
         }
     }
     void finish() {
-        if (!ownPending||(!net.c.game.pendingNext&&!net.c.game.over&&!(SulanRules.active(net.c.game)&&resolved))||net.c.powShotPending) return;
+        if (!ownPending) return;
+        boolean timedOut=ownSince>0&&System.currentTimeMillis()-ownSince>=5000;
+        if(!timedOut&&((!net.c.game.pendingNext&&!net.c.game.over&&!(SulanRules.active(net.c.game)&&resolved))||net.c.powShotPending))return;
+        if(timedOut){net.c.powShotPending=false;net.c.powCutinTicks=0;}
         try {
             net.c.resetOnlineTerrain();net.readSnapshot(new DataInputStream(new ByteArrayInputStream(finalFrame)));
             net.c.game.pendingNext=resolved;net.predicting=false;net.resolutionSeen=resolved||net.c.game.over;
-            completed=id;ownPending=false;finalFrame=null;net.lastPoll=0;
+            completed=id;ownPending=false;ownSince=0;finalFrame=null;if(net.resolutionSeen)net.processingSince=0;net.lastPoll=0;
         } catch (IOException error) { net.disconnect("Không đọc được kết quả."); }
     }
 }

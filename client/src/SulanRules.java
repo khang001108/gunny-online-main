@@ -128,7 +128,7 @@ final class SulanRules {
  }
  static void beginTurn(Battle b){
   Battle.Unit u=b.units[b.active];if(u.npc==TribalRules.BEAN)u.face=b.units[1].x<u.x?-1:1;
-  if(b.active<7&&b.sulanBurn[b.active]>0&&u.hp>0){int amount=3*(30+b.dungeonDifficulty*25);if(u.npc==0&&protectedByBean(b,b.active))amount/=2;hurt(b,b.active,amount);b.check();}
+  if(b.active<7&&b.sulanBurn[b.active]>0&&u.hp>0){int amount=6*(30+b.dungeonDifficulty*25);if(u.npc==0&&protectedByBean(b,b.active))amount/=2;hurt(b,b.active,amount);b.check();}
  }
  static void extinguish(Battle b,int x,int y){
   for(int i=0;i<7;i++)if(Math.abs(b.units[i].x-x)<=35&&Math.abs(Battle.targetY(b.units[i])-y)<=40)b.sulanBurn[i]=0;
@@ -153,7 +153,7 @@ final class SulanRules {
   int count=playerCount(b),end=0;
   if(fury){
    if(t==45)u.attackTicks=36;
-   if(t==65){for(int n=0;n<7;n+=2){Battle.Unit v=b.units[n];if(v.hp<=0||n==6&&v.npc!=TribalRules.BEAN)continue;flash(b,v.x,v.y-15);int amount=n==6?3*(b.dungeonDifficulty==0?260:b.dungeonDifficulty==1?430:720):TribalRules.DAMAGE[b.dungeonDifficulty]*2;if(n<6&&protectedByBean(b,n))amount/=2;hurt(b,n,amount);}b.check();}
+   if(t==65){for(int n=0;n<7;n+=2){Battle.Unit v=b.units[n];if(v.hp<=0||n==6&&v.npc!=TribalRules.BEAN)continue;flash(b,v.x,v.y-15);int amount=n==6?6*(b.dungeonDifficulty==0?260:b.dungeonDifficulty==1?430:720):TribalRules.DAMAGE[b.dungeonDifficulty]*2;if(n<6&&protectedByBean(b,n))amount/=2;hurt(b,n,amount);}b.check();}
    end=110;
   }else{
    boolean golden=u.npc==TribalRules.SULAN;

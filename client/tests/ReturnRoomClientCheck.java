@@ -35,7 +35,7 @@ public final class ReturnRoomClientCheck {
   net.pending="";net.roomKind=0;net.count=4;net.results.leave();check(net.pending.equals("returnroom"),"2v2 keeps its waiting room");
   net.pending="";net.roomKind=2;net.count=6;net.results.leave();check(net.pending.equals("returnroom"),"3v3 keeps its party room");
   net.pending="";net.roomKind=3;net.dungeonStage=2;net.results.leave();check(net.pending.equals("returnroom"),"Final dungeon result returns to existing room");
-  net.returnToWaitingRoom();check(!net.inBattle&&c.mode==16&&net.queueCount==0,"Returning clears battle state and opens waiting room");
+  net.ack=10;net.sequence=13;net.sentMax=12;net.queueCount=3;net.returnToWaitingRoom();check(net.sequence==10&&net.sentMax==10&&net.ack==10,"Discarded queued commands rebase to acknowledged sequence");net.acknowledgeCommands(12);check(net.sequence==12&&net.sentMax==12,"Server ACK can advance the next local command");check(!net.inBattle&&c.mode==16&&net.queueCount==0,"Returning clears battle state and opens waiting room");
   net.inBattle=false;c.offlineDungeon.active=false;net.results.leave();check(c.mode==10,"Offline PVP returns to setup");
   c.offlineDungeon.active=true;c.offlineDungeon.stage=2;net.results.leave();check(c.mode==19&&!c.offlineDungeon.active&&c.offlineDungeon.stage==1,"Offline dungeon returns to setup");
   net.stop();c.stop();System.exit(0);
