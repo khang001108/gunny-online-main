@@ -30,6 +30,17 @@ final class SulanRules {
  }return "";}
  static boolean red(Battle b){return b.sulanSpeaker==1&&b.tribalPhase==2&&b.sulanLine!=BORROW;}
  static void say(Battle b,int line,int actor,int ticks){b.sulanLine=line;b.sulanSpeaker=actor;b.sulanTalk=ticks;}
+ static void updateFacing(Battle b){
+  Battle.Unit boss=b.units[1];if(boss.hp<=0||boss.npc!=TribalRules.SULAN&&boss.npc!=TribalRules.RAGE)return;
+  // Keep the shot's facing during a boss attack; each launch aims at its own victim.
+  if(b.active==1&&b.tribalFx==0&&b.tribalClock>0)return;
+  int victim=b.units[b.active].npc==0&&b.units[b.active].hp>0&&b.units[b.active].team==0?b.active:TribalRules.target(b,1);if(victim!=1&&b.units[victim].x!=boss.x)boss.face=b.units[victim].x<boss.x?-1:1;
+ }
+ static void callHealTotem(Battle b){
+  Battle.Unit u=b.units[1];if(b.units[12].hp<=0)TribalRules.spawn(b,12,TribalRules.HEAL,Battle.clamp(u.x-u.face*35,18,462));
+  // One call per red boss turn; only the fifth call heals, then repeat.
+  if(u.power%5==0&&b.units[12].npc==TribalRules.HEAL&&b.units[12].hp>0){TribalRules.heal(b,u,u.maxHp*15/100);say(b,21,1,80);}
+ }
  static int firstPlayer(Battle b){for(int i=0;i<6;i+=2)if(b.units[i].hp>0)return i;return 0;}
  static int playerCount(Battle b){int n=0;for(int i=0;i<6;i+=2)if(b.units[i].hp>0)n++;return n;}
  static int target(Battle b,int index){for(int i=0;i<6;i+=2)if(b.units[i].hp>0&&index--==0)return i;return firstPlayer(b);}
@@ -106,8 +117,9 @@ final class SulanRules {
  }
  static void ambient(Battle b){
   if(!active(b)||b.over||b.tribalFx>0||b.pendingNext)return;
+  updateFacing(b);
   if(b.sulanTalk>0)b.sulanTalk--;
-  if(b.tribalPhase==2&&b.units[b.active].npc==0&&b.sulanStory<3&&++b.sulanStoryClock>=120&&b.sulanTalk==0){say(b,STORY1+b.sulanStory++,firstPlayer(b),100);b.sulanStoryClock=0;}
+  if(b.tribalPhase==2&&b.units[6].npc==TribalRules.BEAN&&b.units[6].hp>0&&b.units[b.active].npc==0&&b.sulanStory<3&&++b.sulanStoryClock>=120&&b.sulanTalk==0){say(b,STORY1+b.sulanStory++,6,100);b.sulanStoryClock=0;}
   for(int i=b.sulanFireCount-1;i>=0;i--){
    int life=--b.sulanFireLife[i];
    if(life<=0){int last=--b.sulanFireCount;b.sulanFireX[i]=b.sulanFireX[last];b.sulanFireLife[i]=b.sulanFireLife[last];}
@@ -125,7 +137,7 @@ final class SulanRules {
  static void fireball(Battle b,int victim,int spread){TribalRules.projectile(b,1,victim,TribalRules.FIRE_SHOT,spread);}
  static void tickAI(Battle b){
   Battle.Unit u=b.units[b.active];if(u.hp<=0){b.next();return;}
-  int t=++b.tribalClock;u.walk=t;b.botWait=t;u.face=u.npc==TribalRules.BEAN?(b.units[1].x<u.x?-1:1):-1;
+  int t=++b.tribalClock;u.walk=t;b.botWait=t;if(u.npc==TribalRules.BEAN)u.face=b.units[1].x<u.x?-1:1;else if(t==1){int victim=TribalRules.target(b,b.active);if(victim!=b.active&&b.units[victim].x!=u.x)u.face=b.units[victim].x<u.x?-1:1;}
   if(u.npc==TribalRules.BEAN){
    b.tribalState=TribalRules.SPECIAL;
    if(t==1){u.attackTicks=36;say(b,NEAR,6,80);}
@@ -134,7 +146,7 @@ final class SulanRules {
   }
   if(t>35&&b.tribalState==TribalRules.SUMMON){if(u.attackTicks==0&&!b.busy()){b.tribalState=TribalRules.IDLE;b.next();}return;}
   if(t==1){u.power++;b.tribalBeanSaved=false;say(b,u.npc==TribalRules.SULAN?SPEAR:u.power%2==1?HELL:FURY,1,130);}
-  if(t==1&&u.npc==TribalRules.RAGE){if(b.units[12].hp<=0)TribalRules.spawn(b,12,TribalRules.HEAL,Battle.clamp(u.x-u.face*35,18,462));if(b.units[12].npc==TribalRules.HEAL&&b.units[12].hp>0)TribalRules.heal(b,u,Math.max(1,u.maxHp/20));}
+  if(t==1&&u.npc==TribalRules.RAGE)callHealTotem(b);
   if(u.npc==TribalRules.RAGE&&t<=30){b.tribalState=TribalRules.SUMMON;return;}
   boolean fury=u.npc==TribalRules.RAGE&&u.power%2==0;
   b.tribalState=fury?TribalRules.SPECIAL:TribalRules.ATTACK;

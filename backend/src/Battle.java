@@ -20,7 +20,7 @@ final class Battle {
     int enemyOf(int actor){if(TribalRules.active(this))return TribalRules.target(this,actor);int best=actor==0?1:0,distance=99999;for(int i=0;i<unitCount;i++)if(i!=actor&&units[i].hp>0&&(!teams||units[i].team!=units[actor].team)){int d=Math.abs(units[i].x-units[actor].x);if(d<distance){distance=d;best=i;}}return best;}
     static int targetY(Unit u){return u.y-(u.npc>=TribalRules.SULAN?30:u.npc==3?42:u.npc>0?16:12);}
     static boolean hitsUnit(Unit u,int x,int y){int dx=x-u.x,dy=y-targetY(u);if(u.npc==0)return dx*dx+dy*dy<70;int rx=u.npc>=TribalRules.SULAN?22:u.npc==3?25:16,ry=u.npc>=TribalRules.SULAN?31:u.npc==3?43:15;if(Math.abs(dx)>rx||Math.abs(dy)>ry)return false;return dx*dx*ry*ry+dy*dy*rx*rx<=rx*rx*ry*ry;}
-    static int gravity(Ball b){return b.weapon==TribalRules.SPIRIT_SHOT?20:TribalRules.payload(b.weapon)?6:b.fly||b.freeze?11:b.weapon==4?14:b.weapon==2?10:b.weapon==7?12:11;}
+    static int gravity(Ball b){return (b.weapon==TribalRules.SPIRIT_SHOT||b.weapon==TribalRules.SPEAR_SHOT||b.weapon==TribalRules.CHIEF_SHOT||b.weapon==TribalRules.FIRE_SHOT)?20:TribalRules.payload(b.weapon)?6:b.fly||b.freeze?11:b.weapon==4?14:b.weapon==2?10:b.weapon==7?12:11;}
     static int windStep(int wind,Ball b){return b.weapon==AntCaveRules.QUEEN_ARROW||TribalRules.payload(b.weapon)?0:wind/(b.fly||b.freeze?7:b.weapon==4?11:b.weapon==2?5:b.weapon==7?8:b.weapon==1?9:7);}
     static int baseDamage(int weapon){return weapon==0?290:weapon==1?390:weapon==2?300:weapon==4?370:weapon==8?410:weapon==7?315:330;}
     static int baseRadius(int weapon){return weapon==0?15:weapon==1?10:weapon==2?10:weapon==4?17:weapon==7?14:12;}
@@ -135,7 +135,7 @@ final class Battle {
         if(!input())return;Unit u=units[active];u.face=dir;
         refreshAim(u);int nx=u.x+dir;if(u.energy<2||nx<12||nx>=W-12||blockedStep(u.x,nx,active,20))return;
         int rise=0;while(rise<6&&(ground.solid(nx-2,u.y-rise-1)||ground.solid(nx+2,u.y-rise-1)))rise++;
-        if(rise>=6)return;u.x=nx;u.y-=rise;u.energy-=2;u.walk++;refreshAim(u);
+        if(rise>=6)return;u.x=nx;u.y-=rise;u.energy-=2;u.walk++;refreshAim(u);if(SulanRules.active(this))SulanRules.updateFacing(this);
     }
     static int propCost(int id){return id==0||id==1?110:id==2?90:id==3||id==4?150:0;}
     boolean prop(int id){
@@ -206,7 +206,7 @@ final class Battle {
         for(int sub=0;sub<FLIGHT_SUBSTEPS;sub++)for(int i=ballCount-1;i>=0;i--){
             Ball b=balls[i];if(sub==0&&!b.fly&&!b.freeze)stampTrail(b);b.age++;if(b.homing){Unit target=units[enemyOf(b.owner)];int dx=target.x*256-b.x,dy=targetY(target)*256-b.y;int len=Math.max(1,(int)Math.sqrt((double)dx*dx+(double)dy*dy));b.vx=dx*1800/len;b.vy=dy*1800/len;}else{b.vx+=windStep(wind,b);b.vy+=gravity(b);if(b.guided)guide(b);}b.x+=b.vx/4;b.y+=b.vy/4;
             int x=b.x/256,y=b.y/256;boolean hit=!b.homing&&ground.solid(x,y);
-            if(!b.fly)for(int n=0;n<unitCount;n++){Unit u=units[n];if(u.hp>0&&(n!=b.owner||b.age>24)&&!(SulanRules.active(this)&&TribalRules.payload(b.weapon)&&units[b.owner].npc>0&&u.team==units[b.owner].team)&&hitsUnit(u,x,y))hit=true;}
+            if(!b.fly)for(int n=0;n<unitCount;n++){Unit u=units[n];if(u.hp>0&&(n!=b.owner||b.age>24)&&!(TribalRules.active(this)&&TribalRules.payload(b.weapon)&&units[b.owner].npc>0&&u.team==units[b.owner].team)&&hitsUnit(u,x,y))hit=true;}
             if(hit){impact(b);removeBall(i);}
             else if((sequentialAttack&&b.weapon!=AntCaveRules.QUEEN_ARROW&&(x<viewX||x>=viewX+viewWidth||y<viewY||y>=viewY+viewHeight))||x< -25||x>W+25||y>H+35||b.age>1600)removeBall(i);
         }
@@ -268,7 +268,7 @@ final class Battle {
     }
     void impact(Ball b){
         int x=b.x/256,y=b.y/256;
-        if(b.fly){int surface=ground.surface(x,Math.max(0,y-18));if(surface<H&&x>12&&x<W-12){units[b.owner].x=x;units[b.owner].y=surface;units[b.owner].vy=0;units[b.owner].landingTicks=32;}return;}
+        if(b.fly){int surface=ground.surface(x,Math.max(0,y-18));if(surface<H&&x>12&&x<W-12){units[b.owner].x=x;units[b.owner].y=surface;units[b.owner].vy=0;units[b.owner].landingTicks=32;if(SulanRules.active(this))SulanRules.updateFacing(this);}return;}
         if(b.freeze){if(SulanRules.active(this))SulanRules.extinguish(this,x,y);Blast ice=new Blast();ice.freeze=true;ice.x=x;ice.y=y;ice.weapon=b.weapon;if(blastCount<blasts.length)blasts[blastCount++]=ice;for(int i=0;i<unitCount;i++){Unit u=units[i];int dx=x-u.x,dy=y-targetY(u);if(u.hp>0&&!ally(b.owner,i)&&dx*dx+dy*dy<31*31){u.freezeTurns=2;u.frozen=1;}}hitSerial++;return;}
         Blast fx=new Blast();fx.x=x;fx.y=y;fx.radius=b.radius;fx.owner=b.owner;fx.weapon=b.weapon==AntCaveRules.QUEEN_ARROW?9:b.weapon;
         if(blastCount<blasts.length)blasts[blastCount++]=fx;

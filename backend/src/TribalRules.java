@@ -49,7 +49,7 @@ final class TribalRules {
  static void place(Battle b,int slot,int x){Battle.Unit u=b.units[slot];u.x=Battle.clamp(x,18,Battle.W-18);u.y=b.ground.surface(u.x,5);u.vy=0;b.refreshAim(u);}
  static void spawn(Battle b,int slot,int kind,int x){
   Battle.Unit u=b.units[slot];u.npc=kind;u.team=kind==BEAN?0:1;u.human=false;u.dead=false;u.statsEnabled=false;
-  u.maxHp=(kind==RAGE&&b.dungeonDifficulty==0?8000:HP[kind-SPEAR])*(100+b.dungeonDifficulty*45)/100;u.hp=u.maxHp;u.maxEnergy=u.energy=240;
+  u.maxHp=(kind==RAGE&&b.dungeonDifficulty==0?8000:HP[kind-SPEAR])*(100+b.dungeonDifficulty*45)/100*(kind==RAGE?2:1);u.hp=u.maxHp;u.maxEnergy=u.energy=240;
   u.weapon=8;u.attackBonus=DAMAGE[b.dungeonDifficulty]-Battle.baseDamage(8);u.defense=0;
   u.face=-1;u.angle=45;u.power=0;u.flashTicks=30;u.attackTicks=u.walk=u.frozen=u.freezeTurns=0;u.lastBuff=14;place(b,slot,x);
   if(floats(u))platform(b,u,3);
@@ -89,6 +89,11 @@ final class TribalRules {
   if(SulanRules.active(b))return SulanRules.nextActor(b,actor);
   if(stage(b)==1){
    int first=-1,last=-1;for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0){if(b.units[i].npc==SPEAR&&first<0)first=i;if(b.units[i].npc==ELITE&&last<0)last=i;}
+   // A wiped wave gets a reinforcement-only round, not a camera/attack turn.
+   if(first<0&&last<0&&b.tribalGoal>0){
+    for(int i=actor+2;i<6;i+=2)if(b.units[i].hp>0&&b.units[i].npc==0)return i;
+    round(b);for(int i=0;i<6;i+=2)if(b.units[i].hp>0)return i;
+   }
    int[] order={first,last,0,2,4};int old=b.units[actor].npc==SPEAR?0:b.units[actor].npc==ELITE?1:actor==0?2:actor==2?3:4;
    for(int n=1;n<=5;n++){int k=(old+n)%5;if(order[k]>=0&&b.units[order[k]].hp>0){if(k<=old)round(b);return order[k];}}
    return actor;
@@ -110,7 +115,7 @@ final class TribalRules {
   }
   for(int i=6;i<13;i++){
    Battle.Unit u=b.units[i];if(u.hp<=0)continue;
-   if(u.npc==HEAL)heal(b,b.units[1],b.units[1].maxHp/12);
+   if(u.npc==HEAL&&!SulanRules.active(b))heal(b,b.units[1],b.units[1].maxHp/12);
    if(u.npc==BOMB&&++u.power>=2){Battle.Ball hit=new Battle.Ball();hit.owner=1;hit.x=u.x*256;hit.y=(u.y-12)*256;hit.damage=DAMAGE[b.dungeonDifficulty]*2;hit.radius=42;hit.weapon=FIRE_SHOT;b.impact(hit);u.hp=0;}
   }
 
@@ -149,11 +154,12 @@ final class TribalRules {
   if(stage(b)==1&&b.tribalGoal==0||stage(b)==4&&b.units[1].hp<=0||twins(b)&&b.units[1].hp<=0&&b.units[3].hp<=0||!enemy&&stage(b)!=1){b.tribalOutcome=0;b.tribalState=DEAD;b.tribalFx=stage(b)==4?SulanRules.DEATH:35;if(stage(b)==4){b.sulanFireCount=0;SulanRules.say(b,SulanRules.FAREWELL,1,85);}b.ballCount=b.bursts=b.settle=0;b.charging=b.pendingNext=false;return false;}
   if(b.turn>200){win(b,1);return true;}return false;
  }
+ static int flightSteps(int distance){return Math.max(85,Math.min(150,(distance+90)*3/5));}
  static void projectile(Battle b,int actor,int victim,int weapon,int offset){
   if(b.ballCount>=b.balls.length)return;Battle.Unit u=b.units[actor],v=b.units[victim];Battle.Ball p=new Battle.Ball();
+  if(u.npc==ELITE||u.npc>=SULAN){if(v.x!=u.x)u.face=v.x<u.x?-1:1;}
   p.owner=actor;p.weapon=weapon;p.x=(u.x+u.face*(u.npc>=SULAN?22:12))*256;p.y=(u.y-(u.npc>=SULAN?39:22))*256;
-  int steps=floats(u)?Math.max(85,Math.min(150,(Math.abs(v.x-u.x)+90)*3/5)):u.npc==ELITE?Math.max(140,Math.min(240,Math.abs(v.x-u.x)*2/3+100)):Math.max(70,Math.min(170,Math.abs(v.x-u.x)*2/3+65));
-  if(weapon==CHIEF_SHOT)steps=Math.max(260,Math.min(340,Math.abs(v.x-u.x)+90));
+  int steps=flightSteps(Math.abs(v.x-u.x));
   p.vx=(v.x*256-p.x)*4/steps;p.vy=((Battle.targetY(v)+(u.npc==ELITE?0:offset))*256-p.y)*4/steps-Battle.gravity(p)*(steps+1)/2;
   if(u.npc==ELITE){int vx=p.vx,vy=p.vy,cs=Battle.cos(offset),sn=Battle.sin(offset);p.vx=(vx*cs-vy*sn)/1024;p.vy=(vx*sn+vy*cs)/1024;}
   p.radius=weapon==FIRE_SHOT?11:4;p.damage=DAMAGE[b.dungeonDifficulty]*(u.npc==RAGE?130:100)/100;

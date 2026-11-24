@@ -101,9 +101,16 @@ final class TribalArt {
   if(b.tribalState==TribalRules.OPENING&&age>=SulanRules.TITLE_AT&&age<SulanRules.TITLE_AT+81){int t=age-SulanRules.TITLE_AT;titleShade(t,81);if(sulanTitle==null)sulanTitle=c.combatRoomArt("tribal-sulan-title");c.clip(8,40,t<10?101:t<21?183:304,34);c.img(sulanTitle,8,40);c.all();return;}
   if(b.sulanTalk<=0||b.sulanLine==0)return;
   if(talkLine!=b.sulanLine||talkLines==null){talkLine=b.sulanLine;talkLines=lines(SulanRules.dialogue(talkLine));}
-  Battle.Unit u=b.units[b.sulanSpeaker];int x=u.x-c.cameraX,y=u.y-c.cameraY-(u.npc>=14?64:36);
+  int actor=b.sulanSpeaker;Battle.Unit u=b.units[actor];
+  if(u.hp<=0&&u.npc==TribalRules.BEAN)return;
+  int x=u.x-c.cameraX,y=u.y-c.cameraY-(u.npc>=14?64:u.npc==TribalRules.BEAN?45:36);
+  // Anchor the tail to the speaker, never the active player's HUD. If the head
+  // is too near the HUD, put the bubble below it with an upward tail.
+  int height=talkLines.length*11+10,feet=u.y-c.cameraY+6;
+  boolean below=y<65+height+9&&feet+height+9<=240;
+  int tip=below?feet:y,top=below||y>=65+height+9?65:4;
   if(SulanRules.red(b)){if(redSpeech==null)redSpeech=c.combatRoomArt("font-sulan-red");c.speechOverride=redSpeech;}
-  try{if(x>=-20&&x<340)c.drawSpeechBubble(Battle.clamp(x,25,295),Battle.clamp(y,65,190),talkLines,65);}finally{c.speechOverride=null;}
+  try{if(x>=0&&x<320&&y>=0&&y<240)c.drawSpeechBubble(x,tip,talkLines,top,below);}finally{c.speechOverride=null;}
  }
  void worldEffects(){
   Battle b=c.game;
