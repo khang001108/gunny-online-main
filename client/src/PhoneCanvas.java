@@ -1283,10 +1283,17 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         running = true;
     }
 
+    // Slow presentation time, never the collision-checked physics substeps.
+    boolean projectilePacing() {
+        return mode==1&&!game.over&&BattlePlaybackPacer.projectile(game.ballCount,game.bursts)
+            &&(onlineBattle()||!popup.pausedOffline);
+    }
+
     public void run() {
-        long onlineClock=0,onlineDebt=0;
+        BattlePlaybackPacer pacer=new BattlePlaybackPacer();
         while (alive) {
             long began = System.currentTimeMillis();
+            int tickPeriod=BattlePlaybackPacer.NORMAL_MS;
             if (running) {
                 synchronized (this) {
                     frame++;
@@ -1310,15 +1317,14 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                             mode = 0;
                         }
                     }
-                    if(mode!=1||!onlineBattle()){onlineClock=onlineDebt=0;}
+                    if(mode!=1||!onlineBattle())pacer.reset();
                     if (mode == 1 && onlineBattle()) {
-                        long now=System.currentTimeMillis();
-                        if(onlineClock==0)onlineDebt=33;
-                        else onlineDebt=Math.min(66,onlineDebt+Math.max(0L,now-onlineClock));
-                        onlineClock=now;
-                        int steps=0;
-                        while(onlineDebt>=33&&steps<2&&mode==1&&onlineBattle()){
-                            onlineDebt-=33;steps++;net.animate();
+                        int steps=pacer.steps(System.currentTimeMillis(),projectilePacing());
+                        for(int step=0;step<steps&&mode==1&&onlineBattle();step++){
+                            net.animate();
+                            // A catch-up tick may launch or reveal a projectile. Never
+                            // consume another frame in the same render after that.
+                            if(projectilePacing()){pacer.reset();break;}
                         }
                         followCamera();
                         if (game.shotSerial != shootSound) {
@@ -1377,13 +1383,14 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                         toastTicks--;
                     if (buffFlash > 0)
                         buffFlash--;
+                    tickPeriod=BattlePlaybackPacer.period(projectilePacing());
                 }
                 if(presentation.showFps)updateMs=(updateMs*3+(int)Math.min(1000L,System.currentTimeMillis()-began)+2)/4;
                 repaint();
                 serviceRepaints();
             }
-            if(!running)onlineClock=onlineDebt=0;
-            long wait = 33 - (System.currentTimeMillis() - began);
+            if(!running)pacer.reset();
+            long wait = tickPeriod - (System.currentTimeMillis() - began);
             try {
                 Thread.sleep(wait > 2 ? wait : 2);
             } catch (InterruptedException ignored) {

@@ -39,7 +39,7 @@ public final class GunnyServer implements AutoCloseable {
         final int id=nextRoom.incrementAndGet();String match=UUID.randomUUID().toString();Session host;final Session[] members=new Session[6];final Avatar[] avatars=new Avatar[6];
         final int[] battleEmotes=new int[6];final long[] battleEmoteUntil=new long[6];int equipmentPending;int closedSlots;final int[] emotes=new int[6];final int[] selectedBots={-1,-1,-1,-1,-1,-1};long queueSince;int botVotes;boolean timedOut,botMatch;boolean queued;boolean shared,customAllies;int allyBot=-1,enemyBot=-1;final String[] cardNames=new String[18];final int[] cardCoins=new int[18],cardTypes=new int[18];final Map<String,Integer> cardPicks=new ConcurrentHashMap<>();boolean beanSaved;int savedTribalTurn;String revealMatch;int[] revealedDeck;String campaignId=UUID.randomUUID().toString();
         void savesTribal(String run,int stage,int difficulty,int turn,List<String> members,Map<String,Object> state){saves.submit(()->{try{store.tribal("checkpoint",Map.of("run",run,"stage",stage,"difficulty",difficulty,"turn",turn,"members",members,"state",state));}catch(Exception failure){System.err.println("Tribal checkpoint failed: "+failure.getClass().getSimpleName());}});}
-        int difficulty,dungeonStage,antKills,antSpawned,antAlive;final List<byte[]> chunks=new ArrayList<>();int chunkTurn=-1,chunkKind=1,chunkRevision;boolean chunkTerminal,chunkShotFirst;ByteArrayOutputStream chunkFrames;int chunkCount;byte[] deltaFrame;byte[] replayStart;int replayTurn=-1;int count;final int allyMode,bot;int departureVersion,leftMask,eligibleMask;boolean departurePending;String departedName="";int kind;String title="",secret="";long departurePausedAt;long autoStartAt,waitingSince,loadingReadyAt;int inputTicks;long turnStarted;int requestedMap,map=-1,mapLimit=3,seconds=20;boolean strict;volatile int phase;int powTicks,powActor;long lastActive=System.currentTimeMillis();long rewardsAt;boolean settlementQueued;volatile boolean settled;Ground ground;Battle battle;final List<Map<String,Object>> participants=new ArrayList<>();
+        int difficulty,dungeonStage,antKills,antSpawned,antAlive;final List<byte[]> chunks=new ArrayList<>();int chunkTurn=-1,chunkKind=1,chunkRevision;boolean chunkTerminal,chunkShotFirst,batchShot,shotStreaming;ByteArrayOutputStream chunkFrames;int chunkCount;byte[] deltaFrame;byte[] replayStart;int replayTurn=-1;int count;final int allyMode,bot;int departureVersion,leftMask,eligibleMask;boolean departurePending;String departedName="";int kind;String title="",secret="";long departurePausedAt;long autoStartAt,waitingSince,loadingReadyAt;int inputTicks;long turnStarted;int requestedMap,map=-1,mapLimit=3,seconds=20;boolean strict;volatile int phase;int powTicks,powActor;long lastActive=System.currentTimeMillis();long rewardsAt;boolean settlementQueued;volatile boolean settled;Ground ground;Battle battle;final List<Map<String,Object>> participants=new ArrayList<>();
         Room(Session host,int map,int allyMode,int bot){this(host,map,allyMode,bot,false);}
         Room(Session host,int map,int allyMode,int bot,boolean six){this.host=host;shared=host.social;members[0]=host;requestedMap=map;this.allyMode=allyMode;this.bot=bot;count=six?6:allyMode>0?4:2;for(int i=0;i<count;i++)avatars[i]=avatar(null,i);refreshWaiting();}
         Avatar avatar(Session member,int i){Avatar a=new Avatar();if(member!=null){CloudStore.Profile p=member.profile;a.owner=member;a.experience=p.experience;a.name=p.name;a.sex=p.gender;a.skin=p.skin;a.custom=p.custom;a.look=p.look.clone();a.wornMask=p.wornMask;a.weapon=p.equipped;}else{int b=i==2&&bot>=0?bot:random.nextInt(8);a.experience=Progression.botExperience(b);a.name=BOT_NAMES[b];a.sex=b/4;a.skin=BOT_SKINS[b];a.weapon=WEAPONS[b%4];a.bot=true;if(i==2&&allyMode==2&&!strict){a.owner=host;a.experience=host.profile.experience;a.bot=false;a.name="Người 2";}}return a;}
@@ -47,7 +47,7 @@ public final class GunnyServer implements AutoCloseable {
         boolean resultsReady(){return battle!=null&&battle.over&&settled&&resultsAcknowledged();}
         boolean rewardEligible(Session s){if(kind==3&&battle.winner!=0)return false;int seat=slot(s),damage=0;for(int i=0;i<count;i++)if(avatars[i].owner==s)damage+=battle.damage[i];return seat>=0&&Progression.reward(battle.winner,seat%2,damage);}
         boolean cardsOpen(){return battle!=null&&battle.over&&settled;}
-        void resetDungeonResult(){match=UUID.randomUUID().toString();settled=settlementQueued=false;participants.clear();cardPicks.clear();Arrays.fill(cardNames,null);Arrays.fill(cardCoins,0);Arrays.fill(cardTypes,0);chunks.clear();chunkFrames=null;chunkTurn=replayTurn=-1;replayStart=null;chunkTerminal=false;powTicks=inputTicks=0;waitingSince=0;}
+        void resetDungeonResult(){match=UUID.randomUUID().toString();settled=settlementQueued=false;participants.clear();cardPicks.clear();Arrays.fill(cardNames,null);Arrays.fill(cardCoins,0);Arrays.fill(cardTypes,0);chunks.clear();chunkFrames=null;chunkTurn=replayTurn=-1;replayStart=null;chunkTerminal=batchShot=shotStreaming=false;powTicks=inputTicks=0;waitingSince=0;}
         boolean hasReturningParty(){
             if(!awaitingParty)return false;
             for(Session member:members)if(member!=null&&member.room!=id)return true;
@@ -134,12 +134,65 @@ public final class GunnyServer implements AutoCloseable {
             Set<String> ids=new HashSet<>();for(int i=0;i<count;i++){Session s=avatars[i].owner;if(s!=null&&ids.add(s.id)){s.ready=false;s.loadingPercent=0;s.resultAck=-1;s.cardsReady=false;s.resolution=-1;participants.add(Map.of("id",s.id,"team",i%2));}}
             battle.hotseat=count==2&&avatars[1].owner!=null;battle.deferBotPow=true;loadingReadyAt=0;phase=3;lastActive=System.currentTimeMillis();
         }
-        void chunkBegin(int kind){if(host.live)return;if(chunkTurn!=battle.turn){chunks.clear();chunkTurn=battle.turn;chunkTerminal=false;chunkFrames=null;}if(chunkFrames!=null)chunkFlush(false);deltaFrame=null;chunkKind=kind;chunkShotFirst=kind==3;chunkFrames=new ByteArrayOutputStream();chunkCount=0;chunkRevision=0;chunkFrame();}
-        void chunkFrame(){if(host.live)return;if(chunkFrames==null)return;try{ByteArrayOutputStream bytes=new ByteArrayOutputStream();snapshot(new DataOutputStream(bytes),this,(battle.pendingNext||battle.over)?0:chunkRevision,host,true);byte[] frame=bytes.toByteArray();if(chunkCount>0&&chunkFrames.size()+frame.length+6>16384){chunkFlush(false);chunkFrames=new ByteArrayOutputStream();chunkCount=0;chunkRevision=0;chunkFrame();return;}DataOutputStream out=new DataOutputStream(chunkFrames);byte[] delta=host.delta?FrameDelta.encode(deltaFrame,frame):null;byte[] wire=delta==null?frame:delta;out.writeShort(wire.length|(delta==null?0:32768));out.write(wire);deltaFrame=frame;chunkRevision=ground.craters.size();chunkCount++;
-            // Publish the first projectile block earlier; subsequent PvP blocks remain batched.
-            if(host.prefetch&&chunkCount>=(kind!=3&&chunkKind==3&&!chunkShotFirst?12:6)){chunkFlush(false);chunkShotFirst=false;chunkFrames=new ByteArrayOutputStream();chunkCount=chunkRevision=0;}
-        }catch(IOException e){throw new IllegalStateException(e);}}
-        void chunkFlush(boolean terminal){if(host.live)return;if(chunkFrames==null)return;if(chunkCount==0){if(terminal)chunkFrame();else{chunkFrames=null;return;}}try{ByteArrayOutputStream bytes=new ByteArrayOutputStream();DataOutputStream out=new DataOutputStream(bytes);out.writeByte(chunkKind);out.writeBoolean(terminal);out.writeShort(chunkCount);chunkFrames.writeTo(out);chunks.add(bytes.toByteArray());chunkFrames=null;deltaFrame=null;chunkTerminal=terminal;}catch(IOException e){throw new IllegalStateException(e);}}
+        // The existing stage-4 wire envelope can carry one complete compressed shot.
+        // Type 4 means complete flight, type 3 remains the bounded streaming fallback.
+        static final int SHOT_BATCH_BYTES=48*1024, SHOT_BATCH_FRAMES=1200;
+        boolean canBatchShot(){
+            if(host.live||!host.async||!host.prefetch||!host.delta)return false;
+            for(Session member:members)if(member!=null&&(!member.async||!member.prefetch||!member.delta||member.live))return false;
+            return true;
+        }
+        void chunkBegin(int kind){
+            if(host.live)return;
+            if(chunkTurn!=battle.turn){chunks.clear();chunkTurn=battle.turn;chunkTerminal=false;chunkFrames=null;batchShot=shotStreaming=false;}
+            // A boss can emit several projectiles during the same flight.
+            if(kind==3&&batchShot&&chunkFrames!=null)return;
+            if(chunkFrames!=null)chunkFlush(false);
+            deltaFrame=null;chunkKind=kind;chunkShotFirst=kind==3;
+            batchShot=kind==3&&!shotStreaming&&canBatchShot();
+            chunkFrames=new ByteArrayOutputStream();chunkCount=0;chunkRevision=0;chunkFrame();
+        }
+        void chunkFrame(){
+            if(host.live||chunkFrames==null)return;
+            // Protect attacks that create projectiles directly without beforeShot().
+            if(chunkKind==1&&battle.ballCount>0&&canBatchShot()&&!shotStreaming){chunkBegin(3);return;}
+            try{
+                ByteArrayOutputStream bytes=new ByteArrayOutputStream();
+                snapshot(new DataOutputStream(bytes),this,(battle.pendingNext||battle.over)?0:chunkRevision,host,true);
+                byte[] frame=bytes.toByteArray();
+                byte[] delta=host.delta?FrameDelta.encode(deltaFrame,frame):null;
+                byte[] wire=delta==null?frame:delta;
+                int limit=batchShot?SHOT_BATCH_BYTES:16384;
+                if(chunkCount>0&&(chunkFrames.size()+(batchShot?wire.length:frame.length)+6>limit||batchShot&&chunkCount>=SHOT_BATCH_FRAMES)){
+                    // A pathological long flight falls back to the existing streaming path.
+                    if(batchShot){batchShot=false;shotStreaming=true;}
+                    chunkFlush(false);chunkFrames=new ByteArrayOutputStream();chunkCount=0;chunkRevision=0;
+                    chunkFrame();return;
+                }
+                DataOutputStream out=new DataOutputStream(chunkFrames);
+                out.writeShort(wire.length|(delta==null?0:32768));out.write(wire);
+                deltaFrame=frame;chunkRevision=ground.craters.size();chunkCount++;
+                if(!batchShot&&host.prefetch&&chunkCount>=(kind!=3&&chunkKind==3&&!chunkShotFirst?12:6)&&!battle.pendingNext&&!battle.over){
+                    chunkFlush(false);chunkShotFirst=false;chunkFrames=new ByteArrayOutputStream();chunkCount=chunkRevision=0;
+                }
+            }catch(IOException e){throw new IllegalStateException(e);}
+        }
+        void chunkFlush(boolean terminal){
+            if(host.live||chunkFrames==null)return;
+            if(chunkCount==0){if(terminal)chunkFrame();else{chunkFrames=null;batchShot=false;return;}}
+            try{
+                ByteArrayOutputStream bytes=new ByteArrayOutputStream();DataOutputStream out=new DataOutputStream(bytes);
+                out.writeByte(batchShot?4:chunkKind);out.writeBoolean(terminal);out.writeShort(chunkCount);chunkFrames.writeTo(out);
+                chunks.add(bytes.toByteArray());chunkFrames=null;deltaFrame=null;chunkTerminal=terminal;batchShot=false;
+            }catch(IOException e){throw new IllegalStateException(e);}
+        }
+        // Reuse the normal room tick, including NPC AI, terrain, and dungeon progress.
+        // Never run ahead through input, turn acknowledgements, or POW cut-ins.
+        void tickAhead(){
+            tick();
+            long deadline=System.nanoTime()+4_000_000L;
+            for(int n=0;n<48&&phase==1&&batchShot&&battle.busy()&&!battle.pendingNext&&!battle.over&&powTicks==0&&!departurePending&&System.nanoTime()<deadline;n++)tick();
+        }
         void chunkPacket(DataOutputStream out,Session viewer,int revision,int clientTurn,int completed,int cached)throws IOException{
             if(cached==Integer.MIN_VALUE){out.writeByte(0);snapshot(out,this,0,viewer);return;}
             if(viewer.live){out.writeByte(5);snapshot(out,this,revision,viewer);return;}
@@ -182,7 +235,7 @@ public final class GunnyServer implements AutoCloseable {
             if(battle.pendingNext){battle.tickVisuals();if(waitingSince==0)waitingSince=now;boolean received=true;for(Session member:members)if(member!=null&&member.async&&now-member.lastSeen<45000&&member.resolution!=battle.turn)received=false;if(received){battle.completeTurn();inputTicks=0;turnStarted=now;waitingSince=0;for(Session member:members)if(member!=null)member.resolution=-1;}return;}
             if(SulanRules.active(battle)){SulanRules.ambient(battle);battle.check();}
             boolean driven=owner!=null&&owner.async&&now-owner.lastSeen<45000&&battle.input();
-            if(driven){battle.tickVisuals();}int priorBalls=battle.ballCount,priorShot=battle.shotSerial;if(!driven){if(chunkFrames==null)chunkBegin(battle.busy()?3:1);battle.tick();chunkFrame();if(battle.pendingNext||battle.over)chunkFlush(true);else if((priorBalls>0||battle.shotSerial>priorShot)&&battle.ballCount==0&&battle.bursts>0){chunkFlush(false);chunkBegin(3);}}else if(now-turnStarted>90000){if(chunkFrames==null)chunkBegin(1);battle.next();chunkFrame();chunkFlush(true);}if(battle.botPowQueued){captureShot();powActor=battle.active;powTicks=150;}
+            if(driven){battle.tickVisuals();}int priorBalls=battle.ballCount,priorShot=battle.shotSerial;if(!driven){if(chunkFrames==null)chunkBegin(battle.busy()?3:1);battle.tick();chunkFrame();if(battle.pendingNext||battle.over)chunkFlush(true);else if(batchShot&&!battle.busy()){chunkFlush(false);shotStreaming=false;}else if(!batchShot&&(priorBalls>0||battle.shotSerial>priorShot)&&battle.ballCount==0&&battle.bursts>0){chunkFlush(false);chunkBegin(3);}}else if(now-turnStarted>90000){if(chunkFrames==null)chunkBegin(1);battle.next();chunkFrame();chunkFlush(true);}if(battle.botPowQueued){captureShot();if(batchShot){chunkFrames=null;batchShot=false;chunkBegin(2);}powActor=battle.active;powTicks=150;}
             if(TribalDungeon.is(this))TribalDungeon.progress(this);else if(kind==3)Dungeon780.progress(this);
             if(battle.over){phase=2;lastActive=now;queueSettlement(this);}
         }
@@ -223,7 +276,7 @@ public final class GunnyServer implements AutoCloseable {
         long size=end-start+1;h.set("Content-Length",""+size);if(x.getRequestMethod().equals("HEAD")){x.sendResponseHeaders(status,-1);x.close();return;}x.sendResponseHeaders(status,size);try(InputStream in=Files.newInputStream(file);OutputStream out=x.getResponseBody()){in.skipNBytes(start);byte[] buffer=new byte[16384];for(long remaining=size;remaining>0;){int n=in.read(buffer,0,(int)Math.min(buffer.length,remaining));if(n<0)break;out.write(buffer,0,n);remaining-=n;}}finally{x.close();}
     }
     void tcpRequired(HttpExchange x)throws IOException {x.sendResponseHeaders(410,-1);x.close();}
-    static String capabilities(boolean admin,boolean tcp){return "{\"sulan7912\":1,\"tribal797\":1,\"clock793\":1,\"vip\":1,\"deck\":1,\"version\":\"7.9.18\",\"compactlobby\":1,\"tribalBotFix\":2,\"tribalHF3\":1,\"tribalHF4\":1,\"tribalHF5\":1,\"dungeonHF6\":1,\"profileGenderHF12\":1,\"loadoutHF13\":1,\"chatHF15\":1,\"gifts\":1,\"playerui\":1,\"prefetch\":1,\"shotframes\":1,\"expansion\":1,\"forge\":1,\"forgechance\":1,\"delta\":1,\"tribal\":1,\"dungeon\":1,\"campaign\":1,\"flock\":1,\"actors\":1,\"live\":1,\"growth\":1,\"events\":1,\"charge\":1,\"progress\":1,\"bag\":1,\"admin\":"+(admin?1:0)+",\"ok\":true,\"tcp\":"+(tcp?1:0)+",\"longpoll\":"+(tcp?0:1)+",\"protocol\":1,\"controls\":2,\"rooms\":2,\"maps\":6,\"async\":1,\"seats\":6,\"departures\":1,\"pow\":2,\"replay\":1,\"chunks\":1,\"social\":1,\"lobbychat\":1,\"chatemoji\":1,\"roomchat\":1,\"matchmaking\":1,\"waitbot\":1,\"items\":2,\"cards\":1,\"shop\":1,\"arsenal\":2,\"emotions\":1,\"presence\":1,\"character\":1,\"equipment\":1,\"roomfix\":1}";}
+    static String capabilities(boolean admin,boolean tcp){return "{\"sulan7912\":1,\"tribal797\":1,\"clock793\":1,\"vip\":1,\"deck\":1,\"version\":\"7.9.18\",\"compactlobby\":1,\"tribalBotFix\":2,\"tribalHF3\":1,\"tribalHF4\":1,\"tribalHF5\":1,\"dungeonHF6\":1,\"profileGenderHF12\":1,\"loadoutHF13\":1,\"chatHF15\":1,\"gifts\":1,\"playerui\":1,\"prefetch\":1,\"shotframes\":1,\"shotbatch\":1,\"expansion\":1,\"forge\":1,\"forgechance\":1,\"delta\":1,\"tribal\":1,\"dungeon\":1,\"campaign\":1,\"flock\":1,\"actors\":1,\"live\":1,\"growth\":1,\"events\":1,\"charge\":1,\"progress\":1,\"bag\":1,\"admin\":"+(admin?1:0)+",\"ok\":true,\"tcp\":"+(tcp?1:0)+",\"longpoll\":"+(tcp?0:1)+",\"protocol\":1,\"controls\":2,\"rooms\":2,\"maps\":6,\"async\":1,\"seats\":6,\"departures\":1,\"pow\":2,\"replay\":1,\"chunks\":1,\"social\":1,\"lobbychat\":1,\"chatemoji\":1,\"roomchat\":1,\"matchmaking\":1,\"waitbot\":1,\"items\":2,\"cards\":1,\"shop\":1,\"arsenal\":2,\"emotions\":1,\"presence\":1,\"character\":1,\"equipment\":1,\"roomfix\":1}";}
     static int[] legacyKit(int[] kit){if(kit[0]<6&&kit[1]<6&&kit[2]<6)return kit;int[] copy=kit.clone();for(int k=0;k<3;k++)if(copy[k]==Battle.EMPTY_ITEM){for(int id=0;id<6;id++)if(id!=copy[0]&&id!=copy[1]&&id!=copy[2]){copy[k]=id;break;}}return copy;}
     void health(HttpExchange x)throws IOException{byte[] b=capabilities(admin.enabled,false).getBytes(java.nio.charset.StandardCharsets.UTF_8);x.getResponseHeaders().set("Content-Type","application/json");x.sendResponseHeaders(200,b.length);try(OutputStream out=x.getResponseBody()){out.write(b);}}
     void emailConfirmation(HttpExchange x)throws IOException{accounts.handle(x);}
@@ -323,7 +376,7 @@ public final class GunnyServer implements AutoCloseable {
     void queueSettlement(Room r){if(r.settlementQueued)return;r.settlementQueued=true;List<Map<String,Object>> players=new ArrayList<>();for(Map<String,Object> participant:r.participants){Map<String,Object> row=new HashMap<>(participant);int damage=0;for(int i=0;i<r.count;i++)if(r.avatars[i].owner!=null&&r.avatars[i].owner.id.equals(participant.get("id")))damage+=r.battle.damage[i];row.put("damage",damage);row.put("weapon",0);for(var a:r.avatars)if(a!=null&&a.owner!=null&&a.owner.id.equals(participant.get("id"))){row.put("weapon",a.weapon);break;}players.add(row);}
         saves.submit(()->{for(int attempt=0;attempt<10&&!closed;attempt++){try{if(TribalDungeon.is(r))TribalDungeon.settle(this,r,players);else if(r.kind==3&&r.dungeonStage==1)store.finishAntStage(r.match,r.battle.winner,players,r.difficulty);else if(r.kind==3)store.finishDungeon780(r.match,r.battle.winner,players,r.difficulty);else store.settle(r.match,r.battle.winner,players,r.kind);if(r.host.clock793)store.recordStats(r.match,players);for(Session s:r.members)if(s!=null)s.profile=store.profile(s.id);r.rewardsAt=System.currentTimeMillis();r.settled=true;return;}catch(Exception ignored){try{Thread.sleep(Math.min(30000,1000L<<attempt));}catch(InterruptedException e){Thread.currentThread().interrupt();return;}}}System.err.println("Match settlement pending: "+r.match);});
     }
-    void tick(){try{long now=System.currentTimeMillis();for(Room r:rooms.values())synchronized(r){boolean present=false,online=false,retain=ResultResume.retain(r,now);for(Session s:r.members)if(s!=null){if(now-s.lastSeen<300000)present=true;if(now-s.lastSeen<45000)online=true;}for(Session member:r.members.clone())if(member!=null&&!TribalDungeon.is(r)&&(r.phase==1||r.phase==3||r.phase==2&&!retain)&&now-member.lastSeen>45000)leave(member);if(!retain&&(!present||r.phase==2&&!online&&now-r.lastActive>180000))rooms.remove(r.id);else r.tick();}for(Session s:sessions.values())if(s.expiry<now){if(!TribalDungeon.isRoom(this,s.room)&&(rooms.get(s.room)==null||!ResultResume.retain(rooms.get(s.room),now)))leave(s);sessions.remove(s.token);}if(limits.size()>1024)limits.entrySet().removeIf(e->now-e.getValue().start>60000);}catch(Exception e){System.err.println("Battle tick failed: "+e.getClass().getSimpleName());}finally{events.signal();}}
+    void tick(){try{long now=System.currentTimeMillis();for(Room r:rooms.values())synchronized(r){boolean present=false,online=false,retain=ResultResume.retain(r,now);for(Session s:r.members)if(s!=null){if(now-s.lastSeen<300000)present=true;if(now-s.lastSeen<45000)online=true;}for(Session member:r.members.clone())if(member!=null&&!TribalDungeon.is(r)&&(r.phase==1||r.phase==3||r.phase==2&&!retain)&&now-member.lastSeen>45000)leave(member);if(!retain&&(!present||r.phase==2&&!online&&now-r.lastActive>180000))rooms.remove(r.id);else r.tickAhead();}for(Session s:sessions.values())if(s.expiry<now){if(!TribalDungeon.isRoom(this,s.room)&&(rooms.get(s.room)==null||!ResultResume.retain(rooms.get(s.room),now)))leave(s);sessions.remove(s.token);}if(limits.size()>1024)limits.entrySet().removeIf(e->now-e.getValue().start>60000);}catch(Exception e){System.err.println("Battle tick failed: "+e.getClass().getSimpleName());}finally{events.signal();}}
     public void close(){closed=true;events.signal();accounts.sessions.clear();if(tcp!=null)tcp.close();admin.close();longPoll.close();http.stop(0);clock.shutdownNow();chatMaintenance.shutdownNow();workers.shutdownNow();saves.shutdownNow();}
     public static void main(String[] args)throws Exception {TribalConfig.load();boolean test=CloudStore.env("GUNNY_TEST_MODE").equals("1");if(test&&!CloudStore.env("RENDER").isEmpty())throw new IllegalStateException("Test accounts are prohibited on Render");int port=Integer.parseInt(CloudStore.env("PORT").isEmpty()?"8080":CloudStore.env("PORT"));String bind=test?"127.0.0.1":"0.0.0.0";GunnyServer server=new GunnyServer(new InetSocketAddress(bind,port),Path.of(CloudStore.env("GUNNY_ASSETS").isEmpty()?"assets1":CloudStore.env("GUNNY_ASSETS")),test?new CloudStore.Memory():new CloudStore());server.tcpOnly=true;int tcpPort=Integer.parseInt(CloudStore.env("TCP_PORT").isEmpty()?"22122":CloudStore.env("TCP_PORT"));if(tcpPort>0)server.startTcp(bind,tcpPort,Integer.parseInt(CloudStore.env("MAX_TCP_CLIENTS").isEmpty()?"128":CloudStore.env("MAX_TCP_CLIENTS")));Runtime.getRuntime().addShutdownHook(new Thread(server::close));System.out.println("Gunny 7.9.18 HF6 (tribalBotFix=2, tribalHF3=1, tribalHF4=1, tribalHF5=1, dungeonHF6=1) HTTP listening on "+bind+":"+server.port()+", TCP on "+bind+":"+server.tcpPort()+(test?" (local test accounts only)":""));}
 }

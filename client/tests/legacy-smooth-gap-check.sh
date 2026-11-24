@@ -32,6 +32,14 @@ public class ChunkGapCheck {
  // Own shooter bypasses remote playback, even when a terminal state arrives early.
  chunks.reset();net.own=true;net.predicting=true;net.predictedTurn=4;net.c.game.ballCount=1;net.c.game.bursts=1;net.c.game.pendingNext=false;
  chunks.read(packet(0,false,3,2,110),false,4);ok(chunks.frames==null&&chunks.completed==0,"own nonterminal bypass");chunks.read(packet(1,true,3,1,7),true,4);ok(chunks.ownPending&&chunks.frames==null,"own terminal queued");chunks.ownSince-=6000;chunks.finish();ok(chunks.ownPending&&net.c.game.ballCount==1,"no timeout overwrite during own shot");net.c.game.ballCount=net.c.game.bursts=0;net.c.game.pendingNext=true;chunks.finish();ok(!chunks.ownPending&&net.c.game.value==7&&net.resolutionSeen,"own authoritative finish");
+ // A full shot follows movement, starts without another startup wait and finishes without a single refill.
+ chunks.reset();net.own=false;net.predicting=false;net.c.game.ballCount=0;net.c.game.bursts=0;net.c.game.pendingNext=false;
+ chunks.read(packet(0,false,1,2,10),false,5);chunks.waitingSince-=3000;chunks.animate();chunks.animate();
+ chunks.read(packet(1,true,4,48,100),true,5);ok(chunks.ready(chunks.waitingSince),"complete shot bypasses startup delay");ok(!chunks.wantsMore(),"complete shot does not fetch more");
+ int oldGaps=chunks.underruns;for(int i=0;i<48;i++){ok(chunks.animate(),"complete shot frame");ok(net.c.game.value==100+i,"complete shot ordered frame");}
+ ok(chunks.underruns==oldGaps&&net.resolutionSeen&&chunks.completed==1,"no gaps in complete shot");
+ chunks.reset();chunks.activeBytes=65537;ok(chunks.windowFull(),"byte budget reserves enough space for next packet");chunks.activeBytes=0;ok(!chunks.windowFull(),"byte budget releases after playback");
+ System.out.println("PASS: full shot playback and bounded compressed queue");
  System.out.println("PASS: gap ownership, adaptive refill, staged decode, terminal ordering, full window, shot boundary, midflight resume, own shooter guard");}
 }
 JAVA
