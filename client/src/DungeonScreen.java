@@ -3,7 +3,7 @@ import javax.microedition.lcdui.*;
 final class DungeonScreen {
     void releaseArt(){for(int i=0;i<3;i++){seatPortraits[i]=null;seatKeys[i]=null;}rewardFrame=pickerPanel=rewardCell=portraitFrame=null;for(int i=0;i<8;i++)rewardIcons[i]=null;for(int i=0;i<2;i++)pickerCards[i]=portraitCards[i]=null;previewCover=rewardWing=null;previewStage=-1;banner=background=smallCover=seatCard=emptyCard=localPortrait=allyPortrait=closedCard=null;portraitKey="";for(int i=0;i<stageCovers.length;i++)stageCovers[i]=null;}
 
- static final int CONFIRM_SOLO = 6;
+ static final int CONFIRM_SOLO = 6, CONFIRM_LEAVE_CAMPAIGN = 35;
  static final String TITLE = "Ải Viễn Chinh";
  final PhoneCanvas c;final OnlineClient n;int focus,page;boolean picker;Image banner,background;
  DungeonScreen(PhoneCanvas canvas){c=canvas;n=c.net;}
@@ -466,6 +466,18 @@ final class DungeonScreen {
   } else {
    c.loadout.activate(online);
   }
+ }
+
+ private int leavingRoom;
+ void leaveWaiting(){
+  if(n.roomId<=0||n.roomKind!=3||n.phase!=0)return;
+  if(n.dungeonStage==2||n.dungeonStage>3){
+   leavingRoom=n.roomId;
+   c.popup.open("Rời phòng ải viễn chinh", "Trở về danh sách phòng ải viễn chinh? Tiến trình vượt ải sẽ bị mất.",new String[]{"Ở lại","Trở về"},CONFIRM_LEAVE_CAMPAIGN);
+  }else n.request("leave");
+ }
+ void confirmLeaveWaiting(){
+  if(c.mode==16&&n.roomKind==3&&n.phase==0&&n.roomId==leavingRoom)n.request("leave");
  }
 
  private int soloRoom;

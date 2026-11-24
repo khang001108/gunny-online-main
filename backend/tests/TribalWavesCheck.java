@@ -14,7 +14,7 @@ public class TribalWavesCheck {
   b=TribalCheck.battle(1,0);b.units[0].x=40;b.active=3;b.botActing=true;
   for(int i:new int[]{3,5}){var u=b.units[i];u.x=102;u.y=238;u.energy=240;b.active=i;b.move(-1);}
   ok(b.units[3].x==101&&b.units[5].x==101,"Tribal followers share position");
-  b.botActing=false;b.units[0].x=80;b.tribalClock=72;int tribalHp=b.units[0].hp;TribalRules.tickAI(b);ok(tribalHp-b.units[0].hp==360,"Overlapping tribesmen each deal their melee hit");
+  b.botActing=false;b.units[0].x=80;b.tribalClock=72;int tribalHp=b.units[0].hp;TribalRules.tickAI(b);ok(tribalHp-b.units[0].hp==1080,"Overlapping tribesmen each deal their melee hit");
   b=new Battle(TribalCheck.flat);b.start(true);b.teams=true;b.dungeonStage=1;b.unitCount=4;b.units[0].hp=30000;b.units[0].x=40;b.units[0].y=238;b.units[2].hp=0;
   for(int i:new int[]{1,3}){AntCaveRules.spawn(b,i,1,0);b.units[i].x=102;b.units[i].y=238;b.units[i].face=-1;b.stepAnt(i);}
   ok(b.units[1].x==101&&b.units[3].x==101,"Ants share position");

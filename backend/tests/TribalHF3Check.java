@@ -6,9 +6,11 @@ public final class TribalHF3Check {
   Battle b=TribalCheck.battle(1,0);for(int i=0;i<6;i+=2){b.units[i].hp=i/2<party?30000:0;b.units[i].maxHp=30000;}
   b.tribalState=TribalRules.IDLE;b.beginTurn(0);int shots=b.shotSerial;
   for(int i=0;i<b.unitCount;i++)if(b.units[i].team==1)b.units[i].hp=0;b.check();int goal=b.tribalGoal;
-  for(int i=0;i<party;i++){b.next();ok(b.units[b.active].npc==0,"Wiped wave skips every enemy attack turn");}
-  ok(b.active==0&&b.tribalGoal==goal&&TribalRules.alive(b,TribalRules.ELITE)&&TribalRules.alive(b,TribalRules.SPEAR)&&b.shotSerial==shots,"Respawn only; party immediately gets turn");
-  for(int i=0;i<party;i++)b.next();ok(b.units[b.active].npc==TribalRules.SPEAR,"Next enemy round operates normally");
+  for(int i=1;i<party;i++){b.next();ok(b.units[b.active].npc==0,"Remaining player turns before revival");}
+  b.next();ok(b.units[b.active].npc==TribalRules.SPEAR&&b.tribalGoal==goal&&TribalRules.alive(b,TribalRules.ELITE)&&b.shotSerial==shots,"Revived wave receives actual enemy turn");
+  int actor=b.active,x=b.units[actor].x,turn=b.turn;for(int i=0;i<150&&b.turn==turn;i++)b.tick();
+  ok(b.units[actor].x!=x&&b.active==1,"Revived troops move, then warrior takes turn");
+  turn=b.turn;for(int i=0;i<200&&b.turn==turn;i++)b.tick();ok(b.shotSerial>shots&&b.active==0,"Revived warrior throws before player turn");
  }}
  static void shots(){Battle b=TribalCheck.battle(1,0);b.tribalState=TribalRules.IDLE;b.units[0].x=60;b.units[0].hp=b.units[0].maxHp=30000;b.units[1].x=300;b.units[1].face=-1;
   for(int i=3;i<b.unitCount;i++)if(b.units[i].npc==TribalRules.SPEAR)b.units[i].hp=0;
@@ -25,5 +27,5 @@ public final class TribalHF3Check {
   b.units[1].hp=hp[d]-1;b.units[1].power=15;SulanRules.callHealTotem(b);ok(b.units[1].hp==hp[d],"Healing capped at max HP");
   b.sulanStory=0;b.sulanStoryClock=119;b.sulanTalk=0;SulanRules.ambient(b);ok(b.sulanLine==SulanRules.STORY1&&b.sulanSpeaker==6,"Story first line belongs to pea");b.sulanTalk=0;b.sulanStoryClock=119;SulanRules.ambient(b);ok(b.sulanLine==SulanRules.STORY2&&b.sulanSpeaker==6,"Awaken villagers line belongs to pea");
  }}
- public static void main(String[] args){wipe();shots();finalBoss();System.out.println("PASS "+checks+" HF3 wave skip, allied collision, flight, doubled HP, totem cadence, dialogue and facing checks");}
+ public static void main(String[] args){wipe();shots();finalBoss();System.out.println("PASS "+checks+" HF4 wave action, allied collision, flight, doubled HP, totem cadence, dialogue and facing checks");}
 }

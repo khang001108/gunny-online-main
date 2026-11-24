@@ -3,7 +3,7 @@ import java.util.*;
 public final class SulanAdds7913Check {
  static int checks;
  static void ok(boolean value,String message){if(!value)throw new AssertionError(message);checks++;}
- static Battle raid(){return Sulan7912Check.raid(1,0);}
+ static Battle raid(){Battle b=Sulan7912Check.raid(1,0);b.units[0].hp=b.units[0].maxHp=300000;return b;} // isolate long reinforcement cadence from HF4 increased damage
  static void finish(Battle b){int turn=b.turn;for(int t=0;t<1300&&b.turn==turn&&!b.over;t++)b.tick();ok(b.turn!=turn&&!b.over,"NPC action terminates");}
  static void boss(Battle b){b.beginTurn(1);finish(b);}
  static void count(Battle b,int melee,int elites){ok(SulanRules.addCount(b,TribalRules.SPEAR)==melee,"Correct tribal troop count: "+melee);ok(SulanRules.addCount(b,TribalRules.ELITE)==elites,"Correct warrior count: "+elites);}

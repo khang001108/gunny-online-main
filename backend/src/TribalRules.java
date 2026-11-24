@@ -10,7 +10,7 @@ final class TribalRules {
  static final int BULAN_LEFT_AT=45,BULAN_RIGHT_AT=135,BULAN_TITLE_AT=225,BULAN_INTRO_END=BULAN_TITLE_AT+AntCaveRules.QUEEN_TITLE_REVEAL+AntCaveRules.QUEEN_TITLE_HOLD;
  static final String[] STAGES={"Lính Bộ Lạc","Anh em Bulan","Anh em Bulan","Đền thờ Sulan"};
  static final int[] HP={850,850,1500,3000,6500,6500,1000,1000,1400,1000,10500,14000};
- static final int[] DAMAGE={180,230,300};
+ static final int[] DAMAGE={540,690,900}; // HF4: all enemy attacks in the level-30 expedition are tripled.
  static final int[] WAVES={4,4,4},STONE_MIN={10,50,100},STONE_MAX={100,200,300};
  static final int GOAL=20;
  static final int[] ENEMIES={1,3,5,6,7,8,9,10,11,12,13};
@@ -88,14 +88,16 @@ final class TribalRules {
  static int nextActor(Battle b,int actor){
   if(SulanRules.active(b))return SulanRules.nextActor(b,actor);
   if(stage(b)==1){
-   int first=-1,last=-1;for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0){if(b.units[i].npc==SPEAR&&first<0)first=i;if(b.units[i].npc==ELITE&&last<0)last=i;}
-   // A wiped wave gets a reinforcement-only round, not a camera/attack turn.
-   if(first<0&&last<0&&b.tribalGoal>0){
-    for(int i=actor+2;i<6;i+=2)if(b.units[i].hp>0&&b.units[i].npc==0)return i;
-    round(b);for(int i=0;i<6;i+=2)if(b.units[i].hp>0)return i;
-   }
-   int[] order={first,last,0,2,4};int old=b.units[actor].npc==SPEAR?0:b.units[actor].npc==ELITE?1:actor==0?2:actor==2?3:4;
-   for(int n=1;n<=5;n++){int k=(old+n)%5;if(order[k]>=0&&b.units[order[k]].hp>0){if(k<=old)round(b);return order[k];}}
+   // Refill before selecting the enemy turn, including a completely wiped wave.
+   // Select from the fresh roster so the camera and AI get a real turn.
+   int kind=b.units[actor].npc;
+   if(kind==SPEAR&&b.units[1].hp>0&&b.units[1].npc==ELITE)return 1;
+   int start=kind==0?actor+2:0;
+   for(int i=start;i<6;i+=2)if(b.units[i].hp>0&&b.units[i].npc==0)return i;
+   round(b);
+   for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].npc==SPEAR)return i;
+   if(b.units[1].hp>0&&b.units[1].npc==ELITE)return 1;
+   for(int i=0;i<6;i+=2)if(b.units[i].hp>0)return i;
    return actor;
   }
   if(twins(b)){

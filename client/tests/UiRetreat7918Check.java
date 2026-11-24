@@ -165,6 +165,18 @@ public class UiRetreat7918Check {
         if(!n.pending.equals("leave"))throw new AssertionError("PvP exit keeps the existing leave command");
         n.pending="";n.roomKind=3;n.returnToWaitingRoom();
         if(n.inBattle||c.mode!=16||n.roomId!=1234||n.roomKind!=3||n.queueCount!=0)throw new AssertionError("Retreat clears battle state and retains dungeon waiting UI");
+        // HF4: door toolbar asks before abandoning any inter-stage campaign.
+        for(int stage:new int[]{2,4,5,6}){
+          n.pending="";n.roomId=1234;n.roomKind=3;n.phase=0;n.dungeonStage=stage;n.dungeonBrowser=false;c.mode=16;c.roomSelection=47;
+          c.loadout.activate(true);if(!c.popup.opened||c.popup.action!=DungeonScreen.CONFIRM_LEAVE_CAMPAIGN||n.pending.length()!=0)throw new AssertionError("Inter-stage exit must ask first");
+          c.popup.selected=0;c.popup.choose();if(n.pending.length()!=0||n.roomId!=1234)throw new AssertionError("Cancel keeps campaign");
+          c.loadout.activate(true);c.popup.selected=1;c.popup.choose();if(!n.pending.equals("leave"))throw new AssertionError("Confirm leaves campaign, not retreat");
+          n.pending="";c.game.over=true;var exitBytes=new java.io.ByteArrayOutputStream();var exitOut=new java.io.DataOutputStream(exitBytes);exitOut.writeUTF("OK");exitOut.writeInt(0);
+          n.finishLeave("leave",new java.io.DataInputStream(new java.io.ByteArrayInputStream(exitBytes.toByteArray())));
+          if(n.roomId!=0||!n.dungeonBrowser||c.mode!=16||!n.pending.equals("dungeonrooms"))throw new AssertionError("Stale PvP browser or finished match cannot route dungeon leave incorrectly");
+        }
+        n.pending="";n.roomId=1234;n.roomKind=3;n.phase=0;n.dungeonStage=3;c.mode=16;c.roomSelection=47;c.loadout.activate(true);
+        if(c.popup.opened||!n.pending.equals("leave"))throw new AssertionError("First stage leaves without progress warning");
         n.worker.interrupt();
         c.stop();System.out.println("PASS real MIDP campaign renderer, rooms/loading, authoritative snapshots, native poses, 4 NPC payloads, cache release and PvP at "+(320*scale)+"x"+(240*scale));System.exit(0);
     }
