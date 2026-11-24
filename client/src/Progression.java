@@ -1,6 +1,6 @@
 /** Shared cumulative EXP and equipment rating, CLDC compatible. */
 final class Progression {
- static int level(int exp){return Math.min(70,1+(int)((Math.sqrt(1+Math.max(0,exp)*4.0/25)-1)/2));}
+ static int level(int exp){int lo=1,hi=70;while(lo<hi){int mid=(lo+hi+1)/2;if(exp>=25*(mid-1)*mid)lo=mid;else hi=mid-1;}return lo;}
  static int experienceForLevel(int lv){lv=Math.max(1,Math.min(70,lv));return 25*(lv-1)*lv;}
  static int baseHp(int exp){return Battle.MAXHP+(30000-Battle.MAXHP)*(level(exp)-1)/69;}
  static int bonus(int exp){return (level(exp)-1)*5;}

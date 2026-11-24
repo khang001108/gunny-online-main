@@ -1369,6 +1369,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     if (buffFlash > 0)
                         buffFlash--;
                 }
+                if(presentation.showFps)updateMs=(updateMs*3+(int)Math.min(1000L,System.currentTimeMillis()-began)+2)/4;
                 repaint();
                 serviceRepaints();
             }
@@ -1792,10 +1793,12 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     private int fpsWindowFrames, fpsValue;
     private String fpsText = "FPS 0",netText="",netText2="";
     private long lastNetRx,lastNetTx;
+    private volatile int updateMs,paintMs;
     boolean portraitViewport;Image portraitSurface;
     int pointerX(int x,int y){return portraitViewport?y-(getHeight()-320*s)/2:x;}
     int pointerY(int x,int y){return portraitViewport?240*s-1-(x-(getWidth()-240*s)/2):y;}
     protected synchronized void paint(Graphics graphics) {
+        long paintStart=presentation.showFps?System.currentTimeMillis():0;
         portraitViewport=getWidth()<320*s&&getWidth()>=240*s&&getHeight()>=320*s;
         if(portraitViewport){
             if(portraitSurface==null)portraitSurface=Image.createImage(320*s,240*s);
@@ -1803,6 +1806,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             graphics.setClip(0,0,getWidth(),getHeight());graphics.setColor(0x10182a);graphics.fillRect(0,0,getWidth(),getHeight());
             graphics.drawRegion(portraitSurface,0,0,320*s,240*s,Sprite.TRANS_ROT90,(getWidth()-240*s)/2,(getHeight()-320*s)/2,Graphics.TOP|Graphics.LEFT);
         }else{portraitSurface=null;paintGame(graphics);}
+        if(paintStart!=0)paintMs=(paintMs*3+(int)Math.min(1000L,System.currentTimeMillis()-paintStart)+2)/4;
     }
     void paintGame(Graphics graphics) {
         g = graphics;
@@ -1873,7 +1877,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             fpsWindowFrames++;
             if (now - fpsWindowStart >= 1000) {
                 fpsValue = (int)(fpsWindowFrames * 1000L / Math.max(1L, now - fpsWindowStart));
-                fpsText = "FPS " + fpsValue; // Allocate only once per second on Java ME.
+                fpsText = "FPS " + fpsValue + (onlineBattle()?" U"+updateMs+" P"+paintMs:""); // Once per second.
                 if(onlineBattle()){
                     long rx=net.tcp.rxBytes+net.events.transport.rxBytes,tx=net.tcp.txBytes+net.events.transport.txBytes;
                     long ms=Math.max(1,now-fpsWindowStart);
@@ -1886,7 +1890,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 fpsWindowStart = now;
             }
             all();
-            rect(0,0,48,14,0x21170e);
+            rect(0,0,onlineBattle()?Math.min(160,Math.max(48,pcWidth(fpsText)+6)):48,14,0x21170e);
             pcText(fpsText,3,2);
             if(onlineBattle()&&netText.length()>0){rect(0,14,240,26,0x21170e);pcText(netText,3,15);pcText(netText2,3,28);}
         } else {
@@ -2286,6 +2290,11 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     final DungeonConditions conditions=new DungeonConditions(this);
+    // Exact logical screen bounds; keep all visible effects and animation frames.
+    static boolean worldVisible(int x,int y,int w,int h) {
+        return x<320 && y<240 && x+w>0 && y+h>0;
+    }
+
     void drawBattle() {
         if (onlineBattle())
             net.visuals.age(game, System.currentTimeMillis());
@@ -2329,6 +2338,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 }
                 int fade = game.trailAge[i] * 6 / game.trailLife[i];
                 int size = projectileArtSize(game.trailWeapon[i]);
+                if(!worldVisible(game.trailX[i]/256-cameraX-size/2,game.trailY[i]/256-cameraY-size/2,size,size))continue;
                 part(trailArt[game.trailWeapon[i]], game.trailFrame[i] * size, fade * size, size, size,
                         game.trailX[i] / 256 - cameraX - size / 2, game.trailY[i] / 256 - cameraY - size / 2, false);
             }
@@ -2346,7 +2356,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     img(queenArrowImage(b.vx,b.vy),x-16,y-16);
                 } else if (b.fly) {
                     drawFlight(b.vx, b.vy, b.age / 8 % 2, x, y);
-                } else
+                } else if(worldVisible(x-size/2,y-size/2,size,size))
                     part(bullets[b.weapon], projectileFrame(b) * size, b.weapon == 9 ? (b.age / 4 % 5) * size : 0, size,
                             size, x - size / 2, y - size / 2, false);
             }
@@ -2358,6 +2368,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     loadout.impact(b.time, x, y);
                     continue;
                 }
+                if(!worldVisible(x-48,y-48,96,96))continue;
                 int ef = Math.min(11, b.time * 12 / 25);
                 part(impactArt(b.weapon), ef % 4 * 96, ef / 4 * 96, 96, 96, x - 48, y - 48, false);
             }
@@ -2829,6 +2840,16 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         part(art,pose%5*100,pose/5*102,100,102,x-50,y-98,flip);
     }
 
+    final String[] battleNameSource=new String[Battle.MAX_UNITS],battleNameShort=new String[Battle.MAX_UNITS];
+    String battleLabel(int index){
+        String label=actorName(index);
+        if(!game.teams)return label;
+        if(label.equals(battleNameSource[index]))return battleNameShort[index];
+        battleNameSource[index]=label;
+        if(textWidth(label)>44){while(label.length()>1&&textWidth(label+"...")>44)label=label.substring(0,label.length()-1);label+="...";}
+        return battleNameShort[index]=label;
+    }
+
     void drawUnitRaw(int index) {
         if(index>=6&&game.units[index].npc==0)return;
         if(offlineDungeon.active&&index>0&&index<6&&index%2==0&&offlineDungeon.allyAt(index)<0)return;
@@ -2927,13 +2948,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         }
         rect(x - 13, y + 2, 26, 3, 0x293040);
         rect(x - 12, y + 3, 24 * u.hp / u.maxHp, 1, (game.teams ? u.team == 0 : index == 0) ? 0x58b8ff : 0xff7954);
-        String label = actorName(index);
-        if (game.teams && textWidth(label) > 44) {
-            while (label.length() > 1 && textWidth(label + "...") > 44)
-                label = label.substring(0, label.length() - 1);
-            label += "...";
-        }
         if (x >= 0 && x < 320) {
+            String label = battleLabel(index);
             Image level = levelIcon(actorExp(index));
             int levelSpace = level == null ? 0 : level.getWidth() / s + 3;
             int labelWidth = textWidth(label);
@@ -3002,15 +3018,14 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 stampSlopeLayer((onlineBattle() || index > 0) && actors[index] != null ? actors[index] : hero[sex],
                         anim, u.face < 0);
             int cs = Battle.cos(u.slope), sn = Battle.sin(u.slope), ax = 44 * s, ay = 60 * s;
-            for (int py = 0; py < side; py++)
-                for (int px = 0; px < side; px++) {
-                    int dx = px - ax, dy = py - ay, sx = ax + (cs * dx - sn * dy + 512) / 1024,
-                            sy = ay + (sn * dx + cs * dy + 512) / 1024, c = 0;
-                    if (sx >= 0 && sx < side && sy >= 0 && sy < side) {
-                        c = slopePixels[sy * side + sx];
-                    }
-                    slopeRotated[py * side + px] = c;
+            int rowX=-cs*ax+sn*ay+512,rowY=-sn*ax-cs*ay+512,pos=0;
+            for(int py=0;py<side;py++,rowX-=sn,rowY+=cs){
+                int nx=rowX,ny=rowY;
+                for(int px=0;px<side;px++,nx+=cs,ny+=sn){
+                    int sx=ax+((nx+(nx<0?1023:0))>>10),sy=ay+((ny+(ny<0?1023:0))>>10);
+                    slopeRotated[pos++]=sx>=0&&sx<side&&sy>=0&&sy<side?slopePixels[sy*side+sx]:0;
                 }
+            }
             slopeBody[index] = Image.createRGBImage(slopeRotated, side, side, true);
             slopeKeys[index] = key;
         }
