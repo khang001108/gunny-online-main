@@ -103,7 +103,7 @@ public class UiSulan7912Check {
            int[] ages={0,60,91,190,270};for(int age:ages){while(SulanRules.INTRO-b.tribalFx<age)b.tick();sync(server,room,host,c);shot(c,"sulan7912-intro-"+age);}
            while(b.tribalFx>0)b.tick();b.units[1].hp=0;b.check();sync(server,room,host,c);shot(c,"sulan7912-borrow");
            for(int t=0;t<115;t++)b.tick();sync(server,room,host,c);shot(c,"sulan7912-rebirth");
-           for(int t=115;t<250;t++)b.tick();sync(server,room,host,c);shot(c,"sulan7912-bean");
+           for(int t=115;t<SulanRules.TRANSFORM-10;t++)b.tick();sync(server,room,host,c);shot(c,"sulan7912-bean");
            while(b.tribalFx>0)b.tick();b.beginTurn(1);for(int t=0;t<75;t++)b.tick();sync(server,room,host,c);shot(c,"sulan7912-hellfire");
            int turn=b.turn;for(int t=0;t<900&&turn==b.turn;t++)b.tick();if(b.active!=6)throw new AssertionError("Sulan ends all salvos before bean turn");
            for(int t=0;t<26;t++)b.tick();sync(server,room,host,c);shot(c,"sulan7912-extinguish");if(c.game.sulanFireCount!=0)throw new AssertionError("Fire state synced to MIDP");

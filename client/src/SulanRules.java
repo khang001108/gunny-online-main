@@ -2,7 +2,8 @@
  * 30 simulation ticks per second; bounded fire fields, no render-time damage.
  */
 final class SulanRules {
- static final int INTRO=330,TITLE_AT=170,TRANSFORM=300,DEATH=150;
+ static final int INTRO=350,TITLE_AT=170,TRANSFORM=240,DEATH=150;
+ static final int GOLD_END=75,RED_END=140,BEAN_AT=155,BEAN_TALK=200,ROAR_AT=255,ROAR_CAMERA=291,ROAR_HIT=315;
  static final int INTRO_LINE=1,ROAR=2,SPEAR=3,HIT_GOLD=4,HIT_GOLD2=5,BORROW=6,REBIRTH=7,BEAN=8,NEAR=9,STORY1=10,STORY2=11,STORY3=12,HIT_RED=13,HIT_RED2=14,HIT_RED3=15,HELL=16,FURY=17,FAREWELL=18,CALL=19,ADD_ATTACK=20;
  static final int[] ADD_SLOTS={3,5,7,8,9,10,11};
  static boolean active(Battle b){return b.dungeonStage==6;}
@@ -34,31 +35,33 @@ final class SulanRules {
  static int target(Battle b,int index){for(int i=0;i<6;i+=2)if(b.units[i].hp>0&&index--==0)return i;return firstPlayer(b);}
  static boolean stomping(Battle b){return active(b)&&b.units[b.active].npc==TribalRules.RAGE&&b.tribalState==TribalRules.SPECIAL&&b.tribalClock>=45&&b.tribalClock<=90;}
  static boolean cinematic(Battle b){return active(b)&&b.tribalFx>0&&(b.tribalState==TribalRules.OPENING||b.tribalState==TribalRules.TRANSFORM||b.tribalState==TribalRules.DEAD);}
- static int cameraActor(Battle b){if(stomping(b))return firstPlayer(b);if(b.tribalState==TribalRules.TRANSFORM&&TRANSFORM-b.tribalFx>=180)return 6;return b.tribalState==TribalRules.OPENING&&INTRO-b.tribalFx<60?firstPlayer(b):1;}
+ static int cameraActor(Battle b){if(stomping(b))return firstPlayer(b);if(b.tribalState==TribalRules.TRANSFORM&&TRANSFORM-b.tribalFx>=BEAN_AT)return 6;if(b.tribalState==TribalRules.OPENING){int t=INTRO-b.tribalFx;if(t<60||t>=ROAR_CAMERA)return firstPlayer(b);}return 1;}
  static int drop(Battle b){int age=INTRO-b.tribalFx;return b.tribalState==TribalRules.OPENING&&age<90?Math.max(0,140-(age-60)*(age-60)*140/900):0;}
- static boolean shake(Battle b){if(active(b)&&b.units[b.active].npc==TribalRules.RAGE&&b.tribalState==TribalRules.SPECIAL&&b.tribalClock>=45&&b.tribalClock<=78)return true;int age=INTRO-b.tribalFx;return b.tribalState==TribalRules.OPENING&&(age>=90&&age<108||age>=265&&age<280)||b.tribalState==TribalRules.DEAD&&DEATH-b.tribalFx>=70&&DEATH-b.tribalFx<90;}
+ static boolean shake(Battle b){if(active(b)&&b.units[b.active].npc==TribalRules.RAGE&&b.tribalState==TribalRules.SPECIAL&&b.tribalClock>=45&&b.tribalClock<=78)return true;int age=INTRO-b.tribalFx;return b.tribalState==TribalRules.OPENING&&(age>=90&&age<108||age>=ROAR_HIT-10&&age<ROAR_HIT+10)||b.tribalState==TribalRules.DEAD&&DEATH-b.tribalFx>=70&&DEATH-b.tribalFx<90;}
  static void flash(Battle b,int x,int y){Battle.Blast f=new Battle.Blast();f.x=x;f.y=y;f.weapon=TribalRules.FIRE_SHOT;f.radius=20;if(b.blastCount<b.blasts.length)b.blasts[b.blastCount++]=f;b.hitSerial++;}
- static void transform(Battle b){int x=b.units[1].x;TribalRules.spawn(b,1,TribalRules.RAGE,x);b.tribalPhase=2;b.tribalWave=0;b.tribalState=TribalRules.TRANSFORM;b.tribalFx=TRANSFORM;b.sulanFireCount=0;b.ballCount=b.bursts=b.settle=0;b.finishPower();b.charging=b.pendingNext=false;say(b,BORROW,1,100);}
+ static void transform(Battle b){b.tribalWave=0;b.tribalState=TribalRules.TRANSFORM;b.tribalFx=TRANSFORM;b.sulanFireCount=0;b.ballCount=b.bursts=b.settle=0;b.finishPower();b.charging=b.pendingNext=false;say(b,BORROW,1,100);}
  static void effect(Battle b){
   int state=b.tribalState;
   if(state==TribalRules.OPENING){int t=INTRO-b.tribalFx;
    if(t==90){flash(b,b.units[1].x,b.units[1].y);say(b,INTRO_LINE,1,80);}
    if(t==TITLE_AT)b.sulanTalk=0;
-   if(t==255){b.units[1].attackTicks=36;say(b,ROAR,1,75);}
-   if(t==265)flash(b,b.units[1].x,b.units[1].y-25);
+   if(t==ROAR_AT){b.units[1].attackTicks=36;say(b,ROAR,1,75);}
+   if(t==ROAR_HIT){int victim=firstPlayer(b);flash(b,b.units[victim].x,b.units[victim].y-15);hurt(b,victim,TribalRules.DAMAGE[b.dungeonDifficulty]);b.check();}
   }else if(state==TribalRules.TRANSFORM){int t=TRANSFORM-b.tribalFx;
-   if(t==100){flash(b,b.units[1].x,b.units[1].y-25);say(b,REBIRTH,1,80);}
-   if(t==180){int x=0;for(int i=0;i<6;i+=2)if(b.units[i].hp>0)x=Math.max(x,b.units[i].x);TribalRules.spawn(b,6,TribalRules.BEAN,Battle.clamp(x+55,28,b.units[1].x-55));b.units[6].maxHp=b.units[6].hp=beanHp(b.dungeonDifficulty);b.units[6].face=b.units[1].x<b.units[6].x?-1:1;say(b,BEAN,6,60);}
-   if(t==240){b.units[6].attackTicks=36;say(b,NEAR,6,90);}
+   if(t==GOLD_END){int x=b.units[1].x;TribalRules.spawn(b,1,TribalRules.RAGE,x);b.tribalPhase=2;b.units[1].flashTicks=0;say(b,REBIRTH,1,65);}
+   if(t==BEAN_AT){int x=0;for(int i=0;i<6;i+=2)if(b.units[i].hp>0)x=Math.max(x,b.units[i].x);TribalRules.spawn(b,6,TribalRules.BEAN,Battle.clamp(x+55,28,b.units[1].x-55));b.units[6].maxHp=b.units[6].hp=beanHp(b.dungeonDifficulty);b.units[6].face=b.units[1].x<b.units[6].x?-1:1;say(b,BEAN,6,60);}
+   if(t==BEAN_TALK){b.units[6].attackTicks=36;say(b,NEAR,6,90);}
   }else if(state==TribalRules.DEAD){int t=DEATH-b.tribalFx;
    if(t==70)flash(b,b.units[1].x,b.units[1].y-25);
   }
+  if(b.over)return;
   if(b.sulanTalk>0)b.sulanTalk--;
   if(--b.tribalFx>0)return;
   if(state==TribalRules.DEAD){TribalRules.check(b);return;}
-  b.tribalState=TribalRules.IDLE;b.tribalClock=0;b.botPhase=0;b.active=1;b.next();
+  b.tribalClock=0;b.botPhase=0;b.next();
  }
  static int nextActor(Battle b,int actor){
+  if(b.tribalFx==0&&(b.tribalState==TribalRules.TRANSFORM||b.tribalState==TribalRules.OPENING))return firstPlayer(b);
   if(actor==1&&b.tribalPhase==2&&b.units[6].npc==TribalRules.BEAN&&b.units[6].hp>0)return 6;
   if(actor==1||actor==6){int melee=firstAdd(b,TribalRules.SPEAR,-1);if(melee>=0)return melee;return nextEliteOrPlayer(b,-1);}
   if(b.units[actor].npc==TribalRules.SPEAR)return nextEliteOrPlayer(b,-1);
@@ -80,7 +83,7 @@ final class SulanRules {
  }
  /** Keep surviving reinforcements; refill the native bounded roster every second boss turn. */
  static void callAdds(Battle b){
-  int troops=b.tribalPhase==1?3:5,elites=b.tribalPhase==1?1:2,rank=0;
+  int troops=3,elites=b.tribalPhase==1?1:2,rank=0;
   for(int type=0;type<2;type++){int kind=type==0?TribalRules.ELITE:TribalRules.SPEAR,missing=(type==0?elites:troops)-addCount(b,kind);
    for(int i=0;i<ADD_SLOTS.length&&missing>0;i++){int slot=ADD_SLOTS[i];if(b.units[slot].hp>0)continue;int x=frontSpawn(b,slot,rank++);if(x<0)continue;TribalRules.spawn(b,slot,kind,x);b.units[slot].face=b.units[1].face;missing--;}
   }

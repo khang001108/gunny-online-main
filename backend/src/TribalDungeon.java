@@ -13,8 +13,28 @@ final class TribalDungeon {
   var r=server.requireRoom(s);synchronized(r){if(!is(r))throw new IllegalArgumentException("Không phải Bộ Lạc Tà Thần");if(op.equals("tribalsettings")){int difficulty=in.readUnsignedByte();if(r.host!=s||r.phase!=0||r.dungeonStage!=3)throw new IllegalArgumentException("Chỉ chọn độ khó trước ải 1");for(var member:r.members)if(member!=null)eligible(member,difficulty);r.difficulty=difficulty;r.clearArmed();server.lobby(out,r,s);return;}}
   throw new IllegalArgumentException("Sai thao tác Bộ Lạc Tà Thần");
  }
- static void waiting(GunnyServer.Room r){for(int i=0;i<6;i++){var a=r.avatars[i];if(i%2==1){a.name=r.battle==null?"Bộ Lạc Tà Thần":TribalRules.name(r.battle.units[i].npc);a.bot=true;a.owner=null;}else if(r.members[i]==null){a.name="Đang chờ";a.bot=false;a.owner=null;}}}
- static void begin(GunnyServer.Room r){if(r.dungeonStage==3)r.campaignId=UUID.randomUUID().toString();for(int i=0;i<6;i+=2)if(r.members[i]==null){r.battle.units[i].hp=0;r.battle.units[i].dead=true;}TribalRules.setup(r.battle,r.dungeonStage-2,r.difficulty,r.beanSaved);waiting(r);checkpoint(r);}
+ // The selected bot ID, not an absent Session or an avatar preview, owns an AI seat.
+ static boolean allyPresent(GunnyServer.Room r,int seat){return seat>=0&&seat<6&&seat%2==0&&(r.members[seat]!=null||r.selectedBots[seat]>=0);}
+ static void waiting(GunnyServer.Room r){
+  for(int i=0;i<6;i++){
+   var a=r.avatars[i];
+   if(i%2==1){a.name=r.battle==null?"Bộ Lạc Tà Thần":TribalRules.name(r.battle.units[i].npc);a.bot=true;a.owner=null;}
+   else if(r.members[i]==null){
+    int id=r.selectedBots[i];a.owner=null;
+    if(id>=0){a.bot=true;a.name=GunnyServer.BOT_NAMES[id];a.sex=id/4;a.skin=GunnyServer.BOT_SKINS[id];a.weapon=GunnyServer.WEAPONS[id%4];a.experience=Progression.botExperience(id);}
+    else{a.name="Đang chờ";a.bot=false;a.experience=0;}
+   }
+  }
+ }
+ static void begin(GunnyServer.Room r){
+  if(r.dungeonStage==3)r.campaignId=UUID.randomUUID().toString();
+  for(int i=0;i<6;i+=2){
+   var u=r.battle.units[i];
+   if(!allyPresent(r,i)){u.hp=u.maxHp=0;u.energy=0;u.dead=true;u.human=false;}
+   else if(r.members[i]==null){var a=r.avatars[i];u.human=false;u.dead=false;u.weapon=a.weapon;u.experience=a.experience;u.botStyle=r.selectedBots[i]%4;ItemRules.apply(u,a.wornMask);}
+  }
+  TribalRules.setup(r.battle,r.dungeonStage-2,r.difficulty,r.beanSaved);waiting(r);checkpoint(r);
+ }
  static void progress(GunnyServer.Room r){if(r.battle.over){r.savedTribalTurn=-2;checkpoint(r);return;}if(r.savedTribalTurn!=r.battle.turn){r.savedTribalTurn=r.battle.turn;checkpoint(r);}}
  static Map<String,Object> state(GunnyServer.Room r){List<Object> units=new ArrayList<>();for(var u:r.battle.units)units.add(List.of(u.npc,u.x,u.y,u.hp,u.maxHp,u.dead));return Map.of("turn",r.battle.turn,"round",r.battle.tribalRound,"phase",r.battle.tribalPhase,"wave",r.battle.tribalWave,"active",r.battle.active,"units",units,"bean",r.beanSaved,"over",r.battle.over,"winner",r.battle.winner);}
  static void checkpoint(GunnyServer.Room r){String run=r.campaignId;int stage=r.dungeonStage-2,difficulty=r.difficulty,turn=r.battle.turn;List<String> members=new ArrayList<>();for(var m:r.members)if(m!=null)members.add(m.id);var state=state(r);r.savesTribal(run,stage,difficulty,turn,members,state);}

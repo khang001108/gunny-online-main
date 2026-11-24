@@ -147,8 +147,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
 
     final Image[] loadingHeroes=new Image[6];
     final int[] loadingWidths=new int[6];
-    boolean loadingParticipant(int index){return index>=0&&index<6&&index<game.unitCount&&(!(onlineBattle()&&net.roomKind==3)||index%2==0&&net.present[index])&&game.units[index].npc==0&&game.units[index].hp>0;}
-    int loadingTeam(int index){return game.teams?game.units[index].team:index;}
+    boolean loadingParticipant(int index){return index>=0&&index<6&&index<game.unitCount&&(onlineBattle()&&net.roomKind==3?index%2==0&&net.present[index]:game.units[index].npc==0&&game.units[index].hp>0);}
+    int loadingTeam(int index){return onlineBattle()&&net.roomKind==3?index%2:game.teams?game.units[index].team:index;}
     int[] loadingSlot(int actor){
         int team=loadingTeam(actor),count=0,leader=-1,rank=0;
         for(int i=0;i<game.unitCount&&i<6;i++)if(loadingParticipant(i)&&loadingTeam(i)==team){if(leader<0)leader=i;count++;}

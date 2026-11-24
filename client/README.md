@@ -50,4 +50,4 @@ Asset còn thiếu và nguồn ảnh: `client/VIP-ASSETS.json`. Source chỉ có
 
 ## Tà Thần 7.9.18
 
-Ba ải theo video người dùng: 20 lính bộ lạc, anh em Bulan, Sulan vàng → đỏ. Sau mỗi 2 lượt boss gọi bù lính vàng 3+1, đỏ 5+2; lính có lượt đánh, chọn cả cây đậu và nhân vật. Cần cập nhật cả server và JAR/JAD. Không có SQL mới. Xem `../docs/BAO-CAO-7.9.18.md` và `../docs/TA-THAN-VIDEO.md`.
+Ba ải theo video người dùng: 20 lính bộ lạc (tối đa 6 lính cùng lúc, không bắt buộc hạ chiến sĩ), anh em Bulan, Sulan vàng → đỏ. Sau mỗi 2 lượt boss gọi bù lính vàng 3+1, đỏ 3+2 (hotfix); lính có lượt đánh, chọn cả cây đậu và nhân vật. Cần cập nhật cả server và JAR/JAD. Không có SQL mới. Xem `../docs/BAO-CAO-7.9.18.md` và `../docs/TA-THAN-VIDEO.md`.

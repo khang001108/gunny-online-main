@@ -109,14 +109,14 @@ public class UiPerf7916Check {
            int addTurn=b.turn;for(int tick=0;tick<32&&b.turn==addTurn;tick++)b.tick();sync(server,room,host,c);shot(c,"sulan7913-adds-walk");
            b.units[1].hp=0;b.check();sync(server,room,host,c);shot(c,"sulan7912-borrow");
            for(int t=0;t<115;t++)b.tick();sync(server,room,host,c);shot(c,"sulan7912-rebirth");
-           for(int t=115;t<250;t++)b.tick();sync(server,room,host,c);shot(c,"sulan7912-bean");
+           for(int t=115;t<SulanRules.TRANSFORM-10;t++)b.tick();sync(server,room,host,c);shot(c,"sulan7912-bean");
            while(b.tribalFx>0)b.tick();b.beginTurn(1);for(int t=0;t<75;t++)b.tick();sync(server,room,host,c);shot(c,"sulan7912-hellfire");
            int turn=b.turn;for(int t=0;t<900&&turn==b.turn;t++)b.tick();if(b.active!=6)throw new AssertionError("Sulan ends all salvos before bean turn");
            for(int t=0;t<26;t++)b.tick();sync(server,room,host,c);shot(c,"sulan7912-extinguish");if(c.game.sulanFireCount!=0)throw new AssertionError("Fire state synced to MIDP");
            b.beginTurn(1);for(int t=0;t<66;t++)b.tick();sync(server,room,host,c);shot(c,"sulan7912-fury");
            int redTurn=b.turn;for(int tick=0;tick<1200&&b.turn==redTurn;tick++)b.tick();
            sync(server,room,host,c);for(int tick=0;tick<35;tick++)c.game.tickVisuals();shot(c,"sulan7913-red-adds");bench(server,room,host,c);
-           if(SulanRules.addCount(c.game,TribalRules.SPEAR)!=5||SulanRules.addCount(c.game,TribalRules.ELITE)!=2||c.game.units[6].npc!=TribalRules.BEAN)throw new AssertionError("Red reinforcements and reserved pea decoded");
+           if(SulanRules.addCount(c.game,TribalRules.SPEAR)!=3||SulanRules.addCount(c.game,TribalRules.ELITE)!=2||c.game.units[6].npc!=TribalRules.BEAN)throw new AssertionError("Red reinforcements and reserved pea decoded");
            b.units[1].hp=0;b.check();for(int t=0;t<125;t++)b.tick();sync(server,room,host,c);shot(c,"sulan7912-charred");
            for(int id=11;id<=14;id++){var ball=new Battle.Ball();ball.weapon=id;ball.vx=900;ball.vy=-150;ball.x=240*256;ball.y=100*256;c.game.balls[0]=ball;c.game.ballCount=1;c.game.stampTrail(ball);shot(c,"sulan7912-payload-"+id);}
            c.game.ballCount=0;

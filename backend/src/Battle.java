@@ -20,7 +20,7 @@ final class Battle {
     int enemyOf(int actor){if(TribalRules.active(this))return TribalRules.target(this,actor);int best=actor==0?1:0,distance=99999;for(int i=0;i<unitCount;i++)if(i!=actor&&units[i].hp>0&&(!teams||units[i].team!=units[actor].team)){int d=Math.abs(units[i].x-units[actor].x);if(d<distance){distance=d;best=i;}}return best;}
     static int targetY(Unit u){return u.y-(u.npc>=TribalRules.SULAN?30:u.npc==3?42:u.npc>0?16:12);}
     static boolean hitsUnit(Unit u,int x,int y){int dx=x-u.x,dy=y-targetY(u);if(u.npc==0)return dx*dx+dy*dy<70;int rx=u.npc>=TribalRules.SULAN?22:u.npc==3?25:16,ry=u.npc>=TribalRules.SULAN?31:u.npc==3?43:15;if(Math.abs(dx)>rx||Math.abs(dy)>ry)return false;return dx*dx*ry*ry+dy*dy*rx*rx<=rx*rx*ry*ry;}
-    static int gravity(Ball b){return TribalRules.payload(b.weapon)?6:b.fly||b.freeze?11:b.weapon==4?14:b.weapon==2?10:b.weapon==7?12:11;}
+    static int gravity(Ball b){return b.weapon==TribalRules.SPIRIT_SHOT?20:TribalRules.payload(b.weapon)?6:b.fly||b.freeze?11:b.weapon==4?14:b.weapon==2?10:b.weapon==7?12:11;}
     static int windStep(int wind,Ball b){return b.weapon==AntCaveRules.QUEEN_ARROW||TribalRules.payload(b.weapon)?0:wind/(b.fly||b.freeze?7:b.weapon==4?11:b.weapon==2?5:b.weapon==7?8:b.weapon==1?9:7);}
     static int baseDamage(int weapon){return weapon==0?290:weapon==1?390:weapon==2?300:weapon==4?370:weapon==8?410:weapon==7?315:330;}
     static int baseRadius(int weapon){return weapon==0?15:weapon==1?10:weapon==2?10:weapon==4?17:weapon==7?14:12;}
@@ -276,7 +276,6 @@ final class Battle {
             Unit u=units[i];int dx=x-u.x,dy=y-targetY(u),dist=dx*dx+dy*dy,r=b.radius+(u.npc==3?45:23);
             if(u.hp>0&&dist<r*r&&!(TribalRules.active(this)&&units[b.owner].npc>0&&u.team==units[b.owner].team)){
                 int damage=b.damage*(100-(int)Math.sqrt(dist)*65/r)/100;
-                if(TribalRules.active(this)&&u.npc==TribalRules.RAGE)damage=Math.max(1,damage*100/(100+u.defense));
                 if(SulanRules.active(this))damage=SulanRules.damage(this,b,i,damage);
                 if(u.god)damage=0;
                 if(lightBotDamage(b.owner,i))damage=Math.min(60,Math.max(1,damage/10));
@@ -308,7 +307,7 @@ final class Battle {
     }
     void check(){for(int i=0;i<unitCount;i++)if(units[i].god)units[i].hp=units[i].maxHp;if(!over&&(dungeonStage==1||dungeonStage==2&&units[1].hp>0)&&turn>200){finishPower();over=true;winner=1;charging=false;winSerial++;return;}if(TribalRules.active(this)){if(!over)TribalRules.check(this);return;}boolean left=false,right=false;for(int i=0;i<unitCount;i++){Unit u=units[i];if(u.hp<=0&&!u.dead&&(dungeonStage==0||u.maxHp>0)){u.dead=true;u.deathX=clamp(u.x,12,W-12);u.deathY=clamp(u.y,40,H-4);}if(u.hp>0){if((teams?u.team:i)==0)left=true;else right=true;}}if(dungeonStage==2&&units[1].hp<=0){if(!AntCaveRules.dying(this)&&!over){ballCount=bursts=settle=0;charging=pendingNext=false;botPhase=AntCaveRules.QUEEN_DEATH;}return;}if(!left||!right){finishPower();over=true;winner=!left?(!right?2:1):0;charging=false;winSerial++;}}
     void finishPower(){Unit u=units[active];if(u.pendingPower>=0){u.lastPower=u.pendingPower;u.pendingPower=-1;}}
-    void next(){finishPower();check();if(over||SulanRules.active(this)&&tribalFx>0)return;if(deferNext){pendingNext=true;charging=false;return;}Unit previous=units[active];if(previous.invisible>0)previous.invisible--;if(previous.frozen==2){previous.freezeTurns=Math.max(0,previous.freezeTurns-1);previous.frozen=previous.freezeTurns>0?1:0;}int next=active;if(TribalRules.active(this))next=TribalRules.nextActor(this,active);else if(dungeonStage>0)next=AntCaveRules.nextActor(this,active);else do{next=(next+1)%unitCount;}while(units[next].hp<=0);beginTurn(next);}
+    void next(){finishPower();check();if(over||TribalRules.active(this)&&tribalFx>0)return;if(deferNext){pendingNext=true;charging=false;return;}Unit previous=units[active];if(previous.invisible>0)previous.invisible--;if(previous.frozen==2){previous.freezeTurns=Math.max(0,previous.freezeTurns-1);previous.frozen=previous.freezeTurns>0?1:0;}int next=active;if(TribalRules.active(this))next=TribalRules.nextActor(this,active);else if(dungeonStage>0)next=AntCaveRules.nextActor(this,active);else do{next=(next+1)%unitCount;}while(units[next].hp<=0);beginTurn(next);}
     void beginTurn(int actor){
         active=actor;turn++;
         Unit u=units[active];

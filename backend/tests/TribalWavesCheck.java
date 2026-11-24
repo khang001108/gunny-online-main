@@ -3,11 +3,11 @@ public class TribalWavesCheck {
  static void ok(boolean v,String s){if(!v)throw new AssertionError(s);}
  static int live(Battle b,int kind){int n=0;for(var u:b.units)if(u.hp>0&&u.npc==kind)n++;return n;}
  public static void main(String[] args){
-  var b=TribalCheck.battle(1,0);ok(live(b,TribalRules.SPEAR)==5&&live(b,TribalRules.ELITE)==1,"Initial five troops and one warrior");
+  var b=TribalCheck.battle(1,0);ok(live(b,TribalRules.SPEAR)==6&&live(b,TribalRules.ELITE)==1,"Initial six troops and one warrior");
   for(var u:b.units)if(u.hp>0&&u.npc==TribalRules.SPEAR)ok(u.x>b.units[1].x,"Troops spawn behind warrior facing party");
-  TribalRules.wave(b);ok(live(b,TribalRules.SPEAR)==10&&live(b,TribalRules.ELITE)==1,"Ten troops plus one warrior fit");
-  for(int n=0;n<4;n++)TribalRules.wave(b);ok(live(b,TribalRules.SPEAR)==10,"Troop cap");
-  int killed=0;for(var u:b.units)if(killed<3&&u.hp>0&&u.npc==TribalRules.SPEAR){u.hp=0;killed++;}b.check();TribalRules.wave(b);ok(live(b,TribalRules.SPEAR)==10,"Refill only available places");
+  TribalRules.wave(b);ok(live(b,TribalRules.SPEAR)==6&&live(b,TribalRules.ELITE)==1,"Six troops plus one warrior fit");
+  for(int n=0;n<4;n++)TribalRules.wave(b);ok(live(b,TribalRules.SPEAR)==6,"Troop cap");
+  int killed=0;for(var u:b.units)if(killed<3&&u.hp>0&&u.npc==TribalRules.SPEAR){u.hp=0;killed++;}b.check();TribalRules.wave(b);ok(live(b,TribalRules.SPEAR)==6,"Refill only available places");
   b.active=1;b.ballCount=0;b.tribalClock=72;TribalRules.tickAI(b);ok(b.ballCount==3,"Three shots");
   for(int i=1;i<3;i++){ok(b.balls[i].x==b.balls[0].x&&b.balls[i].y==b.balls[0].y,"Same muzzle, no parallel bundle");ok(b.balls[i].vx!=b.balls[i-1].vx&&b.balls[i].vy!=b.balls[i-1].vy,"Angular spread");}
   ok(b.balls[1].vy<0&&Battle.gravity(b.balls[1])>0,"Upward launch then gravity");

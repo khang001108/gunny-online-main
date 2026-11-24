@@ -118,7 +118,7 @@ final class OnlineChunks {
         }
     }
     void finish() {
-        if (!ownPending||(!net.c.game.pendingNext&&!net.c.game.over)||net.c.powShotPending) return;
+        if (!ownPending||(!net.c.game.pendingNext&&!net.c.game.over&&!(SulanRules.active(net.c.game)&&resolved))||net.c.powShotPending) return;
         try {
             net.c.resetOnlineTerrain();net.readSnapshot(new DataInputStream(new ByteArrayInputStream(finalFrame)));
             net.c.game.pendingNext=resolved;net.predicting=false;net.resolutionSeen=resolved||net.c.game.over;

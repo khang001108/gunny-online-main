@@ -8,7 +8,7 @@ public final class Sulan7912Check {
  static void intro(){Battle b=raid(1,0);SulanRules.reset(b);b.tribalState=TribalRules.OPENING;int hp=b.units[0].hp;
   for(int i=0;i<60;i++){ok(SulanRules.cameraActor(b)==0,"First two seconds stay on player");b.tick();}
   ok(SulanRules.cameraActor(b)==1&&SulanRules.drop(b)==140,"Camera follows falling golden boss");for(int i=0;i<31;i++)b.tick();ok(SulanRules.shake(b)&&b.sulanLine==SulanRules.INTRO_LINE,"Landing shakes and speaks");
-  while(b.tribalFx>0)b.tick();ok(b.active==0&&b.input()&&b.units[0].hp==hp,"Player starts after title and roar, no opening damage");
+  while(b.tribalFx>0)b.tick();ok(b.active==0&&b.input()&&b.units[0].hp==hp-TribalRules.DAMAGE[0],"Player starts after the stomp and its damage");
  }
  static void attacks(){for(int people=1;people<=3;people++){
   Battle b=raid(people,0);int shots=b.shotSerial;turn(b,1);ok(b.shotSerial-shots==people,"Gold throws once per alive player: "+people);ok(b.active==0,"Gold returns to first player");

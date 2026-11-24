@@ -50,14 +50,14 @@ final class TribalRules {
  static void spawn(Battle b,int slot,int kind,int x){
   Battle.Unit u=b.units[slot];u.npc=kind;u.team=kind==BEAN?0:1;u.human=false;u.dead=false;u.statsEnabled=false;
   u.maxHp=(kind==RAGE&&b.dungeonDifficulty==0?8000:HP[kind-SPEAR])*(100+b.dungeonDifficulty*45)/100;u.hp=u.maxHp;u.maxEnergy=u.energy=240;
-  u.weapon=8;u.attackBonus=DAMAGE[b.dungeonDifficulty]-Battle.baseDamage(8);u.defense=kind==RAGE?640:0;
+  u.weapon=8;u.attackBonus=DAMAGE[b.dungeonDifficulty]-Battle.baseDamage(8);u.defense=0;
   u.face=-1;u.angle=45;u.power=0;u.flashTicks=30;u.attackTicks=u.walk=u.frozen=u.freezeTurns=0;u.lastBuff=14;place(b,slot,x);
   if(floats(u))platform(b,u,3);
  }
  static int allyX(int actor,boolean middle){return middle?240+(actor==0?0:actor==2?-36:36):52+actor*14;}
  static void wave(Battle b){
   int live=0;for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].npc==SPEAR)live++;
-  int amount=Math.min(5,Math.min(10-live,GOAL-b.tribalDead3));
+  int amount=Math.max(0,Math.min(6-live,GOAL-b.tribalDead3));
   Battle.Unit chief=b.units[1];int placed=0;
   for(int k=1;k<ENEMIES.length&&placed<amount;k++){
    int slot=ENEMIES[k];if(b.units[slot].hp>0)continue;
@@ -103,7 +103,7 @@ final class TribalRules {
  static void heal(Battle b,Battle.Unit u,int amount){if(u.hp<=0)return;u.hp=Math.min(u.maxHp,u.hp+amount);u.flashTicks=36;u.lastBuff=13;}
  static void round(Battle b){
   b.tribalRound++;
-  if(stage(b)==1){if(b.tribalGoal>0&&b.units[1].hp<=0)spawn(b,1,ELITE,310);if(!alive(b,SPEAR))wave(b);}
+  if(stage(b)==1){if(b.tribalGoal>0&&b.units[1].hp<=0)spawn(b,1,ELITE,310);wave(b);}
   if(twins(b)){
    if(b.units[1].hp<=0&&b.units[3].hp>0&&b.tribalRound-b.tribalDead1>=reviveRounds){spawn(b,1,BROTHER,88);b.units[1].hp=b.units[1].maxHp/2;}
    if(b.units[3].hp<=0&&b.units[1].hp>0&&b.tribalRound-b.tribalDead3>=reviveRounds){spawn(b,3,SISTER,408);b.units[3].hp=b.units[3].maxHp/2;}
@@ -118,7 +118,7 @@ final class TribalRules {
  static void beginTurn(Battle b){if(SulanRules.active(b))SulanRules.beginTurn(b);if(stage(b)==1&&b.units[b.active].npc==SPEAR)wave(b);b.tribalClock=0;if(b.tribalFx==0)b.tribalState=IDLE;else if(b.tribalState==SPECIAL)b.botPhase=BEAN_POWER;
   if(b.units[b.active].npc==0&&alive(b,FATIGUE))b.units[b.active].energy=Math.max(0,b.units[b.active].energy-fatigue(b));
  }
- static void march(Battle b,int actor,int dir){Battle.Unit u=b.units[actor];int nx=u.x+dir;if(u.hp<=0||nx<18||nx>Battle.W-18)return;for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].team!=u.team&&Math.abs(nx-b.units[i].x)<20)return;int rise=0;while(rise<6&&(b.ground.solid(nx-2,u.y-rise-1)||b.ground.solid(nx+2,u.y-rise-1)))rise++;if(rise>=6)return;u.face=dir;u.x=nx;u.y-=rise;u.walk++;b.refreshAim(u);}
+ static void march(Battle b,int actor,int dir){Battle.Unit u=b.units[actor];int nx=u.x+dir;if(u.hp<=0||nx<18||nx>Battle.W-18)return;for(int i=0;i<b.unitCount;i++)if(b.units[i].hp>0&&b.units[i].team!=u.team&&Math.abs(nx-b.units[i].x)<20)return;int rise=0;while(rise<6&&(b.ground.solid(nx-2,u.y-rise-1)||b.ground.solid(nx+2,u.y-rise-1)))rise++;if(rise>=6)return;u.face=dir;u.x=nx;u.y=stage(b)==1?b.ground.surface(nx,5):u.y-rise;u.vy=0;u.walk++;b.refreshAim(u);}
  static void openingStep(Battle b,int actor,int dir){int old=b.active,fx=b.tribalFx;boolean acting=b.botActing;try{b.active=actor;b.tribalFx=0;b.botActing=true;march(b,actor,dir);}finally{b.active=old;b.tribalFx=fx;b.botActing=acting;}}
  static void tickEffect(Battle b){
   if(SulanRules.active(b)){SulanRules.effect(b);return;}
@@ -145,14 +145,14 @@ final class TribalRules {
   if(stage(b)==4&&b.units[1].hp<=0&&b.tribalPhase==1){
    SulanRules.transform(b);return false;
   }
-  if(stage(b)==1&&!enemy&&b.tribalGoal>0)return false;
-  if(stage(b)==4&&b.units[1].hp<=0||twins(b)&&b.units[1].hp<=0&&b.units[3].hp<=0||!enemy){b.tribalOutcome=0;b.tribalState=DEAD;b.tribalFx=stage(b)==4?SulanRules.DEATH:35;if(stage(b)==4){b.sulanFireCount=0;SulanRules.say(b,SulanRules.FAREWELL,1,85);}b.ballCount=b.bursts=b.settle=0;b.charging=false;return false;}
+  if(stage(b)==1&&b.tribalGoal>0&&!enemy){if(b.turn>200){win(b,1);return true;}return false;}
+  if(stage(b)==1&&b.tribalGoal==0||stage(b)==4&&b.units[1].hp<=0||twins(b)&&b.units[1].hp<=0&&b.units[3].hp<=0||!enemy&&stage(b)!=1){b.tribalOutcome=0;b.tribalState=DEAD;b.tribalFx=stage(b)==4?SulanRules.DEATH:35;if(stage(b)==4){b.sulanFireCount=0;SulanRules.say(b,SulanRules.FAREWELL,1,85);}b.ballCount=b.bursts=b.settle=0;b.charging=b.pendingNext=false;return false;}
   if(b.turn>200){win(b,1);return true;}return false;
  }
  static void projectile(Battle b,int actor,int victim,int weapon,int offset){
   if(b.ballCount>=b.balls.length)return;Battle.Unit u=b.units[actor],v=b.units[victim];Battle.Ball p=new Battle.Ball();
   p.owner=actor;p.weapon=weapon;p.x=(u.x+u.face*(u.npc>=SULAN?22:12))*256;p.y=(u.y-(u.npc>=SULAN?39:22))*256;
-  int steps=floats(u)?Math.max(150,Math.min(260,Math.abs(v.x-u.x)+90)):u.npc==ELITE?Math.max(140,Math.min(240,Math.abs(v.x-u.x)*2/3+100)):Math.max(70,Math.min(170,Math.abs(v.x-u.x)*2/3+65));
+  int steps=floats(u)?Math.max(85,Math.min(150,(Math.abs(v.x-u.x)+90)*3/5)):u.npc==ELITE?Math.max(140,Math.min(240,Math.abs(v.x-u.x)*2/3+100)):Math.max(70,Math.min(170,Math.abs(v.x-u.x)*2/3+65));
   if(weapon==CHIEF_SHOT)steps=Math.max(260,Math.min(340,Math.abs(v.x-u.x)+90));
   p.vx=(v.x*256-p.x)*4/steps;p.vy=((Battle.targetY(v)+(u.npc==ELITE?0:offset))*256-p.y)*4/steps-Battle.gravity(p)*(steps+1)/2;
   if(u.npc==ELITE){int vx=p.vx,vy=p.vy,cs=Battle.cos(offset),sn=Battle.sin(offset);p.vx=(vx*cs-vy*sn)/1024;p.vy=(vx*sn+vy*cs)/1024;}

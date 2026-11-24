@@ -268,8 +268,9 @@ final class DungeonScreen {
    drawSeat(seat, online);
 
   int stage = online ? n.dungeonStage : c.offlineDungeon.stage;
-  c.loadout.draw(online, true);
+  // Reward preview is room content, not a floating overlay. Draw before toolbar/tooltips.
   drawRewards(stage,online?n.dungeonDifficulty:c.offlineDungeon.difficulty);
+  c.loadout.draw(online, true);
 
  }
 

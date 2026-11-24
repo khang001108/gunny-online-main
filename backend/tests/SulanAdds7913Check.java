@@ -18,18 +18,18 @@ public final class SulanAdds7913Check {
  }
  static void red(){
   Battle b=raid();boss(b);boss(b);int old=SulanRules.firstAdd(b,TribalRules.SPEAR,-1);b.units[old].hp=222;Sulan7912Check.red(b);count(b,3,1);ok(b.units[old].hp==222&&b.tribalWave==0&&b.units[1].power==0,"Transform keeps gold survivors and resets red boss cadence");
-  int beanHp=b.units[6].hp;boss(b);count(b,3,1);boss(b);count(b,5,2);ok(b.units[6].npc==TribalRules.BEAN&&b.units[6].hp<beanHp&&b.units[6].hp>0,"Red reinforcements never overwrite the living pea");ok(b.active==6,"Pea keeps immediate turn after red Sulan");
+  int beanHp=b.units[6].hp;boss(b);count(b,3,1);boss(b);count(b,3,2);ok(b.units[6].npc==TribalRules.BEAN&&b.units[6].hp<beanHp&&b.units[6].hp>0,"Red reinforcements never overwrite the living pea");ok(b.active==6,"Pea keeps immediate turn after red Sulan");
   finish(b);ok(b.active==SulanRules.firstAdd(b,TribalRules.SPEAR,-1),"After extinguishing, the full troop group acts");finish(b);
   int firstElite=SulanRules.firstAdd(b,TribalRules.ELITE,-1);ok(b.active==firstElite,"First red warrior acts");finish(b);int second=SulanRules.firstAdd(b,TribalRules.ELITE,firstElite);ok(b.active==second,"Second red warrior acts");finish(b);ok(b.active==0,"Complete enemy team returns to player without looping");
-  b.units[6].hp=0;boss(b);boss(b);count(b,5,2);ok(b.units[6].npc==TribalRules.BEAN&&b.units[6].hp==0,"Calls reserve pea slot even after it dies");
-  for(int n=0;n<12;n++)boss(b);count(b,5,2);ok(b.unitCount==13,"Repeated calls keep the original bounded roster");
+  b.units[6].hp=0;boss(b);boss(b);count(b,3,2);ok(b.units[6].npc==TribalRules.BEAN&&b.units[6].hp==0,"Calls reserve pea slot even after it dies");
+  for(int n=0;n<12;n++)boss(b);count(b,3,2);ok(b.unitCount==13,"Repeated calls keep the original bounded roster");
  }
  static void positions(){for(int face:new int[]{-1,1}){
-  Battle b=raid();b.units[1].face=face;b.units[1].x=240;b.tribalPhase=2;b.units[1].power=2;SulanRules.callAdds(b);count(b,5,2);
+  Battle b=raid();b.units[1].face=face;b.units[1].x=240;b.tribalPhase=2;b.units[1].power=2;SulanRules.callAdds(b);count(b,3,2);
   for(int slot:SulanRules.ADD_SLOTS){Battle.Unit u=b.units[slot];if(u.hp<=0)continue;ok((u.x-b.units[1].x)*face>0,"Spawn is in front of boss for either facing");ok(u.face==face&&u.y==238&&u.x>=18&&u.x<=462,"Correct facing, ground and world bounds");for(int i=0;i<6;i+=2)if(b.units[i].hp>0)ok(Math.abs(b.units[i].x-u.x)>=18,"No spawn on a player");}
   ok(b.units[6].npc==0&&b.units[6].maxHp==0,"Pea slot is reserved before transformation");
  }
-  Battle party=Sulan7912Check.raid(3,0);Sulan7912Check.red(party);party.units[1].power=2;SulanRules.callAdds(party);count(party,5,2);
+  Battle party=Sulan7912Check.raid(3,0);Sulan7912Check.red(party);party.units[1].power=2;SulanRules.callAdds(party);count(party,3,2);
   for(int slot:SulanRules.ADD_SLOTS)if(party.units[slot].hp>0){Battle.Unit u=party.units[slot];ok(u.x<party.units[1].x,"Full party still spawns every reinforcement in front");for(int ally:new int[]{0,2,4,6})ok(Math.abs(party.units[ally].x-u.x)>=18,"No spawn on any of three players or pea");}
  }
  static void targets(){
