@@ -4,13 +4,14 @@ import java.util.Vector;
 /** Bounded receive-ahead queue; receipt and completed playback are separate. */
 final class OnlineChunks {
     static final int BUFFER_FRAMES=15, BUFFER_MS=500, MAX_SEGMENTS=4;
+    static final int PVP_SHOT_BUFFER_FRAMES=24, PVP_SHOT_BUFFER_MS=800;
     final OnlineClient net;
     final Vector queued=new Vector();
     int turn=-1, completed=-1, received=-1, id, remaining, kind;
     boolean terminal, resolved, ownPending, resetTerrain, playing;boolean recovering;int recoveryFailures;
     DataInputStream frames;
     byte[] finalFrame,previousFrame;
-    long waitingSince,ownSince;
+    long waitingSince,ownSince;int underruns;boolean waitingForNext;
 
     static final class Segment {
         int id, kind, count;
@@ -20,7 +21,7 @@ final class OnlineChunks {
     OnlineChunks(OnlineClient owner) { net=owner; }
     void reset() {
         turn=completed=received=-1;queued.removeAllElements();
-        frames=null;finalFrame=previousFrame=null;remaining=0;id=-1;kind=0;terminal=resolved=resetTerrain=false;ownPending=false;playing=false;waitingSince=ownSince=0;
+        frames=null;finalFrame=previousFrame=null;remaining=0;id=-1;kind=0;terminal=resolved=resetTerrain=false;ownPending=false;playing=false;waitingSince=ownSince=0;waitingForNext=false;
     }
     int requestTurn(int displayedTurn) {
         return net.prefetchCap&&turn>=0 ? turn : displayedTurn;
@@ -55,6 +56,8 @@ final class OnlineChunks {
         if (block.available()!=0) throw new IOException("Dữ liệu hành động dư.");
         boolean own=net.predicting&&net.predictedTurn==serverTurn&&net.localTurn();
         if (own) {
+            // Already validated all frames. Local prediction only needs the terminal state.
+            if(!segment.terminal){received=completed=next;return;}
             previousFrame=null;block=new DataInputStream(new ByteArrayInputStream(data));block.skipBytes(4);
             id=next;resolved=done;terminal=segment.terminal;kind=segment.kind;
             for (int i=0;i<segment.count;i++) finalFrame=frame(block);
@@ -80,19 +83,36 @@ final class OnlineChunks {
     void advance() throws IOException {
         if (queued.isEmpty()) return;
         Segment segment=(Segment)queued.elementAt(0);queued.removeElementAt(0);
+        // Build receive-ahead before entering a projectile sequence, not mid-flight.
+        if(net.prefetchCap&&net.roomKind!=3&&kind!=3&&segment.kind==3){
+            playing=false;waitingSince=System.currentTimeMillis();
+        }
         id=segment.id;kind=segment.kind;terminal=segment.terminal;resolved=segment.resolved;
         remaining=segment.count;previousFrame=null;
         frames=new DataInputStream(new ByteArrayInputStream(segment.data));frames.skipBytes(4);resetTerrain=true;
     }
+    int bufferedFrames(){int n=remaining;for(int i=0;i<queued.size();i++)n+=((Segment)queued.elementAt(i)).count;return n;}
     boolean ready(long now) {
-        int buffered=remaining;boolean hasTerminal=terminal;
+        int buffered=bufferedFrames();boolean hasTerminal=terminal;
         for (int i=0;i<queued.size();i++) {
-            Segment segment=(Segment)queued.elementAt(i);buffered+=segment.count;hasTerminal|=segment.terminal;
+            Segment segment=(Segment)queued.elementAt(i);hasTerminal|=segment.terminal;
         }
-        return !net.prefetchCap||buffered>=BUFFER_FRAMES||hasTerminal||now-waitingSince>=BUFFER_MS;
+        boolean shot=net.roomKind!=3&&kind==3;
+        int target=shot?PVP_SHOT_BUFFER_FRAMES:BUFFER_FRAMES;
+        int delay=shot?PVP_SHOT_BUFFER_MS:BUFFER_MS;
+        // Increase receive-ahead only when measured request jitter is high.
+        if(net.prefetchCap&&net.tcp.jitter>100){target+=6;delay+=200;}
+        return !net.prefetchCap||buffered>=target||hasTerminal||now-waitingSince>=delay;
+    }
+    // Called under the canvas lock. Continue fetching even if event notifications lag.
+    boolean wantsMore() {
+        if(!net.prefetchCap||recovering||turn<0||received<0||terminal)return false;
+        for(int i=0;i<queued.size();i++)if(((Segment)queued.elementAt(i)).terminal)return false;
+        return queued.size()+(frames!=null||ownPending?1:0)<MAX_SEGMENTS;
     }
     boolean animate() {
-        if (frames==null) return false;
+        if (frames==null) {if(waitingForNext&&!terminal){underruns++;waitingForNext=false;}return false;}
+        waitingForNext=false;
         if (!playing) {
             if (!ready(System.currentTimeMillis())) return true;
             playing=true;
@@ -107,7 +127,7 @@ final class OnlineChunks {
                 frames=null;previousFrame=null;completed=id;
                 net.c.game.pendingNext=terminal&&resolved;
                 net.resolutionSeen=terminal&&(resolved||net.c.game.over);if(net.resolutionSeen)net.processingSince=0;
-                if (queued.isEmpty()) { playing=false;waitingSince=0; }
+                if (queued.isEmpty()) { playing=false;waitingSince=0;waitingForNext=!terminal; }
                 else advance();
                 net.lastPoll=0;
             }

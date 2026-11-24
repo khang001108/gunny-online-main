@@ -1790,7 +1790,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     // Smoothed UI frame rate, shown only when enabled in settings.
     private long fpsWindowStart;
     private int fpsWindowFrames, fpsValue;
-    private String fpsText = "FPS 0";
+    private String fpsText = "FPS 0",netText="",netText2="";
+    private long lastNetRx,lastNetTx;
     boolean portraitViewport;Image portraitSurface;
     int pointerX(int x,int y){return portraitViewport?y-(getHeight()-320*s)/2:x;}
     int pointerY(int x,int y){return portraitViewport?240*s-1-(x-(getWidth()-240*s)/2):y;}
@@ -1873,12 +1874,21 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             if (now - fpsWindowStart >= 1000) {
                 fpsValue = (int)(fpsWindowFrames * 1000L / Math.max(1L, now - fpsWindowStart));
                 fpsText = "FPS " + fpsValue; // Allocate only once per second on Java ME.
+                if(onlineBattle()){
+                    long rx=net.tcp.rxBytes+net.events.transport.rxBytes,tx=net.tcp.txBytes+net.events.transport.txBytes;
+                    long ms=Math.max(1,now-fpsWindowStart);
+                    long rxRate=Math.max(0,rx-lastNetRx)*1000/ms,txRate=Math.max(0,tx-lastNetTx)*1000/ms;
+                    lastNetRx=rx;lastNetTx=tx;
+                    netText="RTT "+net.tcp.rtt+" J "+net.tcp.jitter+" RX/TX "+rxRate+"/"+txRate+" B/s";
+                    netText2="RAM "+((Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory())/1024)+"K Q "+net.queueCount+" B "+net.chunks.bufferedFrames()+" G "+net.chunks.underruns;
+                }else{netText=netText2="";lastNetRx=lastNetTx=0;}
                 fpsWindowFrames = 0;
                 fpsWindowStart = now;
             }
             all();
             rect(0,0,48,14,0x21170e);
             pcText(fpsText,3,2);
+            if(onlineBattle()&&netText.length()>0){rect(0,14,240,26,0x21170e);pcText(netText,3,15);pcText(netText2,3,28);}
         } else {
             fpsWindowStart = 0;
             fpsWindowFrames = fpsValue = 0;

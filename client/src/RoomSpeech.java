@@ -140,7 +140,7 @@ final class RoomSpeech {
         if (!supported || current==0 || net.roomId<=0 || net.phase!=current-1) return "";
         if (outgoing!=null) return "chatroomsend";
         if (now<pollAt) return "";
-        pollAt=now+900;
+        pollAt=now+(net.inBattle&&net.phase==1?1500:900);
         return "chatroom";
     }
 

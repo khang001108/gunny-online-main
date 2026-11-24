@@ -12,14 +12,17 @@ final class TcpEventsClient implements Runnable {
  boolean changed(){return active()&&signal!=consumed;}
  void consume(){consumed=signal;lastStamp=stamp();}
  void cancel(){transport.close();}
- public void run(){int generation=n.networkGeneration,room=n.roomId;String token=n.token,endpoint=n.endpoint;long cursor=Long.MIN_VALUE;
+ public void run(){int generation=n.networkGeneration,room=n.roomId;String token=n.token,endpoint=n.endpoint;long cursor=Long.MIN_VALUE;ByteArrayOutputStream bytes=new ByteArrayOutputStream(16);DataOutputStream out=new DataOutputStream(bytes);
   while(n.alive&&active()&&generation==n.networkGeneration&&room==n.roomId&&token.equals(n.token)){
-   try{ByteArrayOutputStream bytes=new ByteArrayOutputStream();DataOutputStream out=new DataOutputStream(bytes);out.writeInt(OnlineClient.MAGIC);out.writeInt(room);out.writeLong(cursor);out.close();
+   try{bytes.reset();out.writeInt(OnlineClient.MAGIC);out.writeInt(room);out.writeLong(cursor);
     byte[] reply=transport.request(endpoint,2,0,token,null,bytes.toByteArray());
     if(reply.length!=8)throw new IOException("Sai thông báo TCP");
     long next=new DataInputStream(new ByteArrayInputStream(reply)).readLong();
     if(generation!=n.networkGeneration||room!=n.roomId||!token.equals(n.token))break;
     if(next!=cursor){cursor=next;signal++;synchronized(n){n.notifyAll();}}failures=0;
+    // Server emits changes every simulation tick. Coalesce notifications in PvP;
+    // urgent commands and receive-ahead polling use the separate main socket.
+    if(n.inBattle&&n.phase==1)Thread.sleep(BattleNetworkPolicy.EVENT_MS);
    }catch(Exception e){transport.close();if(++failures>=3){failed=true;signal++;break;}try{Thread.sleep(200*failures);}catch(Exception ignored){}}
   }transport.close();
  }
