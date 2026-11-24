@@ -45,6 +45,16 @@ public final class ChunkPrefetchCheck {
             check(room.battle.turn == turn, "Downloaded segments do not release the turn barrier");
             guest.resolution = turn;room.tick();
             check(room.battle.turn == turn + 1, "Both completed playbacks release the next turn");
+            room.chunkBegin(3);
+            for(int i=0;i<5;i++)room.chunkFrame();
+            check(room.chunks.size()==1,"First PvP shot segment published after six frames");
+            var firstShot=new DataInputStream(new ByteArrayInputStream(room.chunks.get(0)));
+            check(firstShot.readUnsignedByte()==3&&!firstShot.readBoolean()&&firstShot.readUnsignedShort()==6,"First shot segment has correct type and frame count");
+            for(int i=0;i<11;i++)room.chunkFrame();
+            check(room.chunks.size()==1,"Subsequent shot segment retains normal batching");
+            room.chunkFrame();
+            var nextShot=new DataInputStream(new ByteArrayInputStream(room.chunks.get(1)));
+            check(nextShot.readUnsignedByte()==3&&!nextShot.readBoolean()&&nextShot.readUnsignedShort()==12,"Subsequent PvP shot segment retains twelve frames");
         }
     }
 }

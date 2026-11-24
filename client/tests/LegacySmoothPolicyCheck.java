@@ -11,8 +11,8 @@ public final class LegacySmoothPolicyCheck {
             byte[] dst=new byte[4];in.readFully(dst,1,2);check(dst[1]==8&&dst[2]==9,"readFully");
             source.bind(null);check(in.available()==0&&in.read()==-1,"release");
         }
-        check(!BattleNetworkPolicy.lowBufferDue(44,true,18),"low-buffer pacing");
-        check(BattleNetworkPolicy.lowBufferDue(45,true,18),"refill early");
+        check(!BattleNetworkPolicy.lowBufferDue(32,true,18),"low-buffer pacing");
+        check(BattleNetworkPolicy.lowBufferDue(33,true,18),"refill early");
         check(!BattleNetworkPolicy.lowBufferDue(100,true,19),"normal buffer");
         check(!BattleNetworkPolicy.lowBufferDue(100,false,0),"no receive window");
         System.out.println("PASS: 5000 reader rebinds and low-buffer pacing");

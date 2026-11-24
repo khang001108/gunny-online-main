@@ -11,19 +11,19 @@ final class OnlineChunks {
     boolean terminal, resolved, ownPending, resetTerrain, playing;boolean recovering;int recoveryFailures;
     DataInputStream frames;
     byte[] finalFrame,previousFrame;
-    long waitingSince,ownSince;int underruns;boolean waitingForNext, gapCounted;int rebufferBoost;
+    long waitingSince,ownSince;int underruns;boolean waitingForNext, gapCounted, flightStarted;int rebufferBoost;
     final FrameInput snapshotInput=new FrameInput();
     final DataInputStream snapshotReader=new DataInputStream(snapshotInput);
 
     static final class Segment {
         int id, kind, count;
         boolean terminal, resolved;
-        byte[] data;
+        byte[] data, terminalFrame;
     }
     OnlineChunks(OnlineClient owner) { net=owner; }
     void reset() {
         turn=completed=received=-1;queued.removeAllElements();
-        frames=null;finalFrame=previousFrame=null;remaining=0;id=-1;kind=0;terminal=resolved=resetTerrain=false;ownPending=false;playing=false;waitingSince=ownSince=0;waitingForNext=gapCounted=false;rebufferBoost=0;snapshotInput.bind(null);
+        frames=null;finalFrame=previousFrame=null;remaining=0;id=-1;kind=0;terminal=resolved=resetTerrain=false;ownPending=false;playing=false;waitingSince=ownSince=0;waitingForNext=gapCounted=flightStarted=false;rebufferBoost=0;snapshotInput.bind(null);
     }
     int requestTurn(int displayedTurn) {
         return net.prefetchCap&&turn>=0 ? turn : displayedTurn;
@@ -45,6 +45,12 @@ final class OnlineChunks {
         if(segment.count<1||segment.count>2000)throw new IOException("Sai số khung hình.");
         int decodedSize=0;for(int i=0;i<segment.count;i++)decodedSize=SnapshotDelta.validate(block,decodedSize);
         if(block.available()!=0)throw new IOException("Dữ liệu hành động dư.");
+        // Resolve terminal deltas on the receive thread, not inside the Canvas lock.
+        if(segment.terminal){
+            block=new DataInputStream(new ByteArrayInputStream(data));block.skipBytes(4);
+            byte[] last=null;for(int i=0;i<segment.count;i++)last=SnapshotDelta.readReusable(block,last);
+            segment.terminalFrame=last;
+        }
         return segment;
     }
     void read(DataInputStream in,boolean done,int serverTurn)throws IOException {
@@ -57,7 +63,7 @@ final class OnlineChunks {
         if (stage==0 || stage==5&&net.liveCap) { if(net.phase==2){reset();turn=serverTurn;} snapshot(in,done,serverTurn);return; }
         if (stage==3) return;
         if (stage!=4||segment==null) throw new IOException("Sai đoạn hành động.");
-        int next=segment.id;byte[] data=segment.data;
+        int next=segment.id;
         if (!net.inBattle) { net.prepareBattle();turn=serverTurn; }
         if (next<=received) return;
         if (next!=received+1) { reset();turn=serverTurn;recovering=true;net.predicting=net.resolutionSeen=false;net.c.held=net.c.fireKey=0;net.revision=0;net.lastPoll=0;return; }
@@ -66,11 +72,11 @@ final class OnlineChunks {
         if (own) {
             // Already validated all frames. Local prediction only needs the terminal state.
             if(!segment.terminal){received=completed=next;return;}
-            previousFrame=null;DataInputStream block=new DataInputStream(new ByteArrayInputStream(data));block.skipBytes(4);
+            previousFrame=null;
             id=next;resolved=done;terminal=segment.terminal;kind=segment.kind;
-            for (int i=0;i<segment.count;i++) finalFrame=frame(block);
+            finalFrame=segment.terminalFrame;
             received=next;
-            if (terminal) { ownPending=true;ownSince=System.currentTimeMillis();finish(); }
+            if (terminal) { ownPending=true;ownSince=System.currentTimeMillis(); }
             else { completed=id;finalFrame=previousFrame=null; }
             return;
         }
@@ -92,7 +98,7 @@ final class OnlineChunks {
         if (queued.isEmpty()) return;
         Segment segment=(Segment)queued.elementAt(0);queued.removeElementAt(0);
         // Build receive-ahead before entering a projectile sequence, not mid-flight.
-        if(net.prefetchCap&&kind!=3&&segment.kind==3){
+        if(net.prefetchCap&&kind!=3&&segment.kind==3&&!flightStarted&&net.c.game.ballCount==0){
             playing=false;waitingSince=System.currentTimeMillis();
         }
         id=segment.id;kind=segment.kind;terminal=segment.terminal;resolved=segment.resolved;
@@ -130,20 +136,21 @@ final class OnlineChunks {
         }
         waitingForNext=false;
         if (!playing) {
-            if (!ready(System.currentTimeMillis())) return true;
+            if (!flightStarted&&net.c.game.ballCount==0&&!ready(System.currentTimeMillis())) return true;
             playing=true;
         }
         try {
             resetTerrain=false; // Remote terrain is updated incrementally, never rebuilt per segment.
             net.c.game.ageTrails();
             readFrame(frame(frames));
+            if(net.c.game.ballCount>0)flightStarted=true;
             for (int i=0;i<net.c.game.ballCount;i++) net.c.game.stampTrail(net.c.game.balls[i]);
             net.resolutionSeen=false;
             if (--remaining==0) {
                 frames=null;previousFrame=null;completed=id;
                 net.c.game.pendingNext=terminal&&resolved;
                 net.resolutionSeen=terminal&&(resolved||net.c.game.over);if(net.resolutionSeen)net.processingSince=0;
-                if (queued.isEmpty()) { playing=false;waitingSince=0;waitingForNext=!terminal;gapCounted=false; }
+                if (queued.isEmpty()) { playing=!terminal&&flightStarted;waitingSince=0;waitingForNext=!terminal;gapCounted=false; }
                 else advance();
                 net.lastPoll=0;
             }
@@ -159,7 +166,11 @@ final class OnlineChunks {
     }
     void finish() {
         if (!ownPending) return;
-        boolean timedOut=ownSince>0&&System.currentTimeMillis()-ownSince>=5000;
+        long elapsed=ownSince>0?System.currentTimeMillis()-ownSince:0;
+        // Never replace a predicted projectile with the terminal snapshot mid-flight.
+        // A 30s failsafe retains recovery for a genuinely stuck simulation.
+        if(elapsed<30000&&(net.c.game.ballCount>0||net.c.game.bursts>0||net.c.powShotPending))return;
+        boolean timedOut=elapsed>=5000;
         if(!timedOut&&((!net.c.game.pendingNext&&!net.c.game.over&&!(SulanRules.active(net.c.game)&&resolved))||net.c.powShotPending))return;
         if(timedOut){net.c.powShotPending=false;net.c.powCutinTicks=0;}
         try {
