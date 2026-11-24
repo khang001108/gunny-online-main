@@ -31,7 +31,7 @@ public final class WeaponJoinCheck {
                 boolean blocked=false;try{Dungeon780.eligible(session,0);}catch(IllegalArgumentException expected){blocked=expected.getMessage().contains("vũ khí");}
                 check(blocked,"Dungeon entry also requires equipped weapon");
                 profile.wornMask=1;
-                check(guest.call("join",out->{out.writeInt(roomId);out.writeByte(1);out.writeUTF("");}).readInt()==roomId,"Guest can join after equipping an owned weapon");
+                check(guest.call("quick",out->out.writeByte(1)).readInt()==roomId,"Guest can match after equipping an owned weapon");
             }
         }
     }

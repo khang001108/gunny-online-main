@@ -12,7 +12,36 @@ final class GamePresentation {
  boolean searching(){return c.onlineAccount()?c.net.roomId>0&&c.net.phase==0&&(c.net.matchQueued||c.net.roomKind==1&&c.net.waitingSeconds>0):offlineSearch>0;}
  void toggleSearch(){if(!searching()&&c.requireWeapon())return;if(c.onlineAccount()){if(c.net.roomKind==1){c.net.request("leave");return;}if(c.net.host)c.net.request("start");return;}if(offlineSearch>0)offlineSearch=0;else offlineSearch=System.currentTimeMillis();}
  void bot(){if(c.onlineAccount()){if(c.net.queueSeconds()>0)c.net.request("botvote");}else{offlineSearch=0;c.chosenAllyBot=c.game.rand(8);c.training=false;c.loadingRequested=true;c.resetPending=true;}}
- void queue(){if(!searching()||c.loadout.activeFocus())return;int elapsed=c.onlineAccount()?0:(int)((System.currentTimeMillis()-offlineSearch)/1000);if(!c.onlineAccount()&&elapsed>=60){offlineSearch=0;c.message("Hết 60 giây tìm trận");return;}if(searchFrame==null){searchFrame=c.combatRoomArt("match742-search-frame");searchText=c.combatRoomArt("match742-search-text");}boolean solo=c.onlineAccount()&&c.net.roomKind==1;int qx=solo?24:5,qy=solo?91:159;if(solo&&soloFrame==null){soloFrame=c.combatRoomArt("match744-solo-frame");soloText=c.combatRoomArt("match744-solo-text");soloDigits=c.combatRoomArt("match744-solo-digits");}c.img(solo?soloFrame:searchFrame,qx,qy);if(searchDigits==null)searchDigits=c.combatRoomArt("room-loading-digits");int sec=c.onlineAccount()?c.net.queueSeconds():Math.max(0,60-elapsed);if(solo){c.part(soloDigits,sec/10*13,0,13,16,qx+10,qy+5,false);c.part(soloDigits,sec%10*13,0,13,16,qx+23,qy+5,false);c.img(soloText,qx+56,qy+3);c.pcCenter(c.keyBindings.name('h')+": đấu bot • "+c.keyBindings.name(32)+": hủy",qx+104,qy+20);}else{c.part(searchDigits,sec/10*17,0,17,21,qx+13,qy+7,false);c.part(searchDigits,sec%10*17,0,17,21,qx+30,qy+7,false);c.img(searchText,qx+65,qy+3);c.pcCenter(c.keyBindings.name('h')+": đấu bot • "+c.keyBindings.name(32)+": hủy",qx+128,qy+21);}}
+ // The versus background has a dedicated left status frame (5,175)-(149,229).
+ // Keep the countdown inside it, below the room ID and away from the portraits.
+ static final int SOLO_QUEUE_X=5,SOLO_QUEUE_Y=193,SOLO_QUEUE_W=144,SOLO_QUEUE_H=35;
+ void queue(){
+  if(!searching()||c.loadout.activeFocus()||c.net.soloSearching())return;
+  int elapsed=c.onlineAccount()?0:(int)((System.currentTimeMillis()-offlineSearch)/1000);
+  if(!c.onlineAccount()&&elapsed>=60){offlineSearch=0;c.message("Hết 60 giây tìm trận");return;}
+  boolean solo=c.onlineAccount()&&c.net.roomKind==1;
+  int sec=c.onlineAccount()?c.net.queueSeconds():Math.max(0,60-elapsed);
+  sec=Battle.clamp(sec,0,99);
+  if(solo){
+   if(soloText==null)soloText=c.combatRoomArt("match744-solo-text");
+   if(soloDigits==null)soloDigits=c.combatRoomArt("match744-solo-digits");
+   c.all();
+   c.part(soloDigits,sec/10*13,0,13,16,11,195,false);
+   c.part(soloDigits,sec%10*13,0,13,16,24,195,false);
+   c.img(soloText,43,197);
+   c.pcCenter(c.pcShort(c.keyBindings.name('h')+": đấu bot",66),40,215);
+   c.pcCenter(c.pcShort(c.keyBindings.name(-7)+": hủy",68),112,215);
+   return;
+  }
+  if(searchFrame==null){searchFrame=c.combatRoomArt("match742-search-frame");searchText=c.combatRoomArt("match742-search-text");}
+  if(searchDigits==null)searchDigits=c.combatRoomArt("room-loading-digits");
+  int qx=5,qy=159;
+  c.img(searchFrame,qx,qy);
+  c.part(searchDigits,sec/10*17,0,17,21,qx+13,qy+7,false);
+  c.part(searchDigits,sec%10*17,0,17,21,qx+30,qy+7,false);
+  c.img(searchText,qx+65,qy+3);
+  c.pcCenter(c.keyBindings.name('h')+": đấu bot • "+c.keyBindings.name(32)+": hủy",qx+128,qy+21);
+ }
 
  void draw(){if(gear==null)gear=c.combatRoomArt("settings-icon");if(boot<2){c.all();c.rect(0,0,320,240,0);if(boot==0){c.popup.render("Âm thanh","Bật âm thanh khi chơi game?",new String[]{"Bật","Tắt"},music?0:1);return;}if(logo==null)logo=c.combatRoomArt("intro-logo");c.img(logo,40,55);int t=(int)(System.currentTimeMillis()-intro);if(t>900){int[] shade=new int[320*c.s];for(int y=0;y<240*c.s;y++){int alpha=Battle.clamp((t-900)*255/700-(240-y/c.s)*2,0,255);for(int x=0;x<shade.length;x++)shade[x]=alpha<<24;c.g.drawRGB(shade,0,shade.length,c.ox,c.oy+y,shade.length,1,true);}}if(t>2100)boot=2;return;}if(c.keyBindings.capture>=0){c.keyBindings.draw();return;}if(settings){if(settingsPanel==null){settingsPanel=c.combatRoomArt("settings743-popup");checkOn=c.combatRoomArt("settings743-on");checkOff=c.combatRoomArt("settings743-off");settingsClose=c.combatRoomArt("bag715-close");}
  c.img(logoutPanel(),32,56);HeaderArt.center(c,HeaderArt.SETTINGS,160,71);c.img(settingsClose,263,61);
@@ -27,9 +56,14 @@ final class GamePresentation {
  else if(option==2)c.drawSelectionGlow(241,133,20,20);
  else if(option==3)c.drawSelectionGlow(49,159,218,19);
  else c.drawSelectionGlow(49,188,218,19);
- return;}if(c.mode==10||c.mode==16&&c.net.roomId>0)queue();}
+ return;}if(c.mode==10||c.mode==16&&c.net.roomId>0&&!c.net.social.opened&&!c.net.create.opened&&!c.net.chat.opened)queue();}
  Image logoutFrame;Image logoutPanel(){if(logoutFrame==null)logoutFrame=NativeUi.fit(settingsPanel,256*c.s,160*c.s,5*c.s);return logoutFrame;}
  void logout(){c.popup.open("Đăng xuất","Đăng xuất tài khoản hiện tại?",new String[]{"Hủy","Đăng xuất"},32);}
  boolean key(int key,int dir,boolean ok){if(boot==0){if(dir==1)music=true;if(dir==2)music=false;if(dir==4||dir==8)music=!music;if(ok||key==-6){save();boot=2;intro=System.currentTimeMillis();}return true;}if(boot==1)return true;if(settings){if(key==-7){settings=false;c.popup.resumeOffline();save();}else if(dir==4||dir==8){int total=c.onlineAccount()?5:4;option=(option+(dir==4?total-1:1))%total;}else if(ok||dir==1||dir==2){if(option==0){music=!music;if(!music)silence();}else if(option==1)effects=!effects;else if(option==2)showFps=!showFps;else if(option==3)c.keyBindings.open();else logout();save();}return true;}if(c.onlineAccount()&&key=='*'&&(c.mode==0||c.mode==10||c.mode==16)){settings=true;return true;}if(searching()&&(c.mode==10||c.mode==16&&!c.net.social.opened&&!c.net.create.opened)&&(key=='h'||key=='H')){bot();return true;}if(searching()&&(c.mode==10||c.mode==16&&!c.net.social.opened&&!c.net.create.opened)&&ok&&!c.loadout.group(c.roomSelection)){toggleSearch();return true;}return false;}
- boolean pointer(int x,int y){if(boot<2){if(boot==0){int hit=c.popup.choiceAt(new String[]{"Bật","Tắt"},x,y);if(hit>=0){music=hit==0;save();boot=2;intro=System.currentTimeMillis();}}return true;}if(settings){if(x>=243&&x<263&&y>=87&&y<107){music=!music;option=0;save();if(!music)silence();}else if(x>=243&&x<263&&y>=111&&y<131){effects=!effects;option=1;save();}else if(x>=243&&x<263&&y>=135&&y<155){showFps=!showFps;option=2;save();}else if(x>=45&&x<268&&y>=158&&y<180){option=3;c.keyBindings.open();}else if(c.onlineAccount()&&x>=45&&x<268&&y>=187&&y<211){option=4;logout();}else if(x>=263&&y>=61&&y<81||x<32||x>=288||y<56||y>=216){settings=false;c.popup.resumeOffline();save();}return true;}if(searching()&&(c.mode==10||c.mode==16&&!c.net.social.opened&&!c.net.create.opened)){boolean solo=c.onlineAccount()&&c.net.roomKind==1;int qx=solo?24:5,qy=solo?91:159;if(x>=qx&&x<qx+(solo?160:202)&&y>=qy&&y<qy+35){if(y>=qy+20)bot();else toggleSearch();return true;}}return false;}
+ boolean pointer(int x,int y){if(boot<2){if(boot==0){int hit=c.popup.choiceAt(new String[]{"Bật","Tắt"},x,y);if(hit>=0){music=hit==0;save();boot=2;intro=System.currentTimeMillis();}}return true;}if(settings){if(x>=243&&x<263&&y>=87&&y<107){music=!music;option=0;save();if(!music)silence();}else if(x>=243&&x<263&&y>=111&&y<131){effects=!effects;option=1;save();}else if(x>=243&&x<263&&y>=135&&y<155){showFps=!showFps;option=2;save();}else if(x>=45&&x<268&&y>=158&&y<180){option=3;c.keyBindings.open();}else if(c.onlineAccount()&&x>=45&&x<268&&y>=187&&y<211){option=4;logout();}else if(x>=263&&y>=61&&y<81||x<32||x>=288||y<56||y>=216){settings=false;c.popup.resumeOffline();save();}return true;}if(searching()&&(c.mode==10||c.mode==16&&!c.net.social.opened&&!c.net.create.opened)){
+  boolean solo=c.onlineAccount()&&c.net.roomKind==1;
+  if(solo){
+   if(x>=SOLO_QUEUE_X&&x<SOLO_QUEUE_X+SOLO_QUEUE_W&&y>=SOLO_QUEUE_Y+20&&y<SOLO_QUEUE_Y+SOLO_QUEUE_H){if(x<77)bot();else toggleSearch();return true;}
+  }else if(x>=5&&x<207&&y>=159&&y<194){if(y>=179)bot();else toggleSearch();return true;}
+ }return false;}
 }

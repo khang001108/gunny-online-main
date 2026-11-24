@@ -3605,7 +3605,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     protected synchronized void keyPressed(int key) {
-        if(net.soloSearching()){int mapped=keyBindings.map(key);if(key==-7||mapped==-7||key=='0')net.cancelSolo();else if(key=='h'||key=='H'||mapped=='h'||mapped=='H')net.soloBot();return;}
+        if(net.soloSearching()){int mapped=keyBindings.map(key);if(key==-7||mapped==-7||key==27||key=='0')net.cancelSolo();else if(key=='h'||key=='H'||mapped=='h'||mapped=='H')net.soloBot();return;}
         if (typing.key(key)) { repaint(); return; }
         if(mode==1&&game.dungeonStage>0&&(key=='m'||key=='M')){conditions.toggle();repaint();return;}
         int rawKey = key;

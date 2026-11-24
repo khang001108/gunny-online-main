@@ -183,7 +183,7 @@ final class OnlineWaitingRoom {
         }
         // Right-hand opponent slot is intentionally completely empty.
         c.pcText("Đấu đơn 1v1",8,179);
-        c.pcText("Đang chờ người chơi vào",8,190);
+        c.pcText(net.operation.equals("cancelquick")?"Đang trở về...":net.operation.equals("botvote")?"Đang ghép bot...":"Đang chờ người chơi vào",8,190);
         c.pcText("H: Đấu bot",8,201);
         c.pcText("Mềm phải: Trở về",8,213);
         if(soloRandomMap==null) {

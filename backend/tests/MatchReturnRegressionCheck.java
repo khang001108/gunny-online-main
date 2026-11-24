@@ -142,13 +142,11 @@ public final class MatchReturnRegressionCheck {
                 int battleId = a.call("quick", out -> out.writeByte(1)).readInt();
                 check(b.call("quick", out -> out.writeByte(1)).readInt() == battleId, "Solo entry point pairs two TCP players");
                 var battle = server.rooms.get(battleId);
-                battle.start();finish(battle);
-                var aReply = a.call("returnroom", null);
-                int aHome = aReply.readInt();
-                check(aReply.readByte() == 0 && aReply.readBoolean(), "Solo return packet gives the first player host rights");
-                var bReply = b.call("returnroom", null);
-                int bHome = bReply.readInt();
-                check(bReply.readByte() == 0 && bReply.readBoolean() && aHome != bHome, "Solo opponents receive separate rooms and host rights over TCP");
+                check(battle.phase == 3, "Solo starts the loading handshake automatically");
+                finish(battle);
+                a.call("leave", null); b.call("leave", null);
+                check(server.sessions.get(a.token).room == 0 && server.sessions.get(b.token).room == 0,
+                    "Solo opponents return to lobby without waiting rooms");
             }
 
             var headers = new com.sun.net.httpserver.Headers();

@@ -5,7 +5,7 @@ final class TcpEventsClient implements Runnable {
  final OnlineClient n;final TcpTransport transport=new TcpTransport();Thread thread;
  volatile boolean failed;volatile long signal;long consumed,lastStamp;int failures;
  TcpEventsClient(OnlineClient client){n=client;}
- boolean active(){return n.eventCap&&!failed&&n.logged&&n.roomId>0;}
+ boolean active(){return n.eventCap&&!failed&&n.logged&&n.roomId>0&&!n.soloWaiting();}
  void ensure(){if(active()&&(thread==null||!thread.isAlive())){thread=new Thread(this);thread.start();}}
  long stamp(){return n.c.game.turn*1000003L+(n.resolutionSeen?17:0)+(n.c.loadTicks>=60?31:0)+n.chunks.completed*79L+(n.chunks.frames!=null||n.chunks.ownPending?n.chunks.id:n.chunks.completed)*103L;}
  boolean due(){return !active()||signal!=consumed||stamp()!=lastStamp||System.currentTimeMillis()-n.lastPoll>1000;}
