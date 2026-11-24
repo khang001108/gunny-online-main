@@ -1626,7 +1626,13 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 || AntCaveRules.dying(game) || AntCaveRules.summoning(game) && game.botPhase<AntCaveRules.REINFORCEMENTS+45
                 || game.botPhase == AntCaveRules.QUEEN_THREAT || game.botPhase==AntCaveRules.QUEEN_HIT
                 || game.botPhase==AntCaveRules.QUEEN_SUCCESS);
-        if(SulanRules.stomping(game)||SulanRules.cinematic(game)||TribalRules.active(game)&&game.tribalState==TribalRules.OPENING&&game.tribalFx>0){
+        // Queen hit/threat dialogue can remain set during projectile flight.
+        // Follow the live projectile before any queen/guard dialogue framing.
+        boolean queenProjectile=game.dungeonStage==2&&game.ballCount>0;
+        if(queenProjectile){
+            Battle.Ball b=game.balls[0];
+            tx=b.x/256-160;ty=b.y/256-82;
+        } else if(SulanRules.stomping(game)||SulanRules.cinematic(game)||TribalRules.active(game)&&game.tribalState==TribalRules.OPENING&&game.tribalFx>0){
             int elapsed=120-game.tribalFx,slot=SulanRules.active(game)?SulanRules.cameraActor(game):TribalRules.twins(game)?TribalRules.introActor(game):elapsed<25?0:game.active;
             if(slot==0&&onlineBattle())slot=playerActor();
             tx=game.units[slot].x-160;ty=game.units[slot].y-(game.units[slot].npc==0?135:170);
@@ -1661,7 +1667,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             ty = u.y - 100;
         }
         tx = Math.max(0, Math.min(160, tx));
-        ty = Battle.clamp(ty, queenDialogue ? -100 : 0, 40);
+        ty = Battle.clamp(ty, queenDialogue && !queenProjectile ? -100 : 0, 40);
         cameraX = cameraApproach(cameraX, tx);
         cameraY = cameraApproach(cameraY, ty);
         if (Math.abs(cameraX - tx) < 4)

@@ -34,7 +34,22 @@ public final class ReturnRoomClientCheck {
   net.pending="";net.results.key(-7,0,false);check(net.pending.equals("leave"),"Solo back key after reward goes to room list");net.results.reset();
   net.pending="";net.roomKind=0;net.count=4;net.results.leave();check(net.pending.equals("returnroom"),"2v2 keeps its waiting room");
   net.pending="";net.roomKind=2;net.count=6;net.results.leave();check(net.pending.equals("returnroom"),"3v3 keeps its party room");
-  net.pending="";net.roomKind=3;net.dungeonStage=2;net.results.leave();check(net.pending.equals("returnroom"),"Final dungeon result returns to existing room");
+  net.roomKind=3;
+  for(int stage:new int[]{1,2,3,4,6})for(int winner:new int[]{0,1}){
+   net.pending="";net.dungeonStage=stage;c.game.winner=winner;net.results.leave();check(net.pending.equals("returnroom"),"Dungeon stage "+stage+" winner "+winner+" returns to existing room");
+  }
+  net.pending="";net.phase=0;net.host=true;net.roomKind=3;net.present[2]=net.present[4]=false;
+  c.roomSelection=60;c.loadout.move(2,true,true);check(c.roomSelection==62,"Right focuses second dungeon slot");
+  c.loadout.move(1,true,true);check(c.roomSelection==60,"Left focuses first dungeon slot");
+  c.loadout.move(8,true,true);check(c.roomSelection==64,"Down focuses third dungeon slot");
+  c.dungeon.keyWaiting(-5,0,true);check(net.pending.equals("slot")&&net.slotDraft==4,"OK targets focused dungeon slot");
+  net.pending="";c.dungeon.pointerWaiting(150,100);check(c.roomSelection==62&&net.slotDraft==2,"Full second card is touch selectable");
+  net.pending="";c.game.dungeonStage=2;c.game.active=0;c.cameraActor=0;c.freeCamera=c.cameraReturning=c.cameraOnPlayer=false;
+  c.game.units[1].x=405;c.game.units[1].y=150;c.game.botPhase=AntCaveRules.QUEEN_HIT;
+  c.game.balls[0]=new Battle.Ball();c.game.balls[0].x=80*256;c.game.balls[0].y=100*256;c.game.ballCount=1;c.cameraX=160;
+  for(int i=0;i<40;i++)c.followCamera();check(c.cameraX==0,"Queen dialogue must not override projectile camera");
+  c.game.balls[0].x=400*256;for(int i=0;i<40;i++)c.followCamera();check(c.cameraX==160,"Camera tracks projectile across map");
+  c.game.ballCount=0;c.game.balls[0]=null;
   net.ack=10;net.sequence=13;net.sentMax=12;net.queueCount=3;net.returnToWaitingRoom();check(net.sequence==10&&net.sentMax==10&&net.ack==10,"Discarded queued commands rebase to acknowledged sequence");net.acknowledgeCommands(12);check(net.sequence==12&&net.sentMax==12,"Server ACK can advance the next local command");check(!net.inBattle&&c.mode==16&&net.queueCount==0,"Returning clears battle state and opens waiting room");
   net.inBattle=false;c.offlineDungeon.active=false;net.results.leave();check(c.mode==10,"Offline PVP returns to setup");
   c.offlineDungeon.active=true;c.offlineDungeon.stage=2;net.results.leave();check(c.mode==19&&!c.offlineDungeon.active&&c.offlineDungeon.stage==1,"Offline dungeon returns to setup");

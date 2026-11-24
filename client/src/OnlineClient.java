@@ -246,6 +246,7 @@ final class OnlineClient implements Runnable,CommandListener,ItemCommandListener
         resetCommandQueue(ack);sequenceResync=false;
         inBattle=predicting=resolutionSeen=repairGround=groundAwaiting=false;queueCount=revision=0;predictedTurn=-1;processingSince=0;departure.paused=false;c.resetPending=c.loadingRequested=false;
         chunks.reset();replay.reset();motion.reset();results.reset();
+        if(roomKind==3)dungeonBrowser=true;
         c.held=c.fireKey=0;c.roomSelection=5;c.mode=16;
     }
     void prepareBattle()throws IOException {

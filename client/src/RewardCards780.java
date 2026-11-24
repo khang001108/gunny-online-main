@@ -54,7 +54,7 @@ final class RewardCards780 {
    }
    if(selected==i)c.drawSelectionGlow(x-2,y-2,42,59);
   }
-  c.pcCenter(picks()>=limit()?(result.online()?"OK: về phòng chờ":result.antStage()?"OK: tiếp tục ải sau":"OK: về sảnh"):n.receivingReward()?"Đang nhận thưởng...":"Chọn thẻ • OK: lật",160,228);
+  c.pcCenter(picks()>=limit()?(result.online()?"OK: về phòng chờ":result.antStage()?"OK: tiếp tục ải sau":c.offlineDungeon.active?"OK: về phòng chờ":"OK: về sảnh"):n.receivingReward()?"Đang nhận thưởng...":"Chọn thẻ • OK: lật",160,228);
  }
  void activate(){
   if(result.online()&&n.receivingReward())return;

@@ -264,8 +264,10 @@ final class DungeonScreen {
    emptyCard = NativeUi.fit(c.loadout.waiting, 82*c.s, 80*c.s, 5*c.s); // Same waiting art as Online
    closedCard = NativeUi.fit(c.loadout.closed, 82*c.s, 80*c.s, 5*c.s);
   }
-  for (int seat = 0; seat < 3; seat++)
+  for (int seat = 0; seat < 3; seat++) {
    drawSeat(seat, online);
+   if(c.roomSelection==60+seat*2)c.drawSelectionGlow(17+seat%2*102,27+seat/2*83,84,82);
+  }
 
   int stage = online ? n.dungeonStage : c.offlineDungeon.stage;
   // Reward preview is room content, not a floating overlay. Draw before toolbar/tooltips.
@@ -437,7 +439,7 @@ final class DungeonScreen {
   if (key == -7) {
    activateRoom(online, 5);
   } else if (key == -6) {
-   activateRoom(online, 2);
+   inviteFromSelection(online);
   } else if (dir != 0) {
    c.loadout.move(dir, online, true);
   } else if (ok) {
@@ -445,9 +447,17 @@ final class DungeonScreen {
   }
  }
 
+ private void inviteFromSelection(boolean online){
+  int f=c.roomSelection;
+  if(online){int seat=f-60;n.inviteSeat=(seat==2||seat==4)&&!n.present[seat]&&(n.closedSlots&(1<<seat))==0?seat:-1;n.social.open(true);}
+  else n.social.openOffline();
+ }
+
  private void activateRoom(boolean online, int action) {
   c.roomSelection = action;
-  if (action == 4 || action == 29) {
+  if(action==60||action==62||action==64){
+   if(action!=60)toggleSeat(online,action-60);
+  } else if (action == 4 || action == 29) {
    openPicker(online);
   } else if (action == 2) {
    if (online) {
@@ -553,13 +563,9 @@ final class DungeonScreen {
   }
   if (c.loadout.pressToolbar(x,y)) return;
   if(x>=120&&x<202&&y>=111&&y<191){openPicker(online);return;}
-  if (x >= 120 && x < 202 && y >= 28 && y < 96) {
-   toggleSeat(online, 2);
-   return;
-  }
-  if (x >= 18 && x < 100 && y >= 99 && y < 167) {
-   toggleSeat(online, 4);
-   return;
+  for(int seat=0;seat<3;seat++){
+   int sx=18+seat%2*102,sy=28+seat/2*83;
+   if(x>=sx&&x<sx+82&&y>=sy&&y<sy+80){activateRoom(online,60+seat*2);return;}
   }
   int action = c.loadout.hit(x,y);
   if (action >= 0) activateRoom(online, action);

@@ -76,9 +76,11 @@ final class RoomLoadout {
  boolean activate(boolean online){int f=c.roomSelection;if(f>=60&&f<66)return false;if(f>=41){if(f==46){c.presentation.settings=true;return true;}if(f==47){if(online&&c.net.roomKind==3)c.dungeon.leaveWaiting();else if(online)c.net.request("leave");else c.openLobby();}else if(online)c.net.rooms.activateTool(f);else if(f==41)c.openShop();else if(f==42)c.openBag();else if(f==45)return true;else if(f==46)c.net.waiting.notice("HƯỚNG DẪN",c.keyBindings.help());return true;}if(f>=20&&f<=22){editSlot=f-20;return true;}if(f>=23&&f<=28){choose(f-23,online);return true;}if(f==29||f==4){if(online){if(!c.net.host||c.net.inBattle){c.message("Chỉ chủ phòng được chọn bản đồ trước trận.");return true;}}c.maps.open(online);return true;}return false;}
  int x(int f){if(f>=60&&f<66)return 71+(f-60)/2*54;for(int i=0;i<5;i++)if(f==TOOL_IDS[i])return toolX(i,c.onlineAccount());if(f>=20&&f<=22)return 234+(f-20)*29;if(f>=23&&f<=28)return 235+(f-23)%3*29;return f==10?196:f==11?94:f==30?265:f==29||f==4?267:f==2?242:f==5?294:f==7?305:f==1?156:f==8||f==9?25:56;}
  int y(int f){if(f>=60&&f<66)return 54+(f-60)%2*88;if(f>=41)return 220;if(f>=20&&f<=22)return 62;if(f>=23&&f<=28)return 104+(f-23)/3*24;return f==30||f==2||f==5?218:f==29||f==4?173:f==7?12:f==1?128:f==0?128:f==10||f==11?84:f==8?77:f==9?165:37;}
+ int focusX(int f,boolean dungeon){return dungeon&&f>=60&&f<=64?59+((f-60)/2%2)*102:x(f);}
+ int focusY(int f,boolean dungeon){return dungeon&&f>=60&&f<=64?68+((f-60)/4)*83:y(f);}
  void move(int dir,boolean online){move(dir,online,false);}
  void move(int dir,boolean online,boolean dungeon){
-  int[] order=dungeon?new int[]{2,5,20,21,22,23,24,25,26,27,28,29,41,42,45,46,47}
+  int[] order=dungeon?new int[]{60,62,64,2,5,20,21,22,23,24,25,26,27,28,29,41,42,45,46,47}
    :online&&c.net.count==6?new int[]{60,61,62,63,64,65,8,9,2,5,7,20,21,22,23,24,25,26,27,28,29,41,42,45,46,47}
    :new int[]{0,1,2,5,7,11,10,20,21,22,23,24,25,26,27,28,29,41,42,45,46,47};
   int from=c.roomSelection,best=from,score=999999;
@@ -86,7 +88,7 @@ final class RoomLoadout {
    int f=order[i];
    if(!online&&(f==11||f==10||f==45))continue;
    if(online&&(f==0||!c.net.host&&(f==10||f==1)))continue;
-   int dx=x(f)-x(from),dy=y(f)-y(from),along=dir==1?-dx:dir==2?dx:dir==4?-dy:dy,cross=dir==1||dir==2?dy:dx;
+   int dx=focusX(f,dungeon)-focusX(from,dungeon),dy=focusY(f,dungeon)-focusY(from,dungeon),along=dir==1?-dx:dir==2?dx:dir==4?-dy:dy,cross=dir==1||dir==2?dy:dx;
    if(along<=0)continue;
    int v=along*along+cross*cross*4;
    if(v<score){score=v;best=f;}

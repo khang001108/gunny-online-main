@@ -28,9 +28,16 @@ public class TribalTcpCheck {
     int[] deck=(int[])store.tribalStore.matches.get(r.match).get("deck");List<Integer> order=new ArrayList<>();for(int i=0;i<(stage==3?18:9);i++)order.add(i);if(stage==3)order.sort(Comparator.comparingInt((Integer card)->deck[card]==2?10:deck[card]).reversed());
     for(int actor=0;actor<3;actor++)for(int pick=0;pick<(stage==3?2:1);pick++){int card=order.get(actor*(stage==3?2:1)+pick),which=pick;var reply=p[actor].call("claim780",o->{o.writeByte(which);o.writeByte(card);});check(reply.readUnsignedByte()==card,"Server confirms shared card");int stones=r.members[actor*2].profile.stones+Arrays.stream(r.members[actor*2].profile.craftStones).sum();p[actor].call("claim780",o->{o.writeByte(which);o.writeByte(card);});check(r.members[actor*2].profile.stones+Arrays.stream(r.members[actor*2].profile.craftStones).sum()==stones,"Repeated TCP claim never duplicates stones");}
     var revealed=p[0].call("deck",null);check(revealed.readBoolean(),"Deck opens after the actual allowed picks");check(revealed.readUnsignedByte()==(stage==3?18:9),"Crossing has nine cards; boss has eighteen");
-    if(stage<3){for(var player:p)player.call("dungeoncontinue",null);check(r.phase==0&&r.dungeonStage==(stage==2?6:4),"All clients return to next staging room once");}
+    if(stage==3)check(Arrays.stream(r.members).filter(Objects::nonNull).mapToInt(m->m.profile.wings).sum()==1,"Only one wing granted across the final deck");
+    for(int i=0;i<p.length;i++){
+     var reply=p[i].call("returnroom",null);
+     check(reply.readInt()==id&&reply.readUnsignedByte()==0,"Reward return keeps original room ID for player "+i);
+     if(i<p.length-1)check(r.phase==2&&!r.canStart(),"Cannot restart until remaining teammates return");
+    }
+    check(r.phase==0&&r.dungeonStage==(stage==1?4:stage==2?6:3),"Return selects next stage or resets completed campaign");
+    check(r.cardPlayers()==3&&r.host==server.sessions.get(p[0].token)&&r.difficulty==2,"Original party, host and difficulty retained");
    }
-   check(Arrays.stream(r.members).filter(Objects::nonNull).mapToInt(m->m.profile.wings).sum()==1,"Only one wing granted across the final deck");for(var player:p)player.call("leave",null);check(Arrays.stream(r.members).allMatch(Objects::isNull),"All players leave for lobby after final rewards");
+   check(server.rooms.get(id)==r&&r.dungeonStage==3&&r.phase==0,"Completed party remains in its own room");
   }finally{for(var player:p)if(player!=null)player.close();}}
   System.out.println("PASS: "+checks+" TCP campaign lifecycle checks (3 players, 3 stages, reconnect, real firing, reward retries)");
  }
