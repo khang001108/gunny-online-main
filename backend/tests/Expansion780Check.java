@@ -15,9 +15,9 @@ public final class Expansion780Check {
   for(int rank=0;rank<ForgeRules.MAX_RANK;rank++)check(ForgeRules.cost(rank)==250*(rank+1),"Forge rank "+rank+" has increasing 250-stone increments");
   int[] ranks=new int[130];for(int sex=0;sex<2;sex++)for(int kind=0;kind<7;kind++)for(int item=0;item<10;item++){int index=ForgeRules.index(sex,kind,item);check(index>=0&&index<130,"Forge index remains inside inventory");}
   ranks[ForgeRules.index(0,0,0)]=2;ranks[ForgeRules.index(0,1,0)]=3;ranks[ForgeRules.index(0,2,0)]=4;
-  int[] b=ForgeRules.equipped(ranks,0,3,0,0,new int[5]);check(Arrays.equals(b,new int[]{25,15,15}),"Weapon grows attack; full suit grows all three stats");
-  b=ForgeRules.equipped(ranks,0,5,0,0,new int[5]);check(Arrays.equals(b,new int[]{10,52,0}),"Separate clothing grows defense only");
-  var unit=new Battle.Unit();unit.experience=Progression.experienceForLevel(20);ForgeRules.apply(unit,b,ranks);ItemRules.apply(unit,5);check(unit.attackBonus==110&&unit.defense==192&&unit.luck==120,"Level, equipment and forge bonuses combine exactly once");
+  int[] b=ForgeRules.equipped(ranks,0,3,0,0,new int[5]);check(Arrays.equals(b,new int[]{215,15,15}),"Weapon grows attack; full suit grows all three stats");
+  b=ForgeRules.equipped(ranks,0,5,0,0,new int[5]);check(Arrays.equals(b,new int[]{200,52,0}),"Separate clothing grows defense only");
+  var unit=new Battle.Unit();unit.experience=Progression.experienceForLevel(20);ForgeRules.apply(unit,b,ranks);ItemRules.apply(unit,5);check(unit.attackBonus==300&&unit.defense==192&&unit.luck==120,"Level, equipment and forge bonuses combine exactly once");
   ItemRules.weapon(unit,3);check(unit.forgeAttack==0&&unit.forgeDefense==52,"Changing weapon replaces its forge contribution and preserves armor bonuses");
   var queen=new Battle.Unit();queen.npc=3;queen.x=380;queen.y=210;
   check(Battle.hitsUnit(queen,380,150)&&!Battle.hitsUnit(queen,420,150),"Queen collision covers her visible torso without a rectangular oversize hitbox");
@@ -48,7 +48,7 @@ public final class Expansion780Check {
    for(int i=0;i<4;i++)ants.units[AntCaveRules.ANTS[i]].hp=0;
    ants.pendingNext=true;Dungeon780.progress(r);ants.pendingNext=false;
    check(AntCaveRules.count(r.antAlive)==8&&r.antSpawned==12,"A six-ant wave respects the ten-ant cap");
-   check(r.battle.units[0].forgeAttack==5,"Server applies the account's equipped weapon forge rank");
+   check(r.battle.units[0].forgeAttack==100,"Server applies the account's equipped weapon forge rank");
    int waves=0;while(r.antKills<20&&waves++<12){Battle current=r.battle;for(int i:AntCaveRules.ANTS)current.units[i].hp=0;current.check();Dungeon780.progress(r);}
    check(r.antKills==20&&r.antSpawned==20,"Exactly twenty ant kills are required across respawns");
    check(r.dungeonStage==1&&r.battle.over&&r.battle.winner==0,"Twentieth kill finishes the first stage");
@@ -56,11 +56,11 @@ public final class Expansion780Check {
    store.finishAntStage(r.match,0,players,1);
    check(!host.profile.dungeonClear&&host.profile.coins==coins,"Stage one gives EXP without unlocking Hard");
    int[] stageCard=store.claim780(r.match,host.id,0,8);
-   check(stageCard[2]>=10&&stageCard[2]<=100,"Stage-one card gives reinforcement stones");
+   check(stageCard[2]>=5&&stageCard[2]<=50,"Stage-one card gives reinforcement stones");
    reject(()->store.claim780(r.match,host.id,1,0),"Stage one rejects a second pick");
    reject(()->store.claim780(r.match,guest.id,0,9),"Stage one rejects a tenth card");
    r.phase=0;r.dungeonStage=2;r.resetDungeonResult();r.refreshWaiting();guest.armed=third.armed=true;r.start();
-   check(r.battle.units[1].npc==3&&r.battle.units[1].hp==8000,"Normal Queen has 8000 HP");
+   check(r.battle.units[1].npc==3&&r.battle.units[1].hp==16000,"Normal Queen has 16000 HP");
    check(r.battle.units[0].x<160&&r.battle.units[2].x!=r.battle.units[0].x&&r.battle.units[4].x<160,"Stage two has separated spawn positions on the left");
    Battle boss=r.battle;int health=boss.units[0].hp;
    boss.units[2].human=false;boss.active=2;
@@ -73,10 +73,10 @@ public final class Expansion780Check {
    check(boss.over&&boss.winner==0,"Defeating the Queen completes the dungeon");
    String match=UUID.randomUUID().toString();store.finishDungeon780(match,0,players,1);
    check(host.profile.dungeonClear&&host.profile.coins==coins,"Normal boss win unlocks Hard without a currency reward");
-   for(int pick=0;pick<2;pick++){int[] reward=store.claim780(match,host.id,pick,pick);check(reward[1]==0&&reward[2]>=10&&reward[2]<=100,"Dungeon card gives 10–100 stones only");check(Arrays.equals(reward,store.claim780(match,host.id,pick,pick)),"Dungeon reward retries preserve their original roll");}
+   for(int pick=0;pick<2;pick++){int[] reward=store.claim780(match,host.id,pick,pick);check(reward[1]==0&&reward[2]>=5&&reward[2]<=50,"Dungeon card gives 5–50 stones only");check(Arrays.equals(reward,store.claim780(match,host.id,pick,pick)),"Dungeon reward retries preserve their original roll");}
    reject(()->store.claim780(match,host.id,2,2),"Third card is rejected");reject(()->store.claim780(match,guest.id,0,0),"A card cannot be claimed by two accounts");Dungeon780.eligible(host,2);
    var solo=server.new Room(host,6,2,-1,true);solo.kind=3;solo.map=6;solo.difficulty=2;solo.refreshWaiting();solo.start();check(solo.battle.units[2].hp==0&&solo.battle.units[4].hp==0,"Empty human seats do not become allied NPCs");check(Dungeon780.space(solo),"A cooperative party offers empty human seats");solo.closedSlots=20;check(!Dungeon780.space(solo),"Quick party search respects seats closed by the host");
-   solo.phase=0;solo.dungeonStage=2;solo.resetDungeonResult();solo.refreshWaiting();solo.start();check(solo.battle.units[1].maxHp==10500,"Hard Queen is stronger than Normal");
+   solo.phase=0;solo.dungeonStage=2;solo.resetDungeonResult();solo.refreshWaiting();solo.start();check(solo.battle.units[1].maxHp==21000,"Hard Queen is stronger than Normal");
   }
   slowStorageDoesNotBlockPhysics();
   System.out.println("All "+checks+" expansion 7.8.0 checks passed");

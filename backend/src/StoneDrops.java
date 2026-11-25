@@ -2,5 +2,7 @@
 final class StoneDrops {
  static final int[][] WEIGHTS={{65,25,8,2,0},{25,35,25,12,3},{5,15,30,35,15}};
  static int grade(int difficulty,int roll){if(difficulty<0||difficulty>2||roll<0||roll>=100)throw new IllegalArgumentException("Invalid stone roll");int total=0;for(int i=0;i<5;i++){total+=WEIGHTS[difficulty][i];if(roll<total)return i+1;}throw new IllegalStateException();}
+ // Ant Cave: retain the original 10..100 roll, halve only the quantity.
+ static int antAmount(int original){if(original<10||original>100)throw new IllegalArgumentException("Invalid ant stone roll");return original/2;}
  static int type(int grade){return grade==1?1:grade+2;}
 }

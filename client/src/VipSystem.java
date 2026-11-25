@@ -106,16 +106,29 @@ final class VipSystem {
         try{Image image=c.combatRoomArt(name);if(image!=null)battleBytes+=bytes;return image;}
         catch(OutOfMemoryError low){return null;}
     }
+    // Bpow uses a single tier-specific frame, prepared only during Loading.
+    // No animated cut-in atlas, no image decoding in the draw path.
+    void preparePowRings(int mask){
+        int size=SIZE[3],pixelBytes=size*size*4*c.s*c.s;
+        for(int k=0;k<3;k++)if((mask&(1<<k))!=0&&rings[k][3]==null)
+            rings[k][3]=preloadSmall("vip-ring-hf18-"+k+"-1",pixelBytes,true);
+    }
     void prepareBattle(){
         if(battleReady)return;
         int wingMask=0,ringMask=0;
         for(int i=0;i<6;i++){
             battleWingIds[i]=rawActorWing(i);battleXp[i]=rawActorExp(i);
-            if(c.onlineBattle()&&i<c.net.count&&c.net.roomKind==3&&!c.net.present[i]){battleWingIds[i]=-1;battleXp[i]=0;}
+            // Loading may precede the first battle snapshot: use authoritative lobby equipment.
+            if(c.onlineBattle()){
+                boolean player=i<c.net.count&&(c.net.roomKind==3?c.net.present[i]&&i%2==0:c.net.present[i]||c.net.bots[i]);
+                battleWingIds[i]=player?c.net.actorWing[i]:-1;
+                battleXp[i]=player?c.net.actorVip[i]:0;
+            }
             if(battleWingIds[i]>=0&&battleWingIds[i]<6)wingMask|=1<<battleWingIds[i];
             int lv=VipRules.level(battleXp[i]);if(lv>0)ringMask|=1<<((lv-1)/3);
         }
-        // First guarantee a neutral pose for each equipped wing; then load HUD and other angles.
+        // Prioritize the small Bpow images, then neutral wing poses, HUD and other angles.
+        preparePowRings(ringMask);
         for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,2,true);
         for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)for(int context=1;context<=2;context++){
             int size=WING_SIZE[context];
@@ -126,14 +139,14 @@ final class VipSystem {
         }
         int[] angles={1,3,0,4};
         for(int i=0;i<angles.length;i++)for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,angles[i],false);
-        for(int k=0;k<3;k++)if((ringMask&(1<<k))!=0){int size=SIZE[3];rings[k][3]=preloadSmall("vip-ring-"+k+"-"+size,16*size*size*4*c.s*c.s,false);}
         battleReady=true;
     }
 
     void releaseLargeEffects() {
         if(battleReady&&battleScreen())return;
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 3; i++){
             rings[i][0] = rings[i][3] = null;
+        }
         for (int i = 0; i < 6; i++)
             wings[i][0] = null;
     }
@@ -216,11 +229,19 @@ final class VipSystem {
 
     void ring(int kind, int context, int frame, int x, int y) {
         int size = SIZE[context];
-        // Small avatar rings may show several VIP tiers in the same frame.
-        if(!battleScreen()&&(context==0||context==3))for(int k=0;k<3;k++)if(k!=kind)rings[k][context]=null;
-        if (rings[kind][context] == null && !battleScreen())
-            rings[kind][context] = c.combatRoomArt("vip-ring-" + kind + "-" + size);
-        c.part(rings[kind][context], frame % 16 * size, 0, size, size, x - size / 2, y - size, false);
+        if(context==3){
+            // Bpow: fixed full-size frame, behind the cut-in actor.
+            // Never load or rotate images while drawing the skill.
+            Image image=rings[kind][3];
+            if(image!=null)c.part(image,0,0,size,size,x-size/2,y-size,false);
+            return;
+        }
+        // Keep the existing animated avatar/HUD rings unchanged.
+        if(!battleScreen()&&context==0)for(int k=0;k<3;k++)if(k!=kind)rings[k][context]=null;
+        if(rings[kind][context]==null&&!battleScreen())
+            rings[kind][context]=c.combatRoomArt("vip-ring-"+kind+"-"+size);
+        if(rings[kind][context]!=null)
+            c.part(rings[kind][context],(frame%16)*size,0,size,size,x-size/2,y-size,false);
     }
 
     static final int[] WING_SIZE = { 112, 64, 32 }, WING_HEIGHT = { 72, 42, 22 };

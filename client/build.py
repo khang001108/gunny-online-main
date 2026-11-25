@@ -107,7 +107,7 @@ def upsert_prop_text(text, key, value):
     return text + ending + line + "\n"
 # These sizes/effects have no runtime references; do not reintroduce them via overlays.
 def retired_asset(name):
-    return name == 'fx-pow-ring.png' or name.startswith('wing795-game-') or bool(re.fullmatch(r'vip-ring-[0-2]-216\.png', name))
+    return name == 'fx-pow-ring.png' or name.startswith('wing795-game-') or bool(re.fullmatch(r'vip-ring-[0-2]-(144|216)\.png', name)) or bool(re.fullmatch(r'vip-ring-hf18-[0-2]-8\.png', name))
 
 with zipfile.ZipFile(build/'preverified.jar') as code:
     for name in ('Gunny-E6-Online-7918', 'Gunny-E72-2009-Online-7918'):

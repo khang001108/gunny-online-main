@@ -265,7 +265,7 @@ begin
  if not eligible then raise exception 'Not eligible for card';end if;
  if p_pick=1 and not exists(select 1 from public.gunny780_card_rewards where match_id=p_match and user_id=p_user and pick=0) then raise exception 'Missing first pick';end if;
  if exists(select 1 from public.gunny780_card_rewards where match_id=p_match and card=p_card) then raise exception 'Card already taken';end if;
- if result.room_kind in(3,4) then stone:=10+floor(random()*91)::integer;
+ if result.room_kind in(3,4) then stone:=(10+floor(random()*91)::integer)/2;
  elsif random()<0.5 then stone:=1+floor(random()*10)::integer;
  else coin:=500+floor(random()*1501)::integer;end if;
  perform 1 from public.profiles where id=p_user for update;
