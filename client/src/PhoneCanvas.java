@@ -1468,7 +1468,6 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     void prepareBattleAssets(){
         if(vip.battleReady)return;
         System.gc();
-        vip.prepareBattle();
         // Current weapons, common item effects, HUD and projectiles already in base cache.
         int mask=0;
         for(int i=0;i<game.unitCount;i++){
@@ -1478,6 +1477,9 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             if(i<6&&u.npc==0)try{levelIcon(actorExp(i));}catch(OutOfMemoryError low){}
         }
         if((mask&(1<<8))!=0)try{tribalArt.preloadPlayerSpear();}catch(OutOfMemoryError low){ /* keep original projectile fallback */ }
+        // Reserve Sulan NPC artwork before optional wing angles consume the heap.
+        if(game.dungeonStage==6)tribalArt.preloadSulan();
+        vip.prepareBattle();
         if(game.dungeonStage>=3)mask|=(1<<0)|(1<<5);
         for(int w=0;w<10;w++)if((mask&(1<<w))!=0){
             if(Runtime.getRuntime().freeMemory()<(s==1?1024:3072)*1024)break;
@@ -2437,6 +2439,12 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             drawAimRay();
             loadout.preview();
             for (int i = 0; presentation.effects && i < game.trailCount; i++) {
+                if(game.trailWeapon[i]==8){
+                    int x=game.trailX[i]/256-cameraX,y=game.trailY[i]/256-cameraY;
+                    int radius=Math.max(1,3-game.trailAge[i]/5);
+                    if(worldVisible(x-radius,y-radius,radius*2,radius*2))oval(x-radius,y-radius,radius*2,radius*2,game.trailAge[i]<5?0xb8e778:0x688449);
+                    continue;
+                }
                 if(TribalRules.payload(game.trailWeapon[i])){tribalArt.trail(game.trailX[i]/256-cameraX,game.trailY[i]/256-cameraY,game.trailWeapon[i],game.trailAge[i],game.trailFrame[i]);continue;}
                 if(game.trailWeapon[i]==AntCaveRules.QUEEN_ARROW){
                     int x=game.trailX[i]/256-cameraX,y=game.trailY[i]/256-cameraY;
@@ -3190,6 +3198,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             return;
         }
         Battle.Unit u = game.units[index];
+        if(u.weapon==8&&tribalArt.heldPlayerSpear(u.face,unitAnimation(index),Battle.aimAngle(u),x+u.face*handOffsetX(index),y+handOffsetY(index)))return;
         int size = handSize(u.weapon);
         Image art = heldArt(u.weapon);
         if (art != null)

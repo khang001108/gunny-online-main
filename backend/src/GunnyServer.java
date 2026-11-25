@@ -237,7 +237,11 @@ public final class GunnyServer implements AutoCloseable {
             Session owner=battle.active<count?avatars[battle.active].owner:null;if(owner!=null&&!owner.async&&now-owner.lastSeen<45000&&battle.input()){
                 int held=owner.held;if((held&1)!=0)battle.move(-1);if((held&2)!=0)battle.move(1);if((held&4)!=0)battle.adjustAngle(1);if((held&8)!=0)battle.adjustAngle(-1);
             }
-            if(battle.pendingNext){battle.tickVisuals();if(waitingSince==0)waitingSince=now;boolean received=true;for(Session member:members)if(member!=null&&member.async&&now-member.lastSeen<45000&&member.resolution!=battle.turn)received=false;if(received){battle.completeTurn();inputTicks=0;turnStarted=now;waitingSince=0;for(Session member:members)if(member!=null)member.resolution=-1;}return;}
+            if(battle.pendingNext){battle.tickVisuals();if(waitingSince==0)waitingSince=now;boolean received=true;for(Session member:members)if(member!=null&&member.async&&now-member.lastSeen<45000&&member.resolution!=battle.turn)received=false;if(!received&&SulanRules.active(battle)&&now-waitingSince>=60000){
+                // Server already has the authoritative end-of-turn state. Avoid a permanent room stall.
+                for(Session member:members)if(member!=null&&member.resolution!=battle.turn)System.err.println("Sulan playback acknowledgement timeout: room="+id+" turn="+battle.turn);
+                received=true;
+            }if(received){battle.completeTurn();inputTicks=0;turnStarted=now;waitingSince=0;for(Session member:members)if(member!=null)member.resolution=-1;}return;}
             if(SulanRules.active(battle)){SulanRules.ambient(battle);battle.check();}
             boolean driven=owner!=null&&owner.async&&now-owner.lastSeen<45000&&battle.input();
             if(driven){battle.tickVisuals();}int priorBalls=battle.ballCount,priorShot=battle.shotSerial;if(!driven){if(chunkFrames==null)chunkBegin(battle.busy()?3:1);battle.tick();chunkFrame();if(battle.pendingNext||battle.over)chunkFlush(true);else if(batchShot&&!battle.busy()){chunkFlush(false);shotStreaming=false;}else if(!batchShot&&(priorBalls>0||battle.shotSerial>priorShot)&&battle.ballCount==0&&battle.bursts>0){chunkFlush(false);chunkBegin(3);}}else if(now-turnStarted>90000){if(chunkFrames==null)chunkBegin(1);battle.next();chunkFrame();chunkFlush(true);}if(battle.botPowQueued){captureShot();if(batchShot){chunkFrames=null;batchShot=false;chunkBegin(2);}powActor=battle.active;powTicks=150;}

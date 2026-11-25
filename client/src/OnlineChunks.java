@@ -12,7 +12,7 @@ final class OnlineChunks {
     boolean terminal, resolved, ownPending, resetTerrain, playing;boolean recovering;int recoveryFailures;
     DataInputStream frames;
     byte[] finalFrame,previousFrame;
-    long waitingSince,ownSince;int underruns;boolean waitingForNext, gapCounted, flightStarted;int rebufferBoost;
+    long waitingSince,ownSince,stallSince;int underruns;boolean waitingForNext, gapCounted, flightStarted;int rebufferBoost;
     final FrameInput snapshotInput=new FrameInput();
     final DataInputStream snapshotReader=new DataInputStream(snapshotInput);
 
@@ -24,7 +24,7 @@ final class OnlineChunks {
     OnlineChunks(OnlineClient owner) { net=owner; }
     void reset() {
         turn=completed=received=-1;queued.removeAllElements();
-        frames=null;finalFrame=previousFrame=null;remaining=activeBytes=0;id=-1;kind=0;terminal=resolved=resetTerrain=false;ownPending=false;playing=false;waitingSince=ownSince=0;waitingForNext=gapCounted=flightStarted=false;rebufferBoost=0;snapshotInput.bind(null);
+        frames=null;finalFrame=previousFrame=null;remaining=activeBytes=0;id=-1;kind=0;terminal=resolved=resetTerrain=false;ownPending=false;playing=false;waitingSince=ownSince=stallSince=0;waitingForNext=gapCounted=flightStarted=false;rebufferBoost=0;snapshotInput.bind(null);
     }
     int requestTurn(int displayedTurn) {
         return net.prefetchCap&&turn>=0 ? turn : displayedTurn;
@@ -142,13 +142,17 @@ final class OnlineChunks {
     boolean animate() {
         if (frames==null) {
             if(waitingForNext&&!terminal){
+                if(stallSince==0)stallSince=System.currentTimeMillis();
+                if(SulanRules.active(net.c.game)&&net.checkpointCap&&net.phase==1&&System.currentTimeMillis()-stallSince>=8000){
+                    net.resyncCommands();net.c.message("Đang đồng bộ lại trận Sulan...");return true;
+                }
                 if(!gapCounted){underruns++;gapCounted=true;rebufferBoost=Math.min(12,rebufferBoost+6);}
                 // Still playing a remote turn. Never fall through to prediction/visual ticks.
                 return true;
             }
             return false;
         }
-        waitingForNext=false;
+        waitingForNext=false;stallSince=0;
         if (!playing) {
             if (!flightStarted&&net.c.game.ballCount==0&&!ready(System.currentTimeMillis())) return true;
             playing=true;

@@ -5,34 +5,64 @@ final class TribalArt {
  static final int GROUND_DRAW_OFFSET=3;
  final PhoneCanvas c;final Image[] sprites=new Image[16],headers=new Image[16],bossFaces=new Image[16];
  final int[] fireGroundX=new int[9],fireGroundY=new int[9];
+ Image playerSpearArt,sulanIdle;boolean sulanPrepared;final Image[] shades=new Image[6];
  Image cover,small,wing,missiles,healthFrame,healthBar,bulanTitle,bulanShade,sword,sulanTitle,redSpeech;int shadeAlpha=-1;int coverStage,cachedStage;
  TribalArt(PhoneCanvas canvas){c=canvas;}
- void release(){for(int i=0;i<16;i++){sprites[i]=headers[i]=bossFaces[i]=null;}cover=small=wing=missiles=healthFrame=healthBar=bulanTitle=bulanShade=sword=sulanTitle=redSpeech=null;talkLines=null;talkLine=-1;dialogueText=null;dialogueLines=null;shadeAlpha=-1;coverStage=cachedStage=0;for(int i=0;i<9;i++)fireGroundX[i]=-1;}
- Image atlas(int kind){if(sprites[kind]==null)sprites[kind]=c.combatRoomArt("tribal797-npc-"+kind);return sprites[kind];}
+ void release(){sulanPrepared=false;playerSpearArt=sulanIdle=null;for(int i=0;i<shades.length;i++)shades[i]=null;for(int i=0;i<16;i++){sprites[i]=headers[i]=bossFaces[i]=null;}cover=small=wing=missiles=healthFrame=healthBar=bulanTitle=bulanShade=sword=sulanTitle=redSpeech=null;talkLines=null;talkLine=-1;dialogueText=null;dialogueLines=null;shadeAlpha=-1;coverStage=cachedStage=0;for(int i=0;i<9;i++)fireGroundX[i]=-1;}
+ Image atlas(int kind){if(sprites[kind]==null&&!sulanPrepared)sprites[kind]=c.combatRoomArt("tribal797-npc-"+kind);return sprites[kind];}
  int size(int kind){return kind>=14?96:kind==8||kind==9?72:56;}
  Image smallCover(){if(small==null)small=c.combatRoomArt("tribal797-banner");return small;}
  Image cover(int legacy){int number=legacy>=3?3:legacy;if(cover==null||coverStage!=number){coverStage=number;cover=c.combatRoomArt("tribal797-cover-"+number);}return cover;}
  void preloadBattle(){
   cachedStage=c.game.dungeonStage;
+  if(SulanRules.active(c.game)){preloadSulan();return;}
   // Present NPCs plus small common battle effects; spawned bosses retain stage-local lazy fallback.
   for(int i=0;i<c.game.unitCount;i++){
    int k=c.game.units[i].npc;
    if(k>=4&&k<=15){atlas(k);if(headers[k]==null)headers[k]=c.combatRoomArt("tribal797-portrait-"+k);}
   }
-  preloadPlayerSpear();
+  if(missiles==null)missiles=safeLoad("tribal797-projectiles");
   healthFrame=c.combatRoomArt("npc780-boss-frame");healthBar=c.combatRoomArt("npc780-boss-hp");
  }
- void header(int kind){if(headers[kind]==null)headers[kind]=c.combatRoomArt("tribal797-portrait-"+kind);c.img(headers[kind],0,10);}
+ // Sulan may summon units not present in the first snapshot. Prepare their resources before play.
+ static final int[] SULAN_KINDS={TribalRules.SULAN,TribalRules.RAGE,TribalRules.BEAN,TribalRules.HEAL,TribalRules.SPEAR,TribalRules.ELITE};
+ Image safeLoad(String name){try{return c.combatRoomArt(name);}catch(OutOfMemoryError low){return null;}}
+ void preloadSulan(){
+  if(sulanPrepared)return;cachedStage=6;
+  sulanIdle=safeLoad("hf20-sulan-idle");missiles=safeLoad("tribal797-projectiles");
+  healthFrame=safeLoad("npc780-boss-frame");healthBar=safeLoad("npc780-boss-hp");
+  sulanTitle=safeLoad("tribal-sulan-title");redSpeech=safeLoad("font-sulan-red");
+  if(c.speechFont==null)c.speechFont=safeLoad("font-dungeon-speech");
+  try{c.impactArt(0);c.impactArt(5);}catch(OutOfMemoryError low){}
+  for(int i=0;i<SULAN_KINDS.length;i++){
+   int k=SULAN_KINDS[i];headers[k]=safeLoad("tribal797-portrait-"+k);
+   if(i<2&&headers[k]!=null)try{bossFaces[k]=NativeUi.fit(headers[k],22*c.s,23*c.s,0);}catch(OutOfMemoryError low){}
+  }
+  // Keep a conservative reserve for the JVM, wings, snapshot decoding and terrain.
+  for(int i=0;i<SULAN_KINDS.length;i++){
+   int k=SULAN_KINDS[i],side=size(k)*8*c.s;
+   long bytes=(long)side*side*4;
+   if(Runtime.getRuntime().freeMemory()>=bytes+(c.s==1?1024L:3072L)*1024L)sprites[k]=safeLoad("tribal797-npc-"+k);
+  }
+  try{int w=320*c.s,h=8*c.s;int[] rgb=new int[w*h];for(int i=0;i<shades.length;i++){for(int j=0;j<rgb.length;j++)rgb[j]=(56+i*20)<<24;shades[i]=Image.createRGBImage(rgb,w,h,true);}}catch(OutOfMemoryError low){}
+  sulanPrepared=true;
+ }
+ boolean staticSulan(int kind,int x,int y,boolean flip){
+  if(sulanIdle==null)return false;
+  for(int i=0;i<SULAN_KINDS.length;i++)if(SULAN_KINDS[i]==kind){c.part(sulanIdle,(i%3)*96,(i/3)*96,96,96,x-48,y-91,flip);return true;}
+  return false;
+ }
+ void header(int kind){if(headers[kind]==null&&!sulanPrepared)headers[kind]=c.combatRoomArt("tribal797-portrait-"+kind);c.img(headers[kind],0,10);}
  void draw(int actor){
   Battle b=c.game;Battle.Unit u=b.units[actor];int kind=u.npc;
   if(SulanRules.active(b)&&actor==1&&b.tribalState==TribalRules.OPENING&&SulanRules.INTRO-b.tribalFx<60)return;
   if(kind<4||kind>15||u.maxHp==0||u.hp<=0&&u.flashTicks==0&&b.tribalState!=TribalRules.DEAD&&!(actor==1&&b.tribalState==TribalRules.TRANSFORM))return;
   if(u.x-c.cameraX< -96||u.x-c.cameraX>416||u.y-c.cameraY< -140||u.y-c.cameraY>380)return;
-  if(cachedStage!=b.dungeonStage){for(int i=0;i<16;i++)sprites[i]=headers[i]=bossFaces[i]=null;cachedStage=b.dungeonStage;}
+  if(!sulanPrepared&&cachedStage!=b.dungeonStage){for(int i=0;i<16;i++)sprites[i]=headers[i]=bossFaces[i]=null;cachedStage=b.dungeonStage;}
   boolean goldDeath=SulanRules.active(b)&&actor==1&&b.tribalState==TribalRules.TRANSFORM&&SulanRules.TRANSFORM-b.tribalFx<SulanRules.GOLD_END;
   if(goldDeath)kind=TribalRules.SULAN;
-  else if(kind==TribalRules.RAGE){sprites[TribalRules.SULAN]=null;headers[TribalRules.SULAN]=null;}
-  Image art=atlas(kind);if(art==null)return;int cell=size(kind),row=0,tick=c.frame/3%8;boolean acting=actor==b.active||(b.dungeonStage==3||SulanRules.active(b))&&u.npc==TribalRules.SPEAR&&b.units[b.active].npc==TribalRules.SPEAR;
+  
+  Image art=atlas(kind);int cell=size(kind),row=0,tick=c.frame/3%8;boolean acting=actor==b.active||(b.dungeonStage==3||SulanRules.active(b))&&u.npc==TribalRules.SPEAR&&b.units[b.active].npc==TribalRules.SPEAR;
   if(SulanRules.active(b)&&kind==TribalRules.BEAN&&(b.active==actor&&b.tribalState==TribalRules.SPECIAL||b.tribalState==TribalRules.TRANSFORM&&SulanRules.TRANSFORM-b.tribalFx>=SulanRules.BEAN_TALK)){row=2;tick=b.tribalState==TribalRules.TRANSFORM?Math.min(7,(SulanRules.TRANSFORM-b.tribalFx-SulanRules.BEAN_TALK)*8/40):Math.min(7,u.walk*8/65);}
   else if(SulanRules.active(b)&&actor==1&&b.tribalState==TribalRules.DEAD){int age=SulanRules.DEATH-b.tribalFx;row=age<70?0:6;tick=age<70?c.frame/3%8:Math.min(6,(age-70)*7/80);}
   else if(goldDeath){row=6;tick=Math.min(7,(SulanRules.TRANSFORM-b.tribalFx)*8/SulanRules.GOLD_END);}
@@ -48,33 +78,37 @@ final class TribalArt {
   }
   int x=u.x-c.cameraX,y=u.y-c.cameraY+GROUND_DRAW_OFFSET;
   if(SulanRules.active(b)&&actor==1)y-=SulanRules.drop(b);
-  c.part(art,tick*cell,row*cell,cell,cell,x-cell/2,y-cell+5,u.face>0);
+  tick=Battle.clamp(tick,0,7);row=Battle.clamp(row,0,7);
+  if(art!=null)c.part(art,tick*cell,row*cell,cell,cell,x-cell/2,y-cell+5,u.face>0);
+  else if(!staticSulan(kind,x,y,u.face>0)){c.rect(x-7,y-22,14,22,u.team==0?0x50ba68:0xbd6739);}
   if(u.hp<=0)return;
   c.rect(x-13,y+2,26,3,0x382b20);c.rect(x-12,y+3,24*u.hp/Math.max(1,u.maxHp),1,u.team==0?0x57cb6c:0xe85043);
   c.pcCenter(TribalRules.name(kind),x,y+7);
   if(kind==TribalRules.BOMB)c.pcCenter("Nổ: "+Math.max(1,2-u.power),x,y-39);
  }
- void preloadPlayerSpear(){if(missiles==null)missiles=c.combatRoomArt("tribal797-projectiles");}
- boolean playerSpear(Battle.Ball ball){
+ void preloadPlayerSpear(){if(missiles==null&&!sulanPrepared)missiles=safeLoad("tribal797-projectiles");if(playerSpearArt==null)playerSpearArt=safeLoad("hf20-player-spear32");}
+ boolean drawPlayerSpear(int dir,int x,int y){
+  if(playerSpearArt!=null){c.part(playerSpearArt,(dir%8)*32,(dir/8)*32,32,32,x-16,y-16,false);return true;}
   if(missiles==null)return false;
-  int frame=c.flightDirection(ball.vx,ball.vy)/2;
-  c.part(missiles,frame*32,(TribalRules.SPIRIT_SHOT-TribalRules.SPEAR_SHOT)*32,32,32,ball.x/256-c.cameraX-16,ball.y/256-c.cameraY-16,false);return true;
+  c.part(missiles,((dir+2)/4%8)*32,(TribalRules.SPIRIT_SHOT-TribalRules.SPEAR_SHOT)*32,32,32,x-16,y-16,false);return true;
  }
+ boolean playerSpear(Battle.Ball ball){return drawPlayerSpear(SpearVisual.direction(ball.vx,ball.vy),ball.x/256-c.cameraX,ball.y/256-c.cameraY);}
+ boolean heldPlayerSpear(int face,int pose,int aim,int x,int y){int dir=SpearVisual.heldDirection(face,pose,aim);return drawPlayerSpear(dir,x+SpearVisual.gripX(dir),y+SpearVisual.gripY(dir));}
  void projectile(Battle.Ball ball){
-  if(missiles==null)missiles=c.combatRoomArt("tribal797-projectiles");
+  if(missiles==null&&!sulanPrepared)missiles=c.combatRoomArt("tribal797-projectiles");
   int row=ball.weapon-TribalRules.SPEAR_SHOT;
   int frame=ball.weapon==TribalRules.FIRE_SHOT?ball.age/6%8:c.flightDirection(ball.vx,ball.vy)/2;
   c.part(missiles,frame*32,row*32,32,32,ball.x/256-c.cameraX-16,ball.y/256-c.cameraY-16,false);
  }
  void trail(int x,int y,int weapon,int age,int frame){int id=weapon==TribalRules.FIRE_SHOT?0:8;int size=c.projectileArtSize(id),fade=Math.min(5,age*6/Math.max(1,18));c.part(c.trailArt[id],frame*size,fade*size,size,size,x-size/2,y-size/2,false);}
 
- void impact(Battle.Blast blast){int frame=Math.min(11,blast.time*12/25),weapon=blast.weapon==TribalRules.FIRE_SHOT?0:5;c.part(c.impactArt(weapon),frame%4*96,frame/4*96,96,96,blast.x-c.cameraX-48,blast.y-c.cameraY-48,false);}
+ void impact(Battle.Blast blast){int frame=Math.min(11,blast.time*12/25),weapon=blast.weapon==TribalRules.FIRE_SHOT?0:5;Image art=sulanPrepared?c.impactArt[weapon]:c.impactArt(weapon);if(art==null){c.oval(blast.x-c.cameraX-5,blast.y-c.cameraY-5,10,10,0xff9844);return;}c.part(art,frame%4*96,frame/4*96,96,96,blast.x-c.cameraX-48,blast.y-c.cameraY-48,false);}
  void boss(int actor,int y){
-  Battle.Unit u=c.game.units[actor];if(u.npc<4||u.npc>15||u.maxHp<=0)return;if(healthFrame==null){healthFrame=c.combatRoomArt("npc780-boss-frame");healthBar=c.combatRoomArt("npc780-boss-hp");}
+  Battle.Unit u=c.game.units[actor];if(u.npc<4||u.npc>15||u.maxHp<=0)return;if(healthFrame==null&&!sulanPrepared){healthFrame=c.combatRoomArt("npc780-boss-frame");healthBar=c.combatRoomArt("npc780-boss-hp");}
   int x=171,percent=Math.max(0,u.hp)*100/Math.max(1,u.maxHp);c.img(healthFrame,x,y);
   int cx=c.g.getClipX(),cy=c.g.getClipY(),cw=c.g.getClipWidth(),ch=c.g.getClipHeight();
   c.clip(x+29,y+10,Math.max(0,46*percent/100),12);c.img(healthBar,x+23,y+9);c.g.setClip(cx,cy,cw,ch);
-  if(bossFaces[u.npc]==null){Image face=c.combatRoomArt("tribal797-portrait-"+u.npc);if(face==null)return;bossFaces[u.npc]=NativeUi.fit(face,22*c.s,23*c.s,0);}
+  if(bossFaces[u.npc]==null&&!sulanPrepared){Image face=c.combatRoomArt("tribal797-portrait-"+u.npc);if(face==null)return;bossFaces[u.npc]=NativeUi.fit(face,22*c.s,23*c.s,0);}
   c.clip(x+1,y+1,23,24);c.img(bossFaces[u.npc],x+3,y+3);c.g.setClip(cx,cy,cw,ch);
   c.pcCenter(TribalRules.name(u.npc),x+46,y+2);c.pcCenter(percent+"%",x+50,y+14);
  }
@@ -111,14 +145,16 @@ final class TribalArt {
   c.clip(16,43,width,35);c.img(bulanTitle,16,43);c.all();
  }
  void titleShade(int age,int duration){
-  int alpha=56+Math.min(5,Math.max(0,Math.min(age,duration-age)/2))*20;
+  int step=Math.min(5,Math.max(0,Math.min(age,duration-age)/2));
+  if(sulanPrepared){Image shade=shades[step];if(shade!=null)for(int y=0;y<240;y+=8)c.img(shade,0,y);return;}
+  int alpha=56+step*20;
   if(bulanShade==null||alpha!=shadeAlpha){int[] rgb=new int[320*c.s*8*c.s];for(int i=0;i<rgb.length;i++)rgb[i]=alpha<<24;bulanShade=Image.createRGBImage(rgb,320*c.s,8*c.s,true);shadeAlpha=alpha;}
   for(int y=0;y<240;y+=8)c.img(bulanShade,0,y);
  }
  int talkLine=-1;String[] talkLines;
  void sulanOverlay(){
   Battle b=c.game;int age=SulanRules.INTRO-b.tribalFx;
-  if(b.tribalState==TribalRules.OPENING&&age>=SulanRules.TITLE_AT&&age<SulanRules.TITLE_AT+81){int t=age-SulanRules.TITLE_AT;titleShade(t,81);if(sulanTitle==null)sulanTitle=c.combatRoomArt("tribal-sulan-title");c.clip(8,40,t<10?101:t<21?183:304,34);c.img(sulanTitle,8,40);c.all();return;}
+  if(b.tribalState==TribalRules.OPENING&&age>=SulanRules.TITLE_AT&&age<SulanRules.TITLE_AT+81){int t=age-SulanRules.TITLE_AT;titleShade(t,81);if(sulanTitle==null&&!sulanPrepared)sulanTitle=c.combatRoomArt("tribal-sulan-title");c.clip(8,40,t<10?101:t<21?183:304,34);c.img(sulanTitle,8,40);c.all();return;}
   if(b.sulanTalk<=0||b.sulanLine==0)return;
   if(talkLine!=b.sulanLine||talkLines==null){talkLine=b.sulanLine;talkLines=lines(SulanRules.dialogue(talkLine));}
   int actor=b.sulanSpeaker;Battle.Unit u=b.units[actor];
@@ -129,15 +165,15 @@ final class TribalArt {
   int height=talkLines.length*11+10,feet=u.y-c.cameraY+6;
   boolean below=y<65+height+9&&feet+height+9<=240;
   int tip=below?feet:y,top=below||y>=65+height+9?65:4;
-  if(SulanRules.red(b)){if(redSpeech==null)redSpeech=c.combatRoomArt("font-sulan-red");c.speechOverride=redSpeech;}
-  try{if(x>=0&&x<320&&y>=0&&y<240)c.drawSpeechBubble(x,tip,talkLines,top,below);}finally{c.speechOverride=null;}
+  if(SulanRules.red(b)){if(redSpeech==null&&!sulanPrepared)redSpeech=c.combatRoomArt("font-sulan-red");c.speechOverride=redSpeech;}
+  try{if(sulanPrepared&&c.speechFont==null){if(talkLines.length>0)c.pcCenter(talkLines[0],160,75);return;}if(x>=0&&x<320&&y>=0&&y<240)c.drawSpeechBubble(x,tip,talkLines,top,below);}finally{c.speechOverride=null;}
  }
  void worldEffects(){
   Battle b=c.game;
   if(SulanRules.active(b)){
-   if(missiles==null)missiles=c.combatRoomArt("tribal797-projectiles");
+   if(missiles==null&&!sulanPrepared)missiles=c.combatRoomArt("tribal797-projectiles");
    for(int n=0;n<7;n+=2)if(b.sulanBurn[n]>0&&b.units[n].hp>0)c.part(missiles,(c.frame/4%8)*32,2*32,32,32,b.units[n].x-c.cameraX-16,b.units[n].y-c.cameraY-25,false);
-   for(int i=0;i<b.sulanFireCount;i++){int n=(c.frame/3+i*3)%12,x=b.sulanFireX[i]-c.cameraX,y;if(fireGroundX[i]!=b.sulanFireX[i]){fireGroundX[i]=b.sulanFireX[i];fireGroundY[i]=b.ground.surface(fireGroundX[i],5);}y=fireGroundY[i]-c.cameraY;c.clip(x-23,y-34,46,36);c.part(c.impactArt(0),n%4*96,n/4*96,96,96,x-48,y-65,false);c.all();}
+   for(int i=0;i<b.sulanFireCount;i++){int n=(c.frame/3+i*3)%12,x=b.sulanFireX[i]-c.cameraX,y;if(fireGroundX[i]!=b.sulanFireX[i]){fireGroundX[i]=b.sulanFireX[i];fireGroundY[i]=b.ground.surface(fireGroundX[i],5);}y=fireGroundY[i]-c.cameraY;c.clip(x-23,y-34,46,36);if(c.impactArt[0]!=null)c.part(c.impactArt[0],n%4*96,n/4*96,96,96,x-48,y-65,false);else c.part(missiles,(n%8)*32,2*32,32,32,x-16,y-28,false);c.all();}
 
   }
   if(!TribalRules.swordVisible(b))return;
