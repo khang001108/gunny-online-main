@@ -5,9 +5,9 @@ final class Battle {
     static final int AIM_RAY_LENGTH=78;
     static final int THROW_WINDUP=6;
     static final int FLIGHT_SUBSTEPS=5;
-    // PvP advances three times as many collision-checked physics steps per tick.
-    // Keep the same launch velocity, wind, gravity and damage; dungeons stay unchanged.
-    static final int PVP_FLIGHT_SUBSTEPS=10;
+    // PvP uses the same collision-checked physics cadence as dungeons.
+    // Keep launch velocity, wind, gravity and damage unchanged.
+    static final int PVP_FLIGHT_SUBSTEPS=FLIGHT_SUBSTEPS;
     int flightSubsteps(){return dungeonStage==0?PVP_FLIGHT_SUBSTEPS:FLIGHT_SUBSTEPS;}
     static boolean isThrown(int weapon){return weapon==1||weapon==2||weapon==3||weapon==4||weapon==5||weapon==7||weapon==8;}
     // Provisional Java ME tuning, not recovered original-client weapon data.

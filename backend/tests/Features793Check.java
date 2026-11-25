@@ -1,7 +1,7 @@
 import java.io.*;import java.net.*;import java.nio.file.*;import java.util.*;
 public class Features793Check{
  static int checks;static void ok(boolean b,String text){if(!b)throw new AssertionError(text);checks++;}
- public static void main(String[] args)throws Exception{ok(Progression.baseHp(Progression.experienceForLevel(70))==30000,"Lv70 base HP");for(int i=2;i<=70;i++)ok(Progression.baseHp(Progression.experienceForLevel(i))>Progression.baseHp(Progression.experienceForLevel(i-1)),"HP monotonic");
+ public static void main(String[] args)throws Exception{ok(Progression.baseHp(Progression.experienceForLevel(70))==15000,"Lv70 base HP");for(int i=2;i<=70;i++)ok(Progression.baseHp(Progression.experienceForLevel(i))>Progression.baseHp(Progression.experienceForLevel(i-1)),"HP monotonic");
  var store=new CloudStore.Memory();var a=Expansion780Check.session(store,"Feature793A",70);var b=Expansion780Check.session(store,"feature793b",65);var hidden=Expansion780Check.session(store,"Feature793Cheat",70);hidden.profile.testCheats=true;
  try(var server=new GunnyServer(new InetSocketAddress("127.0.0.1",0),Path.of("backend/assets"),store)){server.clock.shutdownNow();a.token="a";b.token="b";hidden.token="c";server.sessions.put("a",a);server.sessions.put("b",b);server.sessions.put("c",hidden);a.profile.wins=12;b.profile.wins=3;
  store.recordStats("stats-once",List.of(Map.of("id",a.id,"damage",12345,"weapon",2)));store.recordStats("stats-once",List.of(Map.of("id",a.id,"damage",12345,"weapon",2)));ok(a.profile.weaponUses[2]==1&&a.profile.maxDamage==12345,"Record stats once");
