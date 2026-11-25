@@ -1477,6 +1477,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             if(weapon>=0&&weapon<10)mask|=1<<weapon;
             if(i<6&&u.npc==0)try{levelIcon(actorExp(i));}catch(OutOfMemoryError low){}
         }
+        if((mask&(1<<8))!=0)try{tribalArt.preloadPlayerSpear();}catch(OutOfMemoryError low){ /* keep original projectile fallback */ }
         if(game.dungeonStage>=3)mask|=(1<<0)|(1<<5);
         for(int w=0;w<10;w++)if((mask&(1<<w))!=0){
             if(Runtime.getRuntime().freeMemory()<(s==1?1024:3072)*1024)break;
@@ -2463,6 +2464,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     img(queenArrowImage(b.vx,b.vy),x-16,y-16);
                 } else if (b.fly) {
                     drawFlight(b.vx, b.vy, b.age / 8 % 2, x, y);
+                } else if(b.weapon==8&&tribalArt.playerSpear(b)){
+                    // Bulan spear sprite, already cached during Loading.
                 } else if(worldVisible(x-size/2,y-size/2,size,size))
                     part(bullets[b.weapon], projectileFrame(b) * size, b.weapon == 9 ? (b.age / 4 % 5) * size : 0, size,
                             size, x - size / 2, y - size / 2, false);

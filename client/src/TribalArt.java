@@ -19,7 +19,7 @@ final class TribalArt {
    int k=c.game.units[i].npc;
    if(k>=4&&k<=15){atlas(k);if(headers[k]==null)headers[k]=c.combatRoomArt("tribal797-portrait-"+k);}
   }
-  missiles=c.combatRoomArt("tribal797-projectiles");
+  preloadPlayerSpear();
   healthFrame=c.combatRoomArt("npc780-boss-frame");healthBar=c.combatRoomArt("npc780-boss-hp");
  }
  void header(int kind){if(headers[kind]==null)headers[kind]=c.combatRoomArt("tribal797-portrait-"+kind);c.img(headers[kind],0,10);}
@@ -53,6 +53,12 @@ final class TribalArt {
   c.rect(x-13,y+2,26,3,0x382b20);c.rect(x-12,y+3,24*u.hp/Math.max(1,u.maxHp),1,u.team==0?0x57cb6c:0xe85043);
   c.pcCenter(TribalRules.name(kind),x,y+7);
   if(kind==TribalRules.BOMB)c.pcCenter("Nổ: "+Math.max(1,2-u.power),x,y-39);
+ }
+ void preloadPlayerSpear(){if(missiles==null)missiles=c.combatRoomArt("tribal797-projectiles");}
+ boolean playerSpear(Battle.Ball ball){
+  if(missiles==null)return false;
+  int frame=c.flightDirection(ball.vx,ball.vy)/2;
+  c.part(missiles,frame*32,(TribalRules.SPIRIT_SHOT-TribalRules.SPEAR_SHOT)*32,32,32,ball.x/256-c.cameraX-16,ball.y/256-c.cameraY-16,false);return true;
  }
  void projectile(Battle.Ball ball){
   if(missiles==null)missiles=c.combatRoomArt("tribal797-projectiles");
