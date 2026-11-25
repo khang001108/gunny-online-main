@@ -115,17 +115,43 @@ final class AdminServer implements AutoCloseable {
    if(row!=null&&entry.getValue().isAfter(accountTime(row,"last_seen_at")))row.put("last_seen_at",entry.getValue().toString());
   }
   List<Map<String,Object>> rows=new ArrayList<>(unique.values());
-  for(var row:rows){Instant last=lastActivity(row);row.put("last_activity_at",last.equals(Instant.MIN)?null:last.toString());}
-  rows.sort(Comparator.<Map<String,Object>,Boolean>comparing(row->online.contains(Json.str(row,"id"))).reversed()
+  Map<String,Object> policy=Json.obj(data.call("retention-policy",Map.of()));
+  boolean retentionEnabled=Boolean.TRUE.equals(policy.get("enabled"));int defaultDays=Json.num(policy,"offline_days",90);
+  Instant current=Instant.ofEpochMilli(now);
+  for(var row:rows){
+   Instant last=lastActivity(row);row.put("last_activity_at",last.equals(Instant.MIN)?null:last.toString());
+   retentionFields(row,current,online.contains(Json.str(row,"id")),retentionEnabled,defaultDays);
+  }
+  Comparator<Map<String,Object>> recent=Comparator.<Map<String,Object>,Boolean>comparing(row->online.contains(Json.str(row,"id"))).reversed()
    .thenComparing(row->accountTime(row,"last_activity_at"),Comparator.reverseOrder())
-   .thenComparing(row->accountTime(row,"created_at"),Comparator.reverseOrder())
-   .thenComparing(row->Json.str(row,"id")));
+   .thenComparing(row->accountTime(row,"created_at"),Comparator.reverseOrder()).thenComparing(row->Json.str(row,"id"));
+  String sort=Json.str(input,"sort");
+  if(sort.equals("offline"))rows.sort(Comparator.<Map<String,Object>>comparingLong(row->((Number)row.get("offline_seconds")).longValue()).reversed().thenComparing(recent));
+  else if(sort.equals("deadline"))rows.sort(Comparator.<Map<String,Object>,Instant>comparing(row->{Instant end=accountTime(row,"effective_delete_at");return end.equals(Instant.MIN)?Instant.MAX:end;}).thenComparing(recent));
+  else rows.sort(recent);
+  result.put("scheduled_count",rows.stream().filter(row->row.get("delete_at")!=null).count());
+  result.put("due_count",rows.stream().filter(row->{Instant end=accountTime(row,"effective_delete_at");return !end.equals(Instant.MIN)&&!end.isAfter(current);}).count());
+  result.put("retention_days",defaultDays);result.put("retention_enabled",retentionEnabled);
   int start=Math.min(offset,rows.size()),end=Math.min(start+100,rows.size());
   result.put("accounts",new ArrayList<>(rows.subList(start,end)));result.put("online",new ArrayList<>(online));
   result.put("matched",rows.size());result.put("now",Instant.ofEpochMilli(now).toString());return result;
  }
+ // One current inactivity period; historical max_offline_seconds is never used for expiry.
+ static void retentionFields(Map<String,Object> row,Instant now,boolean online,boolean enabled,int defaultDays){
+  Instant last=lastActivity(row),created=accountTime(row,"created_at");if(created.isAfter(last))last=created;
+  int days=Json.num(row,"offline_days",defaultDays);if(days<1||days>3650)days=defaultDays;
+  row.put("offline_seconds",online||last.equals(Instant.MIN)?0L:Math.max(0L,Duration.between(last,now).getSeconds()));
+  row.put("offline_since",last.equals(Instant.MIN)?null:last.toString());row.put("effective_offline_days",days);
+  Instant deadline=Instant.MIN;
+  if(enabled&&!last.equals(Instant.MIN)){
+   deadline=last.plusSeconds(86400L*days);Instant protection=accountTime(row,"protected_until");if(protection.isAfter(deadline))deadline=protection;
+  }
+  row.put("inactive_delete_at",deadline.equals(Instant.MIN)?null:deadline.toString());
+  Instant manual=accountTime(row,"delete_at");Instant effective=deadline.equals(Instant.MIN)||!manual.equals(Instant.MIN)&&manual.isBefore(deadline)?manual:deadline;
+  row.put("effective_delete_at",effective.equals(Instant.MIN)?null:effective.toString());
+ }
  static Instant accountTime(Map<String,Object> row,String field){
-  String value=Json.str(row,field);return value.isEmpty()?Instant.MIN:OffsetDateTime.parse(value).toInstant();
+  String value=Json.str(row,field);return value.isEmpty()||value.equals("-infinity")?Instant.MIN:value.equals("infinity")?Instant.MAX:OffsetDateTime.parse(value).toInstant();
  }
  static Instant lastActivity(Map<String,Object> row){
   return Collections.max(List.of(accountTime(row,"last_seen_at"),accountTime(row,"last_login_at")));

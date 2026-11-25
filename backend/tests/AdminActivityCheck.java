@@ -80,6 +80,11 @@ public final class AdminActivityCheck {
             Admin750Check.ok(Json.obj(rows.get(1)).get("id").equals(id(110)) && Json.obj(rows.get(2)).get("id").equals(id(111)),
                     "Offline players follow last connection or login in descending order");
             Admin750Check.ok(((List<?>) first.get("online")).equals(List.of(id(129))), "Expired and stale sessions are excluded from online status");
+            var sorted = list("offset=0&sort=offline");
+            var sortedRows = (List<?>) sorted.get("accounts");
+            long previous = Long.MAX_VALUE;
+            for(Object entry:sortedRows){long seconds=((Number)Json.obj(entry).get("offline_seconds")).longValue();Admin750Check.ok(seconds<=previous,"Current inactivity sorting descends");previous=seconds;}
+            Admin750Check.ok(((Number)leader.get("offline_seconds")).longValue()==0,"Online resets offline counter despite history");
             var second = list("offset=100");
             var combined = new HashSet<String>();
             for (var page : List.of(first, second)) for (Object value : (List<?>) page.get("accounts"))
