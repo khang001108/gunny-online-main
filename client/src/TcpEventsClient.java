@@ -23,7 +23,7 @@ final class TcpEventsClient implements Runnable {
     // Server emits changes every simulation tick. Coalesce notifications in PvP;
     // urgent commands and receive-ahead polling use the separate main socket.
     if(n.inBattle&&n.phase==1)Thread.sleep(BattleNetworkPolicy.EVENT_MS);
-   }catch(Exception e){transport.close();if(++failures>=3){failed=true;signal++;break;}try{Thread.sleep(200*failures);}catch(Exception ignored){}}
+   }catch(Exception e){transport.close();if(generation!=n.networkGeneration||room!=n.roomId||!token.equals(n.token))break;if(++failures>=3){failed=true;signal++;break;}try{Thread.sleep(200*failures);}catch(Exception ignored){}}
   }transport.close();
  }
 }

@@ -85,7 +85,7 @@ final class OnlineAuth {
     int[] box(int id) {
         int n = fields();
         if (id == n + 6)
-            return new int[] { 80, 207, 160, 25 };
+            return new int[] { 5, 216, 90, 19 };
         if (id >= 100) {
             int x = id == 100 ? 22 : id == 101 ? 64 : id == 103 ? 108 : 300;
             return new int[] { x - 20, 199, 40, 40 };
@@ -135,7 +135,7 @@ final class OnlineAuth {
                 + "s" : net.registration ? "Đăng ký" : "Đăng nhập", 160, submitY() + 7);
         c.pcText("Máy chủ", 112, linksY());
         c.pcText(net.registration ? "Đã có TK? Đăng nhập" : "Chưa có TK? Đăng ký", 171, linksY());
-        c.button("Test BOT Offline", 80, 207, 160, 25, selected == fields() + 6);
+        c.button("Test BOT", 5, 216, 90, 19, selected == fields() + 6);
         if (selected < 100 && selected != fields() + 6) {
             int[] b = box(selected);
             c.drawSelectionGlow(b[0], b[1], b[2], b[3]);
