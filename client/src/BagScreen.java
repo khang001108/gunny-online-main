@@ -143,7 +143,6 @@ final class BagScreen {
         c.img(c.lobbyBackground, 0, 0);
         c.img(frame, 3, 8);
         HeaderArt.left(c,HeaderArt.BAG,14,21);
-        if(c.gifts.vipUntil()>System.currentTimeMillis()/1000)c.pcText("VIP "+((c.gifts.vipUntil()-System.currentTimeMillis()/1000+3599)/3600)+"h",76,17);
 
         c.img(close, 289, 12);
         c.pcCenter(c.pcShort(c.playerName, 110), 77, 46);
@@ -254,7 +253,7 @@ final class BagScreen {
         if(infoKind==VIP_KIND){c.tooltip.goods(VipRules.cardName(infoItem),"Thẻ VIP",infoItem==12?"Dùng: đạt ngay VIP 9. Vật phẩm chỉ do quản trị cấp.":"Dùng: +"+((infoItem+1)*100)+" EXP VIP. Khi MAX, 100 EXP đổi 100 xu mua sắm; EXP dư cũng đổi xu.",box(focus));return;}
         if(infoKind==WING_KIND){if(infoItem<0)return;c.tooltip.goods(c.vip.wingName(infoItem),"Cánh",infoItem==5?"Cánh thưởng phó bản. Trang bị vĩnh viễn.":"+"+VipRules.WING_HP[infoItem]+" HP khi đeo. Cần VIP "+VipRules.WING_VIP[infoItem]+" để mua. Vĩnh viễn.",box(focus));return;}
 
-        if(infoKind==GIFT_KIND){String desc=infoItem==0?"Thưởng: hòm Lv"+(c.gifts.value(0)+1)+", xu, đá Lv1 x50-100":infoItem==1?"Thưởng: đá Lv2 x20-70. Thẻ VIP 1 ngày: 10%.":"Kích hoạt VIP 1 ngày. Cộng dồn thời hạn.";c.tooltip.goods(c.gifts.name(infoItem),infoItem==0?"Hòm Lv"+c.gifts.value(0):"Quà",desc,box(focus));return;}
+        if(infoKind==GIFT_KIND){String desc=infoItem==0?"Thưởng: hòm Lv"+(c.gifts.value(0)+1)+", xu, đá Lv1 x50-100":infoItem==1?c.gifts.dungeonDescription():"Quy đổi thành 1 thẻ VIP 1 (+100 EXP khi dùng).";c.tooltip.goods(c.gifts.name(infoItem),infoItem==0?"Hòm Lv"+c.gifts.value(0):"Quà",desc,box(focus));return;}
         if(infoKind==STONE_KIND){c.stoneShop.drawInfo(infoItem,box(focus));return;}
         c.tooltip.draw(infoKind, infoItem, c.mode == 6 ? c.shop.box(c.shop.focus) : box(focus));
     }

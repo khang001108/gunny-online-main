@@ -1335,7 +1335,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     frame++;
                     presentation.tick();
                     forge.tick();
-                    if(mode==5&&onlineBattle())net.results.tick();
+                    if(mode==5&&!offlineTest&&net!=null)net.results.tick();
                     tickLoading();
                     if (muzzleTicks > 0)
                         muzzleTicks--;

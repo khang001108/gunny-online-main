@@ -329,7 +329,7 @@ final class DungeonScreen {
    if(item<5)c.stoneShop.drawInfo(item,anchor);
    else if(item==DungeonRewardPreview.WEAPON)c.tooltip.draw(0,8,anchor);
    else if(item==DungeonRewardPreview.WING)c.tooltip.goods(c.vip.wingName(5),"Cánh","Cánh thưởng phó bản. Trang bị vĩnh viễn.",anchor);
-   else c.tooltip.goods(c.gifts.name(1),"Quà","Thưởng: đá Lv2 x20-70. Thẻ VIP 1 ngày: 10%.",anchor);
+   else c.tooltip.goods(c.gifts.name(1),"Quà",c.gifts.dungeonDescription(),anchor);
   }
   c.all();c.img(rewardPopupClose,DungeonRewardPreview.CLOSE_X,DungeonRewardPreview.CLOSE_Y);
  }

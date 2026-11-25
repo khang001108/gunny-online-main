@@ -71,6 +71,7 @@ final class AdminServer implements AutoCloseable {
    Object days=input.get("days");boolean inherit=op.equals("offline-days")&&days==null;
    if(!inherit&&(!(days instanceof Number)||((Number)days).doubleValue()!=((Number)days).intValue()||((Number)days).intValue()<1||((Number)days).intValue()>3650))throw new IllegalArgumentException("Số ngày phải là số nguyên từ 1 đến 3650");
    if(!inherit)input.put("days",((Number)days).intValue());
+   if(op.equals("retention-save")&&!(input.get("enabled") instanceof Boolean))throw new IllegalArgumentException("Thiếu trạng thái tự xoá tài khoản");
    if(!op.equals("retention-save"))UUID.fromString(Json.str(input,"id"));if(op.equals("extend-offline"))UUID.fromString(Json.str(input,"request_key"));
   }
    if(op.equals("vip-grant")){

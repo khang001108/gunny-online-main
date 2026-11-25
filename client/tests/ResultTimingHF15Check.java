@@ -1,0 +1,4 @@
+public final class ResultTimingHF15Check {
+ static void ok(boolean b,String s){if(!b)throw new AssertionError(s);}
+ public static void main(String[] args){ResultTimingHF15 t=new ResultTimingHF15();ok(!t.summaryDone(50000),"network delay cannot skip first paint");t.summaryPainted(50000);t.summaryPainted(51000);ok(!t.summaryDone(52999),"2999ms");ok(t.summaryDone(53000),"3000ms");ok(t.cardDeadline(1000)==Long.MAX_VALUE,"do not autoclaim before cards drawn");t.cardsPainted(53000);ok(t.cardDeadline(1000)==63000,"late client gets 10s");ok(t.cardDeadline(70000)==70000,"honor server minimum");t.cardsPainted(55000);ok(t.cardDeadline(1000)==63000,"repaint does not reset");t.reset();ok(!t.summaryDone(99999)&&t.cardDeadline(0)==Long.MAX_VALUE,"next match reset");System.out.println("PASS actual-paint summary duration, card grace, network deadline, reset");}
+}
