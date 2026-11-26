@@ -148,9 +148,9 @@ final class ForgeScreen {
         c.img(luckyIcon,34,157);c.pcText("May 25% ("+c.economy.material(5)+")",49,158);
         c.img(protect?on:off,19,173);
         c.img(protectIcon,34,173);c.pcText("Bảo vệ ("+c.economy.material(6)+")",49,174);
-        if(focus==7||lucky)c.drawSelectionGlow(17,155,123,16);
-        if(focus==8||protect)c.drawSelectionGlow(17,171,123,15);
-        if(focus==2||continuous)c.drawSelectionGlow(17,185,123,13);
+        if(focus==7)c.drawSelectionGlow(17,155,123,16);
+        if(focus==8)c.drawSelectionGlow(17,171,123,15);
+        if(focus==2)c.drawSelectionGlow(17,185,123,13);
         c.img(continuous?on:off,19,187);
         c.pcText("Liên tục",34,187);
         c.img(hammer, 30, 202);
@@ -168,7 +168,7 @@ final class ForgeScreen {
             c.img(cell, x, y);
             if(step==1){if(i<gradeCount){c.img(c.stoneShop.icon(ownedGrades[i]-1),x+2,y);c.pcText("L"+ownedGrades[i],x+12,y);}}else if (i < count)
                 c.img(c.bag.itemIcon(kinds[i], items[i]), x + 2, y);
-            if (i == (step==1?stoneSelection:selection) && (step==1?gradeCount:count) > 0)
+            if (focus==0 && i == (step==1?stoneSelection:selection) && (step==1?gradeCount:count) > 0)
                 c.drawSelectionGlow(x, y, 25, 25);
         }
         c.img(c.bag.arrow, 155, 207);
@@ -194,19 +194,34 @@ final class ForgeScreen {
             c.message("Rời phòng trước khi rèn");
             return;
         }
-        if (c.economy.material(grade-1) < quantity) {
-            failed();
-            c.message("Không còn đá cường hóa");
-            return;
-        }
+        if (!checkMaterials()) return;
         if(c.onlineAccount()&&!c.net.forgeChanceCap){c.message("Cập nhật máy chủ cường hóa");return;}
         running = continuous;
         submit();
     }
 
+    String materialError() {
+        boolean noLucky=lucky&&c.economy.material(5)<1;
+        boolean noProtect=protect&&c.economy.material(6)<1;
+        if(noLucky&&noProtect)return "Đã hết bùa may mắn và bùa bảo vệ.";
+        if(noLucky)return "Đã hết bùa may mắn 25%.";
+        if(noProtect)return "Đã hết bùa bảo vệ.";
+        if(c.economy.material(grade-1)<quantity)return "Chưa đủ đá cường hóa Lv"+grade+".";
+        return null;
+    }
+
+    boolean checkMaterials() {
+        String error=materialError();
+        if(error==null)return true;
+        failed();
+        c.popup.notice("Thông báo",error);
+        return false;
+    }
+
     void submit() {
         if (sending() || c.net.pending.length() > 0)
             return;
+        if(!checkMaterials())return;
         if (c.onlineAccount()) {
             if (requestKey.length() == 0)
                 requestKey = c.nextEconomyKey();
@@ -255,11 +270,12 @@ final class ForgeScreen {
         if (!running || c.net.busy || c.net.pending.length() > 0 || System.currentTimeMillis() < nextAt)
             return;
         refresh();
-        if (count == 0 || expected >= ForgeRules.MAX_RANK || c.economy.material(grade-1)<quantity || lucky&&c.economy.material(5)<1 || protect&&c.economy.material(6)<1) {
+        if (count == 0 || expected >= ForgeRules.MAX_RANK) {
             running = false;
-            c.message(expected >= ForgeRules.MAX_RANK ? "Đã đạt +15" : "Dừng: đã hết đá");
+            c.message(expected >= ForgeRules.MAX_RANK ? "Đã đạt +15" : "Dừng: chưa chọn trang bị");
             return;
         }
+        if(!checkMaterials())return;
         submit();
     }
 
@@ -380,7 +396,7 @@ final class ForgeScreen {
             if(y>=138&&y<153){focus=9;if(x<93)grade=grade%5+1;else{step=1;focus=0;info=false;}requestKey="";return;}
             if(y>=155&&y<171){lucky=!lucky;focus=7;requestKey="";return;}
             if(y>=171&&y<185){protect=!protect;focus=8;requestKey="";return;}
-            if(y>=185&&y<198){toggle();return;}
+            if(y>=185&&y<198){focus=2;toggle();return;}
         }
         if (x >= 289 && y < 33) {
             leave();

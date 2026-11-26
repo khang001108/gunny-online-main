@@ -84,8 +84,17 @@ final class RoomSpeech {
             if(c.mode==3)c.exitBuffs();
             compose(); return true;
         }
+        if (key == '@') {
+            if(current==FIGHT){
+                if(c.fireKey!=0||c.game.charging&&c.isLocalTurn()){c.message("Thả phím bắn trước khi chat.");return true;}
+                if(c.mode==3)c.exitBuffs();
+                c.held=c.fireKey=c.cameraHeld=0;
+                bar=false;picker=true;selected=0;
+                c.repaint();return true;
+            }
+            bar=picker=true;selected=0;return true;
+        }
         if (current != WAITING) return false;
-        if (key == '@') { bar = picker = true; selected = 0; return true; }
         if (bar && key == -7) { bar = false; return true; }
         return false;
     }

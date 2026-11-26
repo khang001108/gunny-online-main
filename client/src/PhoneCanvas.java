@@ -3691,8 +3691,9 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 noticeW=w;noticeH=h;noticePanel=NativeUi.fit(noticeSource,w*s,h*s,4*s);
             }
         }
-        img(noticePanel,(320-noticeW)/2,63);
-        for(int i=0;i<noticeCount;i++)tooltip.colored(noticeRows[i],160-pcWidth(noticeRows[i])/2,68+i*12,noticeFont);
+        int noticeY=mode==18?Math.max(0,240-noticeH-4):63;
+        img(noticePanel,(320-noticeW)/2,noticeY);
+        for(int i=0;i<noticeCount;i++)tooltip.colored(noticeRows[i],160-pcWidth(noticeRows[i])/2,noticeY+5+i*12,noticeFont);
     }
 
     void message(String value) {
@@ -3839,10 +3840,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             emotions.key(key, dir, ok);
             return;
         }
-        if (mode == 1 && key == '@') {
-            emotions.toggle();
-            return;
-        }
+        // HF31: @ is handled by RoomSpeech, the same picker as avatar chat.
         if ((mode == 1 || mode == 3) && key == -6) {
             mode = 1;
             toggleCamera();
