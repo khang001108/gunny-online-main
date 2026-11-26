@@ -57,7 +57,7 @@ final class SulanRules {
    if(t==90){flash(b,b.units[1].x,b.units[1].y);say(b,INTRO_LINE,1,80);}
    if(t==TITLE_AT)b.sulanTalk=0;
    if(t==ROAR_AT){b.units[1].attackTicks=36;say(b,ROAR,1,75);}
-   if(t==ROAR_HIT){int victim=firstPlayer(b);flash(b,b.units[victim].x,b.units[victim].y-15);hurt(b,victim,TribalRules.DAMAGE[b.dungeonDifficulty]);b.check();}
+   if(t==ROAR_HIT){for(int victim=0;victim<6;victim+=2)if(b.units[victim].hp>0){flash(b,b.units[victim].x,b.units[victim].y-15);hurt(b,victim,TribalRules.DAMAGE[b.dungeonDifficulty]);}b.check();}
   }else if(state==TribalRules.TRANSFORM){int t=TRANSFORM-b.tribalFx;
    if(t==GOLD_END){int x=b.units[1].x;TribalRules.spawn(b,1,TribalRules.RAGE,x);b.tribalPhase=2;b.units[1].flashTicks=0;say(b,REBIRTH,1,65);}
    if(t==BEAN_AT){int x=0;for(int i=0;i<6;i+=2)if(b.units[i].hp>0)x=Math.max(x,b.units[i].x);TribalRules.spawn(b,6,TribalRules.BEAN,Battle.clamp(x+55,28,b.units[1].x-55));b.units[6].maxHp=b.units[6].hp=beanHp(b.dungeonDifficulty);b.units[6].face=b.units[1].x<b.units[6].x?-1:1;say(b,BEAN,6,60);}
@@ -134,7 +134,16 @@ final class SulanRules {
   for(int i=0;i<7;i++)if(Math.abs(b.units[i].x-x)<=35&&Math.abs(Battle.targetY(b.units[i])-y)<=40)b.sulanBurn[i]=0;
   for(int i=b.sulanFireCount-1;i>=0;i--)if(Math.abs(b.sulanFireX[i]-x)<=40){int last=--b.sulanFireCount;b.sulanFireX[i]=b.sulanFireX[last];b.sulanFireLife[i]=b.sulanFireLife[last];}
  }
- static void fireball(Battle b,int victim,int spread){TribalRules.projectile(b,1,victim,TribalRules.FIRE_SHOT,spread);}
+ // HF29: every living player is included in each damaging salvo; preserve three red missiles per cast.
+ static void partySalvo(Battle b,boolean golden){
+  int count=playerCount(b);if(count==0)return;
+  int start=b.rand(count),shots=golden?count:3;
+  for(int i=0;i<shots;i++){
+   int victim=target(b,(start+i)%count),before=b.ballCount;
+   TribalRules.projectile(b,1,victim,golden?TribalRules.CHIEF_SHOT:TribalRules.FIRE_SHOT,golden?0:(i-1)*12);
+   if(b.ballCount>before){b.balls[before].sulanVictim=victim;b.shotSerial++;}
+  }
+ }
  static void tickAI(Battle b){
   Battle.Unit u=b.units[b.active];if(u.hp<=0){b.next();return;}
   int t=++b.tribalClock;u.walk=t;b.botWait=t;if(u.npc==TribalRules.BEAN)u.face=b.units[1].x<u.x?-1:1;else if(t==1){int victim=TribalRules.target(b,b.active);if(victim!=b.active&&b.units[victim].x!=u.x)u.face=b.units[victim].x<u.x?-1:1;}
@@ -157,12 +166,12 @@ final class SulanRules {
    end=110;
   }else{
    boolean golden=u.npc==TribalRules.SULAN;
-   int launches=golden?count:4;
-   for(int n=0;n<launches;n++){int at=55+n*(golden?45:35);
+   int launches=golden?1:4;
+   for(int n=0;n<launches;n++){int at=55+n*35;
     if(t==at-12)u.attackTicks=36;
-    if(t==at){if(b.shotObserver!=null)b.shotObserver.beforeShot();if(golden)TribalRules.projectile(b,1,target(b,n),TribalRules.CHIEF_SHOT,0);else for(int shot=0;shot<3;shot++)fireball(b,target(b,shot%Math.max(1,count)),(shot-1)*12);b.shotSerial+=golden?1:3;}
+    if(t==at){if(b.shotObserver!=null)b.shotObserver.beforeShot();partySalvo(b,golden);}
    }
-   end=55+Math.max(0,launches-1)*(golden?45:35)+60;
+   end=55+Math.max(0,launches-1)*35+60;
   }
   if(t>=end&&!b.busy()){if(b.tribalWave<u.power/2){callAdds(b);return;}b.tribalState=TribalRules.IDLE;b.next();}
  }

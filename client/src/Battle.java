@@ -21,7 +21,7 @@ final class Battle {
     static final int MAX_UNITS=14;
     final Unit[] units=new Unit[MAX_UNITS];int unitCount=2;boolean teams;
     boolean explicitHumans;boolean humanTurn(){return explicitHumans?units[active].human:teams?units[active].human:hotseat||active==0;}
-    int enemyOf(int actor){if(TribalRules.active(this))return TribalRules.target(this,actor);int best=actor==0?1:0,distance=99999;for(int i=0;i<unitCount;i++)if(i!=actor&&units[i].hp>0&&(!teams||units[i].team!=units[actor].team)){int d=Math.abs(units[i].x-units[actor].x);if(d<distance){distance=d;best=i;}}return best;}
+    int enemyOf(int actor){if(TribalRules.active(this))return TribalRules.target(this,actor);if(dungeonStage==2&&units[actor].npc==3){int target=raidTarget(actor);if(target>=0)return target;}int best=actor==0?1:0,distance=99999;for(int i=0;i<unitCount;i++)if(i!=actor&&units[i].hp>0&&(!teams||units[i].team!=units[actor].team)){int d=Math.abs(units[i].x-units[actor].x);if(d<distance){distance=d;best=i;}}return best;}
     static int targetY(Unit u){return u.y-(u.npc>=TribalRules.SULAN?30:u.npc==3?42:u.npc>0?16:12);}
     static boolean hitsUnit(Unit u,int x,int y){int dx=x-u.x,dy=y-targetY(u);if(u.npc==0)return dx*dx+dy*dy<70;int rx=u.npc>=TribalRules.SULAN?22:u.npc==3?25:16,ry=u.npc>=TribalRules.SULAN?31:u.npc==3?43:15;if(Math.abs(dx)>rx||Math.abs(dy)>ry)return false;return dx*dx*ry*ry+dy*dy*rx*rx<=rx*rx*ry*ry;}
     static int gravity(Ball b){return (b.weapon==TribalRules.SPIRIT_SHOT||b.weapon==TribalRules.SPEAR_SHOT||b.weapon==TribalRules.CHIEF_SHOT||b.weapon==TribalRules.FIRE_SHOT)?20:TribalRules.payload(b.weapon)?6:b.fly||b.freeze?11:b.weapon==4?14:b.weapon==2?10:b.weapon==7?12:11;}
@@ -58,6 +58,16 @@ final class Battle {
     int chargeDir=1;
     int winner=-1;
     int seed=37183;
+    // HF29: one stable random target for each boss per turn (no retarget every tick).
+    final int[] raidTargetTurn=new int[MAX_UNITS],raidTargets=new int[MAX_UNITS];
+    int raidTarget(int actor){
+        int old=raidTargets[actor];
+        if(raidTargetTurn[actor]==turn&&old>=0&&old<unitCount&&units[old].hp>0&&units[old].team!=units[actor].team&&units[old].npc==0)return old;
+        int count=0;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&units[i].npc==0&&units[i].team!=units[actor].team)count++;
+        if(count==0)return -1;
+        int pick=rand(count);for(int i=0;i<unitCount;i++)if(units[i].hp>0&&units[i].npc==0&&units[i].team!=units[actor].team&&pick--==0){raidTargetTurn[actor]=turn;raidTargets[actor]=i;return i;}
+        return -1;
+    }
     static final int[] SIN=new int[91];
     static {for(int i=0;i<=90;i++)SIN[i]=(int)(Math.sin(i*Math.PI/180)*1024);}
     static final int[] ITEM_COST={50,150,170,150,120,120};
@@ -67,12 +77,13 @@ final class Battle {
     static boolean validKit(int[] kit){return kit!=null&&kit.length==3&&validKit(kit[0],kit[1],kit[2]);}
     static final class Unit {
         int wingHp;final int[] weaponForge=new int[10];int forgeWeaponBonus;int npc;int maxHp=MAXHP,maxEnergy=240,attackBonus,defense,luck,experience,forgeAttack,forgeDefense,forgeLuck,wornMask=3;boolean god,statsEnabled;final int[] kit={0,1,2};int itemUsed,frozen,freezeTurns,invisible,flyCooldown;boolean assist,flightAim;int team,botStyle=-1;boolean human;int x,y,vy,hp=MAXHP,energy=240,rage,angle=45,power=60,face=1,walk,weapon,attackTicks,slope,heals=5,deathX,deathY,lastPower=-1,pendingPower=-1,flashTicks,landingTicks,lastBuff;boolean dead;}
-    static final class Ball {int x,y,vx,vy,owner,age,damage,radius,weapon;boolean guided,freeze,fly,homing,powered;}
+    static final class Ball {int x,y,vx,vy,owner,age,damage,radius,weapon;int sulanVictim=-1;boolean guided,freeze,fly,homing,powered;}
     static final class Blast {boolean freeze;int x,y,radius,time,damage,owner,weapon;}
     Battle(Ground ground){this.ground=ground;for(int i=0;i<units.length;i++)units[i]=new Unit();}
     int rand(int n){seed=seed*1103515245+12345;return (seed>>>1)%n;}
     int rollWind(){int cap=clamp(windLimit,0,30);return rand(cap*2+1)-cap;}
     void start(boolean two){
+        for(int i=0;i<raidTargetTurn.length;i++){raidTargetTurn[i]=-1;raidTargets[i]=-1;}
         explicitHumans=false;deferNext=pendingNext=false;teams=false;unitCount=2;active=0;turn=1;over=false;hotseat=two;winner=-1;ballCount=blastCount=bursts=settle=trailCount=0;
         dungeonStage=queenShots=0;lastDungeonAlly=4;
         for(int i=0;i<units.length;i++){damage[i]=kills[i]=0;Unit u=units[i];u.itemUsed=u.frozen=u.freezeTurns=u.invisible=u.flyCooldown=u.hp=u.npc=0;u.dead=false;u.god=false;u.assist=false;u.kit[0]=0;u.kit[1]=1;u.kit[2]=2;}damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rollWind();lastWind=0;countdown=turnLimit;botWait=0;selectedWeapon=0;
@@ -214,7 +225,7 @@ final class Battle {
             int x=b.x/256,y=b.y/256;boolean hit=!b.homing&&ground.solid(x,y);
             if(!b.fly)for(int n=0;n<unitCount;n++){Unit u=units[n];if(u.hp>0&&(n!=b.owner||b.age>24)&&!(TribalRules.active(this)&&TribalRules.payload(b.weapon)&&units[b.owner].npc>0&&u.team==units[b.owner].team)&&hitsUnit(u,x,y))hit=true;}
             if(hit){impact(b);removeBall(i);}
-            else if((sequentialAttack&&b.weapon!=AntCaveRules.QUEEN_ARROW&&(x<viewX||x>=viewX+viewWidth||y<viewY||y>=viewY+viewHeight))||x< -25||x>W+25||y>H+35||b.age>1600)removeBall(i);
+            else if((sequentialAttack&&b.weapon!=AntCaveRules.QUEEN_ARROW&&(x<viewX||x>=viewX+viewWidth||y<viewY||y>=viewY+viewHeight))||x< -25||x>W+25||y>H+35||b.age>1600){if(b.sulanVictim>=0)impact(b);removeBall(i);}
         }
         if(wasBusy&&ballCount==0&&bursts==0&&settle<=0)settle=24;
         if(dungeonStage==2&&units[1].hp<=0){check();return;}
@@ -276,12 +287,16 @@ final class Battle {
         int x=b.x/256,y=b.y/256;
         if(b.fly){int surface=ground.surface(x,Math.max(0,y-18));if(surface<H&&x>12&&x<W-12){units[b.owner].x=x;units[b.owner].y=surface;units[b.owner].vy=0;units[b.owner].landingTicks=32;if(SulanRules.active(this))SulanRules.updateFacing(this);}return;}
         if(b.freeze){if(SulanRules.active(this))SulanRules.extinguish(this,x,y);Blast ice=new Blast();ice.freeze=true;ice.x=x;ice.y=y;ice.weapon=b.weapon;if(blastCount<blasts.length)blasts[blastCount++]=ice;for(int i=0;i<unitCount;i++){Unit u=units[i];int dx=x-u.x,dy=y-targetY(u);if(u.hp>0&&!ally(b.owner,i)&&dx*dx+dy*dy<31*31){u.freezeTurns=2;u.frozen=1;}}hitSerial++;return;}
+        // HF29: a Sulan party salvo assigns one or more missiles to every living player.
+        // Apply that missile once to its assigned victim; no collateral double-hit on nearby allies.
+        int assigned=b.sulanVictim;
+        if(assigned>=0){if(assigned>=unitCount||units[assigned].hp<=0)return;x=units[assigned].x;y=targetY(units[assigned]);}
         Blast fx=new Blast();fx.x=x;fx.y=y;fx.radius=b.radius;fx.owner=b.owner;fx.weapon=b.weapon==AntCaveRules.QUEEN_ARROW?9:b.weapon;
         if(blastCount<blasts.length)blasts[blastCount++]=fx;
         for(int i=0;i<unitCount;i++){
             Unit u=units[i];int dx=x-u.x,dy=y-targetY(u),dist=dx*dx+dy*dy,r=b.radius+(u.npc==3?45:23);
-            if(u.hp>0&&dist<r*r&&!(TribalRules.active(this)&&units[b.owner].npc>0&&u.team==units[b.owner].team)){
-                int damage=b.damage*(100-(int)Math.sqrt(dist)*65/r)/100;
+            if(u.hp>0&&(assigned>=0?i==assigned:dist<r*r)&&!(TribalRules.active(this)&&units[b.owner].npc>0&&u.team==units[b.owner].team)){
+                int damage=assigned>=0?b.damage:b.damage*(100-(int)Math.sqrt(dist)*65/r)/100;
                 if(SulanRules.active(this))damage=SulanRules.damage(this,b,i,damage);
                 if(u.god)damage=0;
                 if(lightBotDamage(b.owner,i))damage=Math.min(60,Math.max(1,damage/10));

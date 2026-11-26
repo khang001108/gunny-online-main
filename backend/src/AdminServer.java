@@ -85,7 +85,10 @@ final class AdminServer implements AutoCloseable {
   if(op.equals("support-add")){
    // The durable transaction has committed. Refresh failures must not make it look rejected.
    try{refreshProfile(Json.str(input,"id"));}catch(Exception refreshError){System.err.println("Support gift committed; profile refresh deferred");}
-  }else if(op.equals("wallet-add"))refreshProfile(Json.str(input,"id"));
+  }else if(op.equals("wallet-add")){
+   // HF29: the durable grant already committed; do not report a failed grant on refresh failure.
+   try{refreshProfile(Json.str(input,"id"));}catch(Exception refreshError){System.err.println("Wallet grant committed; profile refresh deferred");}
+  }
   if(op.equals("delete-now"))revoke(Json.str(input,"id"));
   json(x,200,result);
  }catch(IllegalArgumentException e){json(x,400,Map.of("error",e.getMessage()==null?"Dữ liệu không hợp lệ":e.getMessage()));}

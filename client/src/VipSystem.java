@@ -380,6 +380,10 @@ final class VipSystem {
     }
 
     void buy() {
+        // HF29: validate the selected wing and show the actual rejection reason.
+        if(shopFocus<0||shopFocus>=VipRules.WING_PRICE.length)return;
+        if(!c.onlineAccount()||!c.net.vipCap){c.message("Đăng nhập và cập nhật server VIP");return;}
+        if(!loaded){c.message("Chờ tải dữ liệu VIP");return;}
         if (VipRules.level(exp()) < VipRules.WING_VIP[shopFocus]) {
             c.message("Cần VIP " + VipRules.WING_VIP[shopFocus]);
             return;
@@ -388,6 +392,7 @@ final class VipSystem {
             c.message("Đã sở hữu cánh");
             return;
         }
+        if(c.shoppingMoney<VipRules.WING_PRICE[shopFocus]){c.message("Thiếu "+(VipRules.WING_PRICE[shopFocus]-c.shoppingMoney)+" tiền mua sắm");return;}
         submit("vipbuy", shopFocus);
     }
 }

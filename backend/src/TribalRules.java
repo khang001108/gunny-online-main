@@ -85,6 +85,8 @@ final class TribalRules {
  static boolean fighter(Battle.Unit u){return u.hp>0&&u.npc!=BEAN&&(u.npc<CHAIN||u.npc>=SULAN);}
  static int target(Battle b,int actor){
   int best=-1,distance=99999;Battle.Unit who=b.units[actor];
+  // HF29: ranged bosses pick a living team member once per turn; melee troops retain nearest-target movement.
+  if(who.team==1&&((who.npc==ELITE&&stage(b)==1)||who.npc==BROTHER||who.npc==SISTER||who.npc==SULAN||who.npc==RAGE)){int pick=b.raidTarget(actor);if(pick>=0)return pick;}
   if(who.npc==0&&who.team==0&&stage(b)==4&&b.units[1].hp>0)return 1;
   for(int i=0;i<b.unitCount;i++){Battle.Unit u=b.units[i];if(u.hp<=0||u.team==who.team||who.team==1&&u.npc!=0&&!(SulanRules.active(b)&&SulanRules.reinforcement(who)&&u.npc==BEAN))continue;int d=Math.abs(u.x-who.x);if(d<distance){distance=d;best=i;}}
   return best<0?actor:best;

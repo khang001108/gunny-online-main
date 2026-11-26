@@ -382,6 +382,8 @@ final class ShopScreen {
     }
 
     void checkout() {
+        // HF29: on-screen Buy and touch use the same VIP purchase as keyboard B.
+        if (wingCategory()) { c.vip.buy(); return; }
         if (!ready()) {
             c.message("Chờ tải shop hoặc cập nhật server 7.1.8");
             return;
