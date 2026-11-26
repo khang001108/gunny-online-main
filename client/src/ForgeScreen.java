@@ -115,6 +115,13 @@ final class ForgeScreen {
         for(int i=0;i<4;i++){int p=(elapsed/100+i*2)%8;int x=p<3?21+p*24:p<5?69:p<7?69-(p-4)*24:21;int y=p<3?68:p<5?68+(p-2)*20:p<7?108:88;c.img(star,x,y);}
     }
 
+    void drawResultOverlay() {
+        long now=System.currentTimeMillis();
+        if(now>=resultUntil)return;
+        c.all();
+        c.img(resultKind>0?resultSuccess:resultFailure,16,54-(int)Math.min(10,Math.max(0L,now-animStart)/130));
+    }
+
     void draw() {
         load();
         refresh();
@@ -176,7 +183,7 @@ final class ForgeScreen {
         c.pcCenter((page + 1) + "/" + Math.max(1, ((step==1?gradeCount:count) + 24) / 25), 222, 210);
         c.img(c.bag.arrow, 269, 207);
         c.pcCenter(">", 279, 210);
-        if(now<resultUntil)c.img(resultKind>0?resultSuccess:resultFailure,16,54-(int)Math.min(10,(now-animStart)/130));
+        // HF32: result is painted by PhoneCanvas after the toast.
         if(info&&step==2&&(focus==7||focus==8||focus==9))c.stoneShop.drawInfo(focus==7?5:focus==8?6:grade-1,new int[]{154,90,25,25});
         else if(info&&step==1&&gradeCount>0)c.stoneShop.drawInfo(ownedGrades[stoneSelection]-1,new int[]{154+stoneSelection*26,78,25,25});
         else if (info && count > 0)

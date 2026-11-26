@@ -369,10 +369,15 @@ final class VipSystem {
                     lock = c.combatRoomArt("roomlist-lock");
                 c.img(lock, b[0] + 61, b[1] + 24);
             }
-            c.pcText((owned & (1 << i)) != 0 ? "Đã có"
-                    : VipRules.level(exp()) < VipRules.WING_VIP[i] ? "Cần VIP " + VipRules.WING_VIP[i]
-                            : "" + VipRules.WING_PRICE[i] + " tiền",
-                    b[0] + 4, b[1] + 28);
+            if ((owned & (1 << i)) != 0) {
+                c.pcText("Đã có", b[0] + 4, b[1] + 28);
+            } else if (VipRules.level(exp()) < VipRules.WING_VIP[i]) {
+                c.pcText("Cần VIP " + VipRules.WING_VIP[i], b[0] + 4, b[1] + 28);
+            } else {
+                // HF32: same shopping-money icon and spacing as ordinary Shop items.
+                c.img(c.shop.money, b[0] + 29, b[1] + 27);
+                c.pcText("" + VipRules.WING_PRICE[i], b[0] + 43, b[1] + 27);
+            }
             if (i == shopFocus)
                 c.drawItemSelection(b[0], b[1], b[2], b[3], false);
         }

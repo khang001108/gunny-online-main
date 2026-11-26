@@ -1999,6 +1999,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             typing.draw();
         }
         if(!net.soloSearching()&&presentation.boot==2&&toastTicks>0&&!popup.opened)drawBattleNotice();
+        // HF32: forge result above the toast; interactive modal dialogs stay unobscured.
+        if(mode==18&&presentation.boot==2&&!net.soloSearching()&&!popup.opened&&!presentation.settings&&!typing.active())forge.drawResultOverlay();
         if (presentation.showFps) {
             long now = System.currentTimeMillis();
             if (fpsWindowStart == 0) fpsWindowStart = now;
@@ -3691,7 +3693,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 noticeW=w;noticeH=h;noticePanel=NativeUi.fit(noticeSource,w*s,h*s,4*s);
             }
         }
-        int noticeY=mode==18?Math.max(0,240-noticeH-4):63;
+        int noticeY=63; // HF32: original notice position
         img(noticePanel,(320-noticeW)/2,noticeY);
         for(int i=0;i<noticeCount;i++)tooltip.colored(noticeRows[i],160-pcWidth(noticeRows[i])/2,noticeY+5+i*12,noticeFont);
     }
