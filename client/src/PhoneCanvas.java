@@ -1522,6 +1522,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
     // Only call when leaving the encounter, never when opening a pause/menu overlay.
     void releaseBattleArt(){
+        hudParticipantMask=0;defeatedPortraitShade=null;
         releaseNpcArt();releaseLoadingArt();vip.release();
         background=miniTerrain=opponentStanding=powCutin=aimSector=dialFace=fadeBuffer=null;
         pixels=scratch=slopePixels=slopeRotated=slopeLayer=fadePixels=dialPixels=dialRotated=miniSample=null;
@@ -3335,7 +3336,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         }
         if (game.teams || onlineBattle()&&net.roomKind==3) {
             for (int i = 0; i < game.unitCount; i++)
-                if(loadingParticipant(i) && (!offlineDungeon.active||game.units[i].hp>0))drawTurnPortrait(i, i % 2 == 0 ? (game.dungeonStage>0?61:70) + i / 2 * 24 : 190 + i / 2 * 24, 1);
+                if(turnPortraitParticipant(i))drawTurnPortrait(i, i % 2 == 0 ? (game.dungeonStage>0?61:70) + i / 2 * 24 : 190 + i / 2 * 24, 1);
         } else {
             drawTurnPortrait(0, 112, 1);
             drawTurnPortrait(1, 184, 1);
@@ -3359,6 +3360,23 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         }
     }
 
+    // HF36: keep actual battle participants registered for HUD speech even at HP=0.
+    int hudParticipantMask;
+    int[] defeatedPortraitShade;
+    boolean turnPortraitParticipant(int index) {
+        if(index<0||index>=6||index>=game.unitCount||game.units[index].npc!=0)return false;
+        if(onlineBattle()&&net.roomKind==3)return index%2==0&&net.present[index];
+        if(game.units[index].hp>0||onlineBattle()&&net.present[index])hudParticipantMask|=1<<index;
+        return (hudParticipantMask&(1<<index))!=0;
+    }
+    void shadeDefeatedPortrait(int x,int y){
+        int side=22*s;
+        if(defeatedPortraitShade==null||defeatedPortraitShade.length!=side*side){
+            defeatedPortraitShade=new int[side*side];
+            for(int i=0;i<defeatedPortraitShade.length;i++)defeatedPortraitShade[i]=0xB04A4A4A;
+        }
+        g.drawRGB(defeatedPortraitShade,0,side,ox+(x+1)*s,oy+(y+1)*s,side,side,true);
+    }
     final Image[] npcHud780=new Image[4],npcHeader780=new Image[4];
     void drawTurnPortrait(int index, int x, int y) {
         net.chat.roomSpeech.head(index,x+12,y+26);
@@ -3379,13 +3397,15 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         } else {
             vip.back(vip.actorExp(index),vip.actorWing(index),x+12,y+25,2,false);actorAppearance(index,0,x-4,y-7,false);
         }
+        boolean defeated=game.units[index].hp<=0;
+        if(defeated)shadeDefeatedPortrait(x,y);
         g.setClip(cx, cy, cw, ch);
-        int color = index == game.active ? 0xffd455 : 0xc5d1d9;
+        int color = defeated ? 0x777777 : index == game.active ? 0xffd455 : 0xc5d1d9;
         line(x, y, x + 23, y, color);
         line(x, y, x, y + 23, color);
         line(x + 23, y, x + 23, y + 23, color);
         nativeFill(hudPortraitHP, x + 1, y + 24, 22, 2, game.units[index].hp, game.units[index].maxHp);
-        if (index == game.active && !game.over)
+        if (!defeated && index == game.active && !game.over)
             drawSelectionGlow(x - 2, y - 2, 28, 28);
     }
 

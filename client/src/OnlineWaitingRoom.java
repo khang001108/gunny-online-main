@@ -218,7 +218,7 @@ final class OnlineWaitingRoom {
             for (int n = 0; n < 3; n++) {
                 int actor = team + n * 2, x = 46 + n * 54, y = 16 + team * 88;
                 c.img(net.present[actor] ? c.loadout.teamCard
-                        : (net.closedSlots & (1 << actor)) != 0 ? c.loadout.teamClosed : c.loadout.teamWaiting, x, y);
+                        : c.loadout.teamWaiting, x, y);
                 if (c.roomSelection == 60 + actor)
                     c.drawSelectionGlow(x - 1, y - 1, 52, 78);
                 if (net.present[actor]) {
@@ -239,8 +239,8 @@ final class OnlineWaitingRoom {
         int seat = c.roomSelection - 60;
         String hint = "Tổ đội 3 đấu 3 • Chờ sẵn sàng";
         if (net.host && net.phase == 0 && seat >= 0 && seat < net.count && seat != self()) {
-            if (net.present[seat] && net.bots[seat]) hint = "OK: Đuổi AI và đóng ô";
-            else if (!net.present[seat]) hint = (net.closedSlots & (1 << seat)) != 0 ? "OK: Mở ô chờ" : "OK: Đóng ô chờ";
+            if (net.present[seat]) hint = net.bots[seat] ? "OK: Đuổi AI" : "OK: Đuổi người chơi";
+            else hint = "Ô trống • Cần đủ 6 vị trí";
         }
         c.pcText(hint, 9, 188);
         c.loadout.draw(true);
@@ -393,7 +393,11 @@ final class OnlineWaitingRoom {
             }
             if (seat >= net.count || seat == self() || net.phase != 0 || net.inBattle)
                 return;
-            if (net.present[seat] && !net.bots[seat]) {
+            if (net.roomKind == 2 && !net.present[seat]) {
+                c.popup.notice("Ô chờ", "Tổ đội 3v3 không được đóng ô.");
+                return;
+            }
+            if (net.roomKind != 2 && net.present[seat] && !net.bots[seat]) {
                 c.popup.notice("Ô chờ", "Ô đã có người chơi");
                 return;
             }
@@ -417,10 +421,6 @@ final class OnlineWaitingRoom {
             if (c.requireWeapon())
                 return;
             if (net.host) {
-                if (net.roomKind == 2 && !net.matchmakingCap) {
-                    notice("Tổ đội", "Chờ đủ 6 người. Khi mọi người sẵn sàng, trận tự bắt đầu.");
-                    return;
-                }
                 if (!net.canStartRoom && !net.matchmakingCap) {
                     notice("Phòng", "Chờ người chơi thật vào phòng và sẵn sàng.");
                     return;
