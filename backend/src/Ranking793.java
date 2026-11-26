@@ -18,13 +18,13 @@ final class Ranking793 {
         out.writeShort(count);
         for (int i = 0; i < count; i++) {
             CloudStore.Profile p = list.get(i);
-            int favorite = p.equipped >= 0 && p.equipped < 10 ? p.equipped : 0;
-            for (int w = 0; w < 10; w++)
-                if (p.weaponUses[w] > p.weaponUses[favorite]) favorite = w;
+            // The leaderboard's weapon column shows the currently equipped weapon.
+            // Historical usage must not hide a newly equipped VIP spear (id 8).
+            int equipped = ShopCatalog.weapon(p.equipped) ? p.equipped : 0;
             out.writeInt(p.publicId);
             out.writeInt(p.experience);
             out.writeUTF(p.name);
-            out.writeByte(favorite);
+            out.writeByte(equipped);
             out.writeInt(p.maxDamage);
             out.writeInt(p.wins);
         }

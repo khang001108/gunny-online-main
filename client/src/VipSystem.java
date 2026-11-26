@@ -16,6 +16,8 @@ final class VipSystem {
     int requestItem;
     final Image[][] staticRings = new Image[3][3], staticWings = new Image[6][3];
     final Image[][] rings = new Image[3][4], wings = new Image[6][3];
+    // HF34: independent static HUD cache survives releaseLoadingArt().
+    final Image[][] battleRings = new Image[3][2];
     final Image[] badges = new Image[10], wingIcons = new Image[6], cardIcons = new Image[2];
     Image progress, fill;
     int barFrom, barTo;
@@ -50,6 +52,7 @@ final class VipSystem {
 
     void release() {
         battleReady=false; battleBytes=0;
+        clearBattleRings();
         for(int i=0;i<6;i++){battleAngles[i]=0; battleWingIds[i]=-1; battleXp[i]=0;}
         for (int i = 0; i < 3; i++)
             for (int j = 0; j < 3; j++)
@@ -127,16 +130,20 @@ final class VipSystem {
             if(battleWingIds[i]>=0&&battleWingIds[i]<6)wingMask|=1<<battleWingIds[i];
             int lv=VipRules.level(battleXp[i]);if(lv>0)ringMask|=1<<((lv-1)/3);
         }
-        // Prioritize the small Bpow images, then neutral wing poses, HUD and other angles.
+        // HF34: six small static rings first (all tiers, both HUD sizes).
+        // Do not let the optional animated wing caches starve these images.
+        for(int k=0;k<3;k++)for(int context=1;context<=2;context++){
+            int size=SIZE[context];
+            if(battleRings[k][context-1]==null)
+                battleRings[k][context-1]=preloadSmall("vip796-ring-static-"+k+"-"+size,size*size*4*c.s*c.s,true);
+        }
         preparePowRings(ringMask);
         for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,2,true);
         for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)for(int context=1;context<=2;context++){
             int size=WING_SIZE[context];
             wings[w][context]=preloadSmall("wing796-show-"+w+"-"+size,20*size*WING_HEIGHT[context]*4*c.s*c.s,false);
         }
-        for(int k=0;k<3;k++)if((ringMask&(1<<k))!=0)for(int context=1;context<=2;context++){
-            int size=SIZE[context];rings[k][context]=preloadSmall("vip-ring-"+k+"-"+size,16*size*size*4*c.s*c.s,false);
-        }
+        // HF34: no animated HUD ring atlases in battle.
         int[] angles={1,3,0,4};
         for(int i=0;i<angles.length;i++)for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,angles[i],false);
         battleReady=true;
@@ -236,7 +243,12 @@ final class VipSystem {
             if(image!=null)c.part(image,0,0,size,size,x-size/2,y-size,false);
             return;
         }
-        // Keep the existing animated avatar/HUD rings unchanged.
+        if(battleScreen()&&(context==1||context==2)){
+            Image image=battleRings[kind][context-1];
+            c.img(image,x-size/2,y-size);
+            return;
+        }
+        // Other screens retain their original animation.
         if(!battleScreen()&&context==0)for(int k=0;k<3;k++)if(k!=kind)rings[k][context]=null;
         if(rings[kind][context]==null&&!battleScreen())
             rings[kind][context]=c.combatRoomArt("vip-ring-"+kind+"-"+size);
@@ -287,8 +299,13 @@ final class VipSystem {
         }
     }
 
+    void clearBattleRings() {
+        for(int k=0;k<3;k++)for(int i=0;i<2;i++)battleRings[k][i]=null;
+    }
+
     void releaseBattleWings() {
         battleReady=false; battleBytes=0;
+        clearBattleRings();
         for(int w=0;w<6;w++)battleAngles[w]=0;
         for (int w = 0; w < 6; w++)
             for (int a = 0; a < 5; a++)
