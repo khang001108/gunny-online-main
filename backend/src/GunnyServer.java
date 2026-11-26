@@ -143,7 +143,10 @@ public final class GunnyServer implements AutoCloseable {
             for(Session member:members)if(member!=null&&(!member.async||!member.prefetch||!member.delta||member.live))return false;
             return true;
         }
+        static final int SULAN_SCENE_CHUNK=5;
+        boolean sulanScene(){return SulanRules.cinematic(battle)&&(battle.tribalState==TribalRules.TRANSFORM||battle.tribalState==TribalRules.DEAD);}
         void chunkBegin(int kind){
+            if(sulanScene())kind=SULAN_SCENE_CHUNK;
             if(host.live)return;
             if(chunkTurn!=battle.turn){chunks.clear();chunkTurn=battle.turn;chunkTerminal=false;chunkFrames=null;batchShot=shotStreaming=false;}
             // A boss can emit several projectiles during the same flight.
@@ -155,6 +158,8 @@ public final class GunnyServer implements AutoCloseable {
         }
         void chunkFrame(){
             if(host.live||chunkFrames==null)return;
+            // HF28: authoritative Sulan scene
+            if(sulanScene()&&chunkKind!=SULAN_SCENE_CHUNK){chunkBegin(SULAN_SCENE_CHUNK);return;}
             // Protect attacks that create projectiles directly without beforeShot().
             if(chunkKind==1&&battle.ballCount>0&&canBatchShot()&&!shotStreaming){chunkBegin(3);return;}
             try{
@@ -173,7 +178,7 @@ public final class GunnyServer implements AutoCloseable {
                 DataOutputStream out=new DataOutputStream(chunkFrames);
                 out.writeShort(wire.length|(delta==null?0:32768));out.write(wire);
                 deltaFrame=frame;chunkRevision=ground.craters.size();chunkCount++;
-                if(!batchShot&&host.prefetch&&chunkCount>=(kind!=3&&chunkKind==3&&!chunkShotFirst?12:6)&&!battle.pendingNext&&!battle.over){
+                if(!batchShot&&host.prefetch&&chunkCount>=(chunkKind==SULAN_SCENE_CHUNK?12:kind!=3&&chunkKind==3&&!chunkShotFirst?12:6)&&!battle.pendingNext&&!battle.over){
                     chunkFlush(false);chunkShotFirst=false;chunkFrames=new ByteArrayOutputStream();chunkCount=chunkRevision=0;
                 }
             }catch(IOException e){throw new IllegalStateException(e);}

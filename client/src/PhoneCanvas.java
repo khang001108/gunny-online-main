@@ -1359,12 +1359,14 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     else frameGap.idle();
                     if(mode!=1||!onlineBattle())pacer.reset();
                     if (mode == 1 && onlineBattle()) {
-                        int steps=pacer.steps(System.currentTimeMillis(),projectilePacing());
+                        boolean scene=SulanRules.cinematic(game)||net.chunks.scenePlayback();
+                        int steps=scene?1:pacer.steps(System.currentTimeMillis(),projectilePacing());
+                        if(scene)pacer.reset();
                         for(int step=0;step<steps&&mode==1&&onlineBattle();step++){
                             net.animate();
                             // A catch-up tick may launch or reveal a projectile. Never
                             // consume another frame in the same render after that.
-                            if(projectilePacing()){pacer.reset();break;}
+                            if(projectilePacing()||SulanRules.cinematic(game)||net.chunks.scenePlayback()){pacer.reset();break;}
                         }
                         followCamera();
                         if (game.shotSerial != shootSound) {
@@ -1908,24 +1910,16 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     static long diagAge(long now,long then){return then<=0?-1:Math.max(0,now-then);}
     static int diagFlag(boolean b){return b?1:0;}
     void drawSulanDiagnostic(long now){
-        if(mode!=1||!onlineBattle()||!SulanRules.active(game)||popup.opened)return;
+        if(mode!=1||!onlineBattle()||!SulanRules.active(game)||popup.opened||typing.active())return;
         OnlineChunks ch=net.chunks;Battle b=game;
         if(sulanDiagRoom!=net.roomId||now-sulanDiagAt>=500){
             sulanDiagRoom=net.roomId;sulanDiagAt=now;
-            sulanDiagLines[0]="HF27-842 R"+net.roomId+" T"+b.turn+" S"+net.diagServerTurn+" A"+b.active+" NPC"+b.units[b.active].npc;
-            sulanDiagLines[1]="St"+b.tribalState+" Fx"+b.tribalFx+" Cl"+b.tribalClock+" Talk"+b.sulanTalk+" Cd"+b.countdown;
-            sulanDiagLines[2]="Next"+diagFlag(b.pendingNext)+" ACK"+diagFlag(net.resolutionSeen)+" Local"+diagFlag(net.localTurn())+" In"+diagFlag(b.input())+" Pred"+diagFlag(net.predicting);
-            sulanDiagLines[3]="CT"+ch.turn+" Rx"+ch.received+" Done"+ch.completed+" ID"+ch.id+" K"+ch.kind+" Rem"+ch.remaining;
-            sulanDiagLines[4]="B"+ch.bufferedFrames()+" Gap"+ch.underruns+" Wait"+diagFlag(ch.waitingForNext)+" End"+diagFlag(ch.terminal)+" Own"+diagFlag(ch.ownPending);
-            sulanDiagLines[5]="Req T"+net.diagReqTurn+" C"+net.diagReqCompleted+" A"+diagFlag(net.diagReqAck)+" Rsp"+net.diagStage+" #"+net.diagSegment+" D"+diagFlag(net.diagServerDone);
-            sulanDiagLines[6]="Net"+net.diagPhase+" OK"+net.diagSyncCount+" Err"+net.diagFailures+" Age"+diagAge(now,net.diagAppliedAt)+"ms";
-            sulanDiagLines[7]="Tx"+diagAge(now,net.diagSentAt)+" Rx"+diagAge(now,net.diagReplyAt)+" RTT"+net.tcp.rtt+" Q"+net.queueCount+" Op"+(net.busy?net.operation:"-");
-            sulanDiagLines[8]="Rec"+diagFlag(ch.recovering)+" Seq"+diagFlag(net.sequenceResync)+" Ground"+diagFlag(net.groundAwaiting)+" Snap"+net.snapshotRecoveryTurn+" "+net.diagError;
-            sulanDiagLines[9]="Balls"+b.ballCount+" Burst"+b.bursts+" Settle"+b.settle+" Scene"+diagFlag(SulanRules.cinematic(b));
-            sulanDiagLines[10]="Cache"+net.diagReqCached+" WaitAge"+diagAge(now,ch.waitingSince)+"ms Own"+diagAge(now,ch.ownSince);
+            sulanDiagLines[0]="HF28 R"+net.roomId+" T"+b.turn+"/"+net.diagServerTurn+" Rx"+ch.received+"/"+ch.completed+" Fx"+b.tribalFx;
+            sulanDiagLines[1]="Next"+diagFlag(b.pendingNext)+" ACK"+diagFlag(net.resolutionSeen)+" Own"+diagFlag(ch.ownPending)+" End"+diagFlag(ch.terminal)+" B"+b.ballCount;
+            sulanDiagLines[2]="Scene"+diagFlag(ch.scenePlayback())+" W"+diagFlag(ch.waitingForNext)+" OwnMs"+diagAge(now,ch.ownSince)+" Err"+net.diagFailures;
         }
-        all();rect(0,54,320,121,0x21170e);
-        for(int i=0;i<sulanDiagLines.length;i++)pcText(pcShort(sulanDiagLines[i],314),3,55+i*11);
+        all();int y=149;
+        for(int i=0;i<3;i++){rect(0,y+i*11,Math.min(255,pcWidth(sulanDiagLines[i])+6),11,0x21170e);pcText(pcShort(sulanDiagLines[i],249),3,y+i*11);}
     }
 
     boolean portraitViewport;Image portraitSurface;
@@ -2027,8 +2021,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             all();
             rect(0,0,Math.min(180,Math.max(48,pcWidth(fpsText)+6)),14,0x21170e);
             pcText(fpsText,3,2);
-            if(onlineBattle()&&netText.length()>0){rect(0,14,240,26,0x21170e);pcText(netText,3,15);pcText(netText2,3,28);}
-            if((onlineBattle()||offlineTest)&&mode==1&&gapText.length()>0){int y=onlineBattle()?40:14;rect(0,y,Math.min(240,pcWidth(gapText)+6),13,0x21170e);pcText(gapText,3,y+1);}
+            if(onlineBattle()&&netText.length()>0&&!(mode==1&&SulanRules.active(game))){rect(0,14,240,26,0x21170e);pcText(netText,3,15);pcText(netText2,3,28);}
+            if((onlineBattle()||offlineTest)&&mode==1&&gapText.length()>0&&!(onlineBattle()&&SulanRules.active(game))){int y=onlineBattle()?40:14;rect(0,y,Math.min(240,pcWidth(gapText)+6),13,0x21170e);pcText(gapText,3,y+1);}
             drawSulanDiagnostic(now);
         } else {
             fpsWindowStart = 0;

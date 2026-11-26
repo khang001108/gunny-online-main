@@ -20,7 +20,7 @@ final class RoomSpeech {
     private final boolean[] bubbleHud=new boolean[6];
     boolean supported;
     private boolean bar, picker;
-    private int selected, lastContext, lastRoom, sendRoom, sendPhase, sendEmoji;
+    private int selected, lastContext, lastRoom, sendRoom, sendPhase, sendEmoji, avatarChatStep;
     private String outgoing;
     private long pollAt;
     private Image input, sendIcon, quickIcon, smile;
@@ -44,6 +44,7 @@ final class RoomSpeech {
         if (lastContext != 0) quick.opened = false;
         lastContext = lastRoom = 0;
         bar = picker = false;
+        avatarChatStep=0;
         outgoing = null;
         pollAt = 0;
         for (int i = 0; i < until.length; i++) { until[i] = 0; seen[i] = false; messages[i]=bubbleTexts[i]=null;bubbleLines[i]=null; }
@@ -101,8 +102,23 @@ final class RoomSpeech {
         send("",chat.expandedEmoji ? index+6 : index);
     }
 
+    boolean battleAvatarHit(int x,int y) {
+        if(context()!=FIGHT)return false;
+        for(int i=0;i<seen.length;i++)if(seen[i]&&x>=headX[i]-12&&x<headX[i]+12&&y>=headY[i]-26&&y<headY[i]-2)return true;
+        return false;
+    }
     boolean pointer(int x, int y) {
         if (refresh()==0) return false;
+        if(battleAvatarHit(x,y)){
+            if(c.fireKey!=0||c.game.charging&&c.isLocalTurn()){c.message("Thả phím bắn trước khi chat.");return true;}
+            if(c.mode==3)c.exitBuffs();
+            c.held=c.fireKey=c.cameraHeld=0;
+            picker=false;quick.opened=false;bar=false;
+            if(avatarChatStep==0){picker=true;selected=0;avatarChatStep=1;}
+            else if(avatarChatStep==1){quick.open();avatarChatStep=2;}
+            else {avatarChatStep=0;compose();}
+            c.repaint();return true;
+        }
         if (quick.opened) { quick.pointer(x,y); return true; }
         if (picker) {
             if (x>=52 && x<262 && y>=58 && y<191) {

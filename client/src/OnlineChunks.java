@@ -5,6 +5,9 @@ import java.util.Vector;
 final class OnlineChunks {
     static final int BUFFER_FRAMES=18, BUFFER_MS=650, MAX_SEGMENTS=5;
     static final int PVP_SHOT_BUFFER_FRAMES=30, PVP_SHOT_BUFFER_MS=1050;
+    // HF28: authoritative Sulan scene
+    static final int SULAN_SCENE_CHUNK=5;
+    boolean sceneReceived;
     final OnlineClient net;
     final Vector queued=new Vector();
     int turn=-1, completed=-1, received=-1, id, remaining, kind, activeBytes;
@@ -23,7 +26,7 @@ final class OnlineChunks {
     }
     OnlineChunks(OnlineClient owner) { net=owner; }
     void reset() {
-        turn=completed=received=-1;queued.removeAllElements();
+        turn=completed=received=-1;queued.removeAllElements();sceneReceived=false;
         frames=null;finalFrame=previousFrame=null;remaining=activeBytes=0;id=-1;kind=0;terminal=resolved=resetTerrain=false;ownPending=false;playing=false;waitingSince=ownSince=stallSince=0;waitingForNext=gapCounted=flightStarted=false;rebufferBoost=0;snapshotInput.bind(null);
     }
     int requestTurn(int displayedTurn) {
@@ -76,6 +79,12 @@ final class OnlineChunks {
         if (next!=received+1) { reset();turn=serverTurn;recovering=true;net.predicting=net.resolutionSeen=false;net.c.held=net.c.fireKey=0;net.revision=0;net.lastPoll=0;return; }
         if (queued.size()+(frames!=null||ownPending?1:0)>=MAX_SEGMENTS) return;
         boolean own=net.predicting&&net.predictedTurn==serverTurn&&net.localTurn();
+        // Do not discard server cinematic frames on the firing client.
+        if(segment.kind==SULAN_SCENE_CHUNK){
+            if(!sceneReceived){net.predicting=false;net.c.game.pendingNext=false;net.c.powShotPending=false;net.c.powCutinTicks=0;}
+            sceneReceived=true;
+        }
+        if(sceneReceived)own=false;
         if (own) {
             // Already validated all frames. Local prediction only needs the terminal state.
             if(!segment.terminal){received=completed=next;return;}
@@ -125,6 +134,7 @@ final class OnlineChunks {
             Segment segment=(Segment)queued.elementAt(i);hasTerminal|=segment.terminal;
         }
         if(kind==4)return true; // Complete authoritative flight already in memory.
+        if(kind==SULAN_SCENE_CHUNK)return buffered>=24||hasTerminal||windowFull()||now-waitingSince>=BUFFER_MS;
         boolean shot=kind==3;
         int target=shot?PVP_SHOT_BUFFER_FRAMES:BUFFER_FRAMES;
         int delay=shot?PVP_SHOT_BUFFER_MS:BUFFER_MS;
@@ -139,11 +149,12 @@ final class OnlineChunks {
         for(int i=0;i<queued.size();i++)if(((Segment)queued.elementAt(i)).terminal)return false;
         return !windowFull();
     }
+    boolean scenePlayback(){return sceneReceived&&(frames!=null||waitingForNext&&!terminal);}
     boolean animate() {
         if (frames==null) {
             if(waitingForNext&&!terminal){
                 if(stallSince==0)stallSince=System.currentTimeMillis();
-                if(SulanRules.active(net.c.game)&&net.checkpointCap&&net.phase==1&&System.currentTimeMillis()-stallSince>=8000){
+                if(SulanRules.active(net.c.game)&&net.checkpointCap&&net.phase==1&&System.currentTimeMillis()-stallSince>=(sceneReceived?20000:8000)){
                     net.resyncCommands();net.c.message("Đang đồng bộ lại trận Sulan...");return true;
                 }
                 if(!gapCounted){underruns++;gapCounted=true;rebufferBoost=Math.min(12,rebufferBoost+6);}
@@ -187,8 +198,10 @@ final class OnlineChunks {
         long elapsed=ownSince>0?System.currentTimeMillis()-ownSince:0;
         // Never replace a predicted projectile with the terminal snapshot mid-flight.
         // A 30s failsafe retains recovery for a genuinely stuck simulation.
-        if(elapsed<30000&&(net.c.game.ballCount>0||net.c.game.bursts>0||net.c.powShotPending))return;
-        boolean timedOut=elapsed>=5000;
+        // HF28: pendingNext stops physics. A resolved terminal snapshot must win over stale balls.
+        boolean authoritativeEnd=SulanRules.active(net.c.game)&&terminal&&resolved&&finalFrame!=null&&(net.c.game.pendingNext||net.c.game.over);
+        if(!authoritativeEnd&&elapsed<30000&&(net.c.game.ballCount>0||net.c.game.bursts>0||net.c.powShotPending))return;
+        boolean timedOut=authoritativeEnd||elapsed>=5000;
         if(!timedOut&&((!net.c.game.pendingNext&&!net.c.game.over&&!(SulanRules.active(net.c.game)&&resolved))||net.c.powShotPending))return;
         if(timedOut){net.c.powShotPending=false;net.c.powCutinTicks=0;}
         try {

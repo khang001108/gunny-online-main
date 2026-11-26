@@ -208,7 +208,7 @@ final class Battle {
             refreshAim(u);
         }
         boolean wasBusy=busy();
-        if(bursts>0&&ballCount==0&&--burstDelay<=0){check();if(over){bursts=0;return;}emit();bursts--;burstDelay=isThrown(units[active].weapon)?THROW_WINDUP:2;}
+        if(bursts>0&&ballCount==0&&--burstDelay<=0){check();if(over||SulanRules.cinematic(this)){bursts=0;return;}emit();bursts--;burstDelay=isThrown(units[active].weapon)?THROW_WINDUP:2;}
         for(int sub=0,steps=flightSubsteps();sub<steps;sub++)for(int i=ballCount-1;i>=0;i--){
             Ball b=balls[i];if(sub==0&&!b.fly&&!b.freeze)stampTrail(b);b.age++;if(b.homing){Unit target=units[enemyOf(b.owner)];int dx=target.x*256-b.x,dy=targetY(target)*256-b.y;int len=Math.max(1,(int)Math.sqrt((double)dx*dx+(double)dy*dy));b.vx=dx*1800/len;b.vy=dy*1800/len;}else{b.vx+=windStep(wind,b);b.vy+=gravity(b);if(b.guided)guide(b);}b.x+=b.vx/4;b.y+=b.vy/4;
             int x=b.x/256,y=b.y/256;boolean hit=!b.homing&&ground.solid(x,y);

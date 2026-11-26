@@ -329,7 +329,11 @@ final class OnlineClient implements Runnable,CommandListener,ItemCommandListener
         if(powTicks>0){if(lastPow!=b.turn){lastPow=b.turn;b.active=powActor;c.startPowCutin();}c.powCutinTicks=powTicks;c.powShotPending=false;}
         if(asyncTurns){if(predictedTurn!=b.turn){processingSince=0;resolutionSeen=false;}predictedTurn=b.turn;}groundAwaiting=false;if(asyncTurns){if(liveCap)motion.receiveLive(System.currentTimeMillis());else if(motion.liveReady)motion.reset();if(oldTurn!=b.turn)c.held=c.fireKey=0;}else motion.after();if(b.over&&(!socialCap||settled&&cardsOpen)){c.mode=5;c.held=c.fireKey=0;}results.syncStage();c.syncTurnNotice();
     }
-    void animate(){if(snapshotRecoveryTurn==c.game.turn&&!predicting&&(c.game.busy()||c.game.pendingNext||c.game.over))return;if(sequenceResync||repairGround||departure.paused||groundAwaiting&&chunks.frames==null)return;Battle b=c.game;if(socialCap&&b.over&&!settled)c.message("Đang lưu kết quả...");if(chunksCap&&chunks.animate())return;if(!chunksCap&&replayCap&&replay.animate())return;if(phase==1&&processingSince>0&&System.currentTimeMillis()-processingSince>30000&&queueCount==0&&!chunks.ownPending&&!replay.playing){resyncCommands();c.message("Đang đồng bộ lại dữ liệu...");return;}if(asyncTurns&&(phase==1||replay.playing&&replay.own||chunks.ownPending||phase==2&&predicting&&(b.busy()||c.powShotPending))&&(localTurn()||predicting)){
+    void animate(){if(snapshotRecoveryTurn==c.game.turn&&!predicting&&(c.game.busy()||c.game.pendingNext||c.game.over))return;if(sequenceResync||repairGround||departure.paused||groundAwaiting&&chunks.frames==null)return;Battle b=c.game;if(socialCap&&b.over&&!settled)c.message("Đang lưu kết quả...");if(chunksCap&&chunks.animate())return;if(!chunksCap&&replayCap&&replay.animate())return;
+        // HF28: complete a terminal snapshot before any frozen local physics or POW cut-in.
+        if(chunksCap&&chunks.ownPending&&SulanRules.active(b)&&b.pendingNext){chunks.finish();return;}
+        // Hold the start of a predicted cinematic until its authoritative frames arrive.
+        if(chunksCap&&predicting&&SulanRules.cinematic(b)&&(b.tribalState==TribalRules.TRANSFORM||b.tribalState==TribalRules.DEAD)&&!chunks.ownPending){b.tickVisuals();return;}if(phase==1&&processingSince>0&&System.currentTimeMillis()-processingSince>30000&&queueCount==0&&!chunks.ownPending&&!replay.playing){resyncCommands();c.message("Đang đồng bộ lại dữ liệu...");return;}if(asyncTurns&&(phase==1||replay.playing&&replay.own||chunks.ownPending||phase==2&&predicting&&(b.busy()||c.powShotPending))&&(localTurn()||predicting)){
         if(c.powShotPending){if(--c.powCutinTicks<=0){c.powShotPending=false;b.fire();}return;}if(!b.pendingNext&&!b.over){beginPrediction();if(b.input()){if(!frame(c.held&15)){b.tickVisuals();if(processingSince==0)processingSince=System.currentTimeMillis();return;}if((c.held&1)!=0)b.move(-1);if((c.held&2)!=0)b.move(1);if((c.held&4)!=0)b.adjustAngle(1);if((c.held&8)!=0)b.adjustAngle(-1);}b.tick();}
         if(chunksCap)chunks.finish();else if(replayCap)replay.finish();if((b.busy()||b.pendingNext||b.over)&&processingSince==0)processingSince=System.currentTimeMillis();
         return;
@@ -352,6 +356,7 @@ final class OnlineClient implements Runnable,CommandListener,ItemCommandListener
         synchronized(c){synchronized(this){
             boolean urgent=sequenceResync||repairGround||BattleNetworkPolicy.urgent(queueKind,queueCount)||(c.held&15)!=sentHeld;
             boolean prefetch=chunks.wantsMore();long elapsed=now-lastBattleSync;
+            if(SulanRules.active(c.game)&&elapsed>=250&&(SulanRules.cinematic(c.game)||chunks.scenePlayback()||chunks.ownPending||chunks.waitingForNext||c.game.pendingNext||resolutionSeen))return true;
             return BattleNetworkPolicy.lowBufferDue(elapsed,prefetch,chunks.bufferedFrames(),c.projectilePacing())||BattleNetworkPolicy.due(elapsed,urgent,queueCount>0,events.due(),prefetch);
         }}
     }
