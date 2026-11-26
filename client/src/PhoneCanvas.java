@@ -1903,6 +1903,31 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     private volatile int updateMs,paintMs;
     final FrameGapMonitor frameGap=new FrameGapMonitor();
     String gapText="";
+    // Visible only with the existing FPS setting, on Sulan's online encounter.
+    final String[] sulanDiagLines=new String[11];long sulanDiagAt;int sulanDiagRoom=-1;
+    static long diagAge(long now,long then){return then<=0?-1:Math.max(0,now-then);}
+    static int diagFlag(boolean b){return b?1:0;}
+    void drawSulanDiagnostic(long now){
+        if(mode!=1||!onlineBattle()||!SulanRules.active(game)||popup.opened)return;
+        OnlineChunks ch=net.chunks;Battle b=game;
+        if(sulanDiagRoom!=net.roomId||now-sulanDiagAt>=500){
+            sulanDiagRoom=net.roomId;sulanDiagAt=now;
+            sulanDiagLines[0]="HF27-842 R"+net.roomId+" T"+b.turn+" S"+net.diagServerTurn+" A"+b.active+" NPC"+b.units[b.active].npc;
+            sulanDiagLines[1]="St"+b.tribalState+" Fx"+b.tribalFx+" Cl"+b.tribalClock+" Talk"+b.sulanTalk+" Cd"+b.countdown;
+            sulanDiagLines[2]="Next"+diagFlag(b.pendingNext)+" ACK"+diagFlag(net.resolutionSeen)+" Local"+diagFlag(net.localTurn())+" In"+diagFlag(b.input())+" Pred"+diagFlag(net.predicting);
+            sulanDiagLines[3]="CT"+ch.turn+" Rx"+ch.received+" Done"+ch.completed+" ID"+ch.id+" K"+ch.kind+" Rem"+ch.remaining;
+            sulanDiagLines[4]="B"+ch.bufferedFrames()+" Gap"+ch.underruns+" Wait"+diagFlag(ch.waitingForNext)+" End"+diagFlag(ch.terminal)+" Own"+diagFlag(ch.ownPending);
+            sulanDiagLines[5]="Req T"+net.diagReqTurn+" C"+net.diagReqCompleted+" A"+diagFlag(net.diagReqAck)+" Rsp"+net.diagStage+" #"+net.diagSegment+" D"+diagFlag(net.diagServerDone);
+            sulanDiagLines[6]="Net"+net.diagPhase+" OK"+net.diagSyncCount+" Err"+net.diagFailures+" Age"+diagAge(now,net.diagAppliedAt)+"ms";
+            sulanDiagLines[7]="Tx"+diagAge(now,net.diagSentAt)+" Rx"+diagAge(now,net.diagReplyAt)+" RTT"+net.tcp.rtt+" Q"+net.queueCount+" Op"+(net.busy?net.operation:"-");
+            sulanDiagLines[8]="Rec"+diagFlag(ch.recovering)+" Seq"+diagFlag(net.sequenceResync)+" Ground"+diagFlag(net.groundAwaiting)+" Snap"+net.snapshotRecoveryTurn+" "+net.diagError;
+            sulanDiagLines[9]="Balls"+b.ballCount+" Burst"+b.bursts+" Settle"+b.settle+" Scene"+diagFlag(SulanRules.cinematic(b));
+            sulanDiagLines[10]="Cache"+net.diagReqCached+" WaitAge"+diagAge(now,ch.waitingSince)+"ms Own"+diagAge(now,ch.ownSince);
+        }
+        all();rect(0,54,320,121,0x21170e);
+        for(int i=0;i<sulanDiagLines.length;i++)pcText(pcShort(sulanDiagLines[i],314),3,55+i*11);
+    }
+
     boolean portraitViewport;Image portraitSurface;
     int pointerX(int x,int y){return portraitViewport?y-(getHeight()-320*s)/2:x;}
     int pointerY(int x,int y){return portraitViewport?240*s-1-(x-(getWidth()-240*s)/2):y;}
@@ -2004,6 +2029,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             pcText(fpsText,3,2);
             if(onlineBattle()&&netText.length()>0){rect(0,14,240,26,0x21170e);pcText(netText,3,15);pcText(netText2,3,28);}
             if((onlineBattle()||offlineTest)&&mode==1&&gapText.length()>0){int y=onlineBattle()?40:14;rect(0,y,Math.min(240,pcWidth(gapText)+6),13,0x21170e);pcText(gapText,3,y+1);}
+            drawSulanDiagnostic(now);
         } else {
             fpsWindowStart = 0;
             fpsWindowFrames = fpsValue = 0;
