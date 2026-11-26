@@ -299,7 +299,7 @@ final class DungeonScreen {
  boolean rewardsOpen,rewardInfo;int rewardFocus,rewardStage,rewardDifficulty;
  final Image[] largeRewardIcons=new Image[8];
  Image rewardPopupFrame,rewardPopupClose,rewardPopupCell;int rewardPopupCellW;
- Image rewardSource(int item){if(item<5)return c.stoneShop.icon(item);if(item==DungeonRewardPreview.WEAPON)return c.weapons[8];if(item==DungeonRewardPreview.WING)return c.combatRoomArt("tribal-wing");return c.gifts.icon(1);}
+ Image rewardSource(int item){if(item<5)return c.stoneShop.icon(item);if(item==DungeonRewardPreview.WEAPON)return c.weapons[8];if(item==DungeonRewardPreview.WING)return c.stoneShop.icon(5);return c.gifts.icon(1);}
  void drawRewards(int stage,int diff){
   if(rewardFrame==null)rewardFrame=NativeUi.fit(c.combatRoomArt("item752-tooltip"),82*c.s,80*c.s,5*c.s);
   c.img(rewardFrame,120,111);
@@ -328,7 +328,7 @@ final class DungeonScreen {
    int item=DungeonRewardPreview.item(rewardStage,rewardDifficulty,rewardFocus);int[] anchor={DungeonRewardPreview.x(count,rewardFocus),DungeonRewardPreview.y(count,rewardFocus),w,72};
    if(item<5)c.stoneShop.drawInfo(item,anchor);
    else if(item==DungeonRewardPreview.WEAPON)c.tooltip.draw(0,8,anchor);
-   else if(item==DungeonRewardPreview.WING)c.tooltip.goods(c.vip.wingName(5),"Cánh","Cánh thưởng phó bản. Trang bị vĩnh viễn.",anchor);
+   else if(item==DungeonRewardPreview.WING)c.tooltip.goods("Bùa may 25%","Nguyên liệu","Nhận ngẫu nhiên 5-20 bùa may mắn khi lật thẻ thưởng hiếm.",anchor);
    else c.tooltip.goods(c.gifts.name(1),"Quà",c.gifts.dungeonDescription(),anchor);
   }
   c.all();c.img(rewardPopupClose,DungeonRewardPreview.CLOSE_X,DungeonRewardPreview.CLOSE_Y);

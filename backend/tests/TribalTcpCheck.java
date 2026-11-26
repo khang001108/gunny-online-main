@@ -28,7 +28,7 @@ public class TribalTcpCheck {
     int[] deck=(int[])store.tribalStore.matches.get(r.match).get("deck");List<Integer> order=new ArrayList<>();for(int i=0;i<(stage==3?18:9);i++)order.add(i);if(stage==3)order.sort(Comparator.comparingInt((Integer card)->deck[card]==2?10:deck[card]).reversed());
     for(int actor=0;actor<3;actor++)for(int pick=0;pick<(stage==3?2:1);pick++){int card=order.get(actor*(stage==3?2:1)+pick),which=pick;var reply=p[actor].call("claim780",o->{o.writeByte(which);o.writeByte(card);});check(reply.readUnsignedByte()==card,"Server confirms shared card");int stones=r.members[actor*2].profile.stones+Arrays.stream(r.members[actor*2].profile.craftStones).sum();p[actor].call("claim780",o->{o.writeByte(which);o.writeByte(card);});check(r.members[actor*2].profile.stones+Arrays.stream(r.members[actor*2].profile.craftStones).sum()==stones,"Repeated TCP claim never duplicates stones");}
     var revealed=p[0].call("deck",null);check(revealed.readBoolean(),"Deck opens after the actual allowed picks");check(revealed.readUnsignedByte()==(stage==3?18:9),"Crossing has nine cards; boss has eighteen");
-    if(stage==3)check(Arrays.stream(r.members).filter(Objects::nonNull).mapToInt(m->m.profile.wings).sum()==1,"Only one wing granted across the final deck");
+    if(stage==3){check(Arrays.stream(r.members).filter(Objects::nonNull).mapToInt(m->m.profile.wings).sum()==0,"No wings granted by dungeon");int rare=order.get(0);check(r.cardTypes[rare]==2&&r.cardCoins[rare]>=5&&r.cardCoins[rare]<=20,"Rare reward is lucky charms");}
     for(int i=0;i<p.length;i++){
      var reply=p[i].call("returnroom",null);
      check(reply.readInt()==id&&reply.readUnsignedByte()==0,"Reward return keeps original room ID for player "+i);
