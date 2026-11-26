@@ -680,7 +680,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             "Giỏ đồ", "VIP Thương Cổ", "Sấm sét" };
     static final String[] WEAPON_DESC = { "Lựu đạn: nổ và đào đất", "Pháo: ném ống pháo, nổ tập trung",
             "Tủ thuốc: ném viên thuốc, nhạy gió", "Lu gạch: ném viên gạch", "Tủ lạnh: đạn nặng, đào đất rộng",
-            "Phi tiêu: đạn phi tiêu", "Cung: bắn mũi tên", "Giỏ đồ: ném cà chua xoay", "VIP Thương Cổ: phần thưởng Sulan",
+            "Phi tiêu: đạn phi tiêu", "Cung: bắn mũi tên", "Giỏ đồ: ném cà chua xoay", "VIP Thương Cổ: thắng Sulan độ Khó",
             "Sấm sét: luồng điện" };
     static final int[] PRICES = { 0, 650, 950, 450, 550, 800, 1100, 700, 600, 1200 };
     int[] pixels, scratch;

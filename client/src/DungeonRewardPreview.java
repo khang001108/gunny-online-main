@@ -5,8 +5,8 @@ final class DungeonRewardPreview {
  static final int CLOSE_X=PANEL_X+PANEL_W-25,CLOSE_Y=PANEL_Y+5;
  static boolean closeHit(int x,int y){return x>=CLOSE_X&&x<CLOSE_X+21&&y>=CLOSE_Y&&y<CLOSE_Y+19;}
  static int count(int stage,int diff){return 5+(stage==6&&diff>0?1:0)+(stage==6&&diff==2?1:0)+(stage==2||stage==6?1:0);}
- static int item(int stage,int diff,int index){if(index<5)return index;if(stage==6&&diff>0){if(index==5)return WEAPON;if(diff==2&&index==6)return WING;}return GIFT;}
- static int tenths(int stage,int diff,int item){if(item<5){int factor=stage==6?(diff==2?11:diff==1?15:18):18;return (StoneDrops.WEIGHTS[diff][item]*factor*10+9)/18;}return item==WEAPON?(diff==2?333:167):item==WING?56:1000;}
+ static int item(int stage,int diff,int index){if(index<5)return index;if(stage==6&&diff==2){if(index==5)return WEAPON;if(index==6)return WING;}return GIFT;}
+ static int tenths(int stage,int diff,int item){if(item<5){int factor=stage==6&&diff==2?17:18;return (StoneDrops.WEIGHTS[diff][item]*factor*10+9)/18;}return item==WEAPON?(stage==6&&diff==2?1000:0):item==WING?56:1000;}
  static String percent(int stage,int diff,int item){int p=tenths(stage,diff,item);return p==1000?"100%":p/10+"."+p%10+"%";}
  static int columns(int count){return count>6?4:3;}
  static int x(int count,int index){return 20+index%columns(count)*(280/columns(count));}

@@ -20,14 +20,14 @@ public final class GiftSpearHF19Check {
    String email="hf19-"+diff+"@test.local";store.register(email,"test-password-123","HF19 user "+diff);var p=store.profile(store.login(email,"test-password-123").userId);
    for(int stage:new int[]{1,2,3}){store.tribal("finish",finish(p.id,stage,diff,0));check((p.owned&256)==0&&p.vipSpears==0,"No spear in early stage");}
    store.tribal("finish",finish(p.id,4,diff,1));check((p.owned&256)==0&&p.vipSpears==0,"No spear on defeat");
-   int bags=p.giftBags;var win=finish(p.id,4,diff,0);store.tribal("finish",win);check((p.owned&256)!=0&&p.vipSpears==1,"Direct final victory award before cards");check(p.giftBags==bags+1,"First victory grants normal bag only");
+   int bags=p.giftBags;var win=finish(p.id,4,diff,0);store.tribal("finish",win);check(((p.owned&256)!=0)==(diff==2)&&p.vipSpears==(diff==2?1:0),"Hard-only direct final victory award");check(p.giftBags==bags+1,"First victory grants normal bag only");
    int[] deck=store.tribalDeck(Json.str(win,"match"));check(Arrays.stream(deck).noneMatch(n->n==3),"No new spear cards");check(Arrays.stream(deck).filter(n->n==2).count()==(diff==2?1:0),"Wing odds unchanged");
    store.tribal("finish",win);check(p.giftBags==bags+1,"Retry first victory does not grant extra bag");
-   var repeat=finish(p.id,4,diff,0);store.tribal("finish",repeat);check(p.giftBags==bags+3,"Existing owner receives normal bag and bonus bag");
-   store.tribal("finish",repeat);check(p.giftBags==bags+3,"Retry repeat victory grants no extra bags");check(p.vipSpears==1,"No duplicate weapon on retry or later victory");
-   store.tribal("finish",finish(p.id,4,diff,1));check(p.giftBags==bags+3,"Existing owner receives no bags on defeat");
+   var repeat=finish(p.id,4,diff,0);store.tribal("finish",repeat);check(p.giftBags==bags+(diff==2?3:2),"Existing owner receives normal bag and bonus bag");
+   store.tribal("finish",repeat);check(p.giftBags==bags+(diff==2?3:2),"Retry repeat victory grants no extra bags");check(p.vipSpears==(diff==2?1:0),"No duplicate or low difficulty weapon");
+   store.tribal("finish",finish(p.id,4,diff,1));check(p.giftBags==bags+(diff==2?3:2),"Existing owner receives no bags on defeat");
    p.giftBags=999998;store.tribal("finish",finish(p.id,4,diff,0));check(p.giftBags==999999,"Gift bag cap respected");
-   var equipped=store.equip(p.id,0,8);check(equipped.equipped==8,"Granted weapon can be equipped");
+   if(diff==2){var equipped=store.equip(p.id,0,8);check(equipped.equipped==8,"Granted weapon can be equipped");}
   }
   store.register("gift-hf19@local.test","test-password-123","Gift HF19");var p=store.profile(store.login("gift-hf19@local.test","test-password-123").userId);p.giftBags=1;p.vipTickets=1;
   try(var server=new GunnyServer(new InetSocketAddress("127.0.0.1",0),Path.of("backend/assets"),store)){

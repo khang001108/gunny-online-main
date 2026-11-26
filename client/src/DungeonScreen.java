@@ -327,7 +327,7 @@ final class DungeonScreen {
   if(rewardInfo){
    int item=DungeonRewardPreview.item(rewardStage,rewardDifficulty,rewardFocus);int[] anchor={DungeonRewardPreview.x(count,rewardFocus),DungeonRewardPreview.y(count,rewardFocus),w,72};
    if(item<5)c.stoneShop.drawInfo(item,anchor);
-   else if(item==DungeonRewardPreview.WEAPON)c.tooltip.draw(0,8,anchor);
+   else if(item==DungeonRewardPreview.WEAPON)c.tooltip.goods("VIP Thương Cổ","Vũ khí","Thắng Tà Thần ải 3 độ Khó: nhận trực tiếp nếu chưa có. Đã có: thêm 1 túi quà phó bản.",anchor);
    else if(item==DungeonRewardPreview.WING)c.tooltip.goods("Bùa may 25%","Nguyên liệu","Nhận ngẫu nhiên 5-20 bùa may mắn khi lật thẻ thưởng hiếm.",anchor);
    else c.tooltip.goods(c.gifts.name(1),"Quà",c.gifts.dungeonDescription(),anchor);
   }
