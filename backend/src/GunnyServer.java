@@ -64,7 +64,7 @@ final BattleLobbyCache lobbyCache=new BattleLobbyCache();boolean emptyKit;boolea
         boolean resultsReady(){return battle!=null&&battle.over&&settled&&resultsAcknowledged();}
         boolean rewardEligible(Session s){if(kind==3&&battle.winner!=0)return false;int seat=slot(s),damage=0;for(int i=0;i<count;i++)if(avatars[i].owner==s)damage+=battle.damage[i];return seat>=0&&Progression.reward(battle.winner,seat%2,damage);}
         boolean cardsOpen(){return battle!=null&&battle.over&&settled;}
-        void resetDungeonResult(){match=UUID.randomUUID().toString();settled=settlementQueued=false;participants.clear();cardPicks.clear();Arrays.fill(cardNames,null);Arrays.fill(cardCoins,0);Arrays.fill(cardTypes,0);chunks.clear();chunkFrames=null;chunkTurn=replayTurn=-1;replayStart=null;chunkTerminal=batchShot=shotStreaming=false;powTicks=inputTicks=0;waitingSince=0;}
+        void resetDungeonResult(){hf38SnapshotTurn=-1;match=UUID.randomUUID().toString();settled=settlementQueued=false;participants.clear();cardPicks.clear();Arrays.fill(cardNames,null);Arrays.fill(cardCoins,0);Arrays.fill(cardTypes,0);chunks.clear();chunkFrames=null;chunkTurn=replayTurn=-1;replayStart=null;chunkTerminal=batchShot=shotStreaming=false;powTicks=inputTicks=0;waitingSince=0;}
         boolean hasReturningParty(){
             if(!awaitingParty)return false;
             for(Session member:members)if(member!=null&&member.room!=id)return true;
@@ -155,7 +155,7 @@ final BattleLobbyCache lobbyCache=new BattleLobbyCache();boolean emptyKit;boolea
         boolean controls(Session s,int actor){return actor>=0&&actor<count&&avatars[actor].owner==s;}
         void start(){if(kind==3)for(Session member:members)if(member!=null){if(TribalDungeon.is(this))TribalDungeon.eligible(member,difficulty);else Dungeon780.eligible(member,difficulty);}for(Session member:members)if(member!=null&&!hasWeapon(member.profile))throw new IllegalArgumentException("Không có trang bị vũ khí không thể bắt đầu");if(phase!=0)throw new IllegalArgumentException("Trận đã bắt đầu.");if(!canStart())throw new IllegalArgumentException(opponents()?"Chờ người chơi sẵn sàng.":"Chờ đối thủ vào phòng.");queueSince=0;timedOut=false;if(map<0)map=requestedMap<0?random.nextInt(mapLimit):requestedMap;ground=new Ground(map);battle=new Battle(ground);battle.shotObserver=()->captureShot();battle.seed=random.nextInt();for(Session member:members)if(member!=null)battle.windLimit=Math.min(battle.windLimit,Progression.windLimit(member.profile.experience));battle.start(true);battle.turnLimit=seconds*30;battle.countdown=battle.turnLimit;if(count==6)battle.configureOnlineTeam();else if(count==4)battle.configureTeam(allyMode);battle.explicitHumans=true;battle.deferNext=host.async;turnStarted=System.currentTimeMillis();refreshWaiting();
             for(int i=0;i<count;i++){Battle.Unit u=battle.units[i];u.team=i%2;if(avatars[i].owner!=null)System.arraycopy(avatars[i].owner.kit,0,u.kit,0,3);u.weapon=avatars[i].weapon;u.experience=host.actors?experience(avatars[i]):0;if(host.expansion&&avatars[i].owner!=null)ForgeRules.apply(u,Expansion780.bonuses(avatars[i].owner.profile),avatars[i].owner.profile.forgeLevels);if(host.equipment||host.actors)ItemRules.apply(u,avatars[i].wornMask);if(avatars[i].owner==null&&Progression.level(u.experience)>=60){int[] ranks=new int[130];java.util.Arrays.fill(ranks,15);ForgeRules.apply(u,new int[]{315+ForgeRules.rankBonus(0,15),585,45},ranks);}u.wingHp=avatars[i].owner==null?VipRules.hp(Progression.level(u.experience)>=60?2+i%3:-1):VipRules.hp(avatars[i].owner.profile.equippedWing);if(u.statsEnabled)ItemRules.apply(u,avatars[i].wornMask);u.human=avatars[i].owner!=null;u.botStyle=i==2&&bot>=0?bot%4:random.nextInt(4);if(customAllies&&i>=2&&members[i]==null&&selectedBots[i]<0&&!(botMatch&&i%2==1)&&!(i==2&&allyBot>=0)&&!(i==3&&enemyBot>=0))u.hp=0;battle.refreshAim(u);}
-            battle.sulanExternalClock=true;if(TribalDungeon.is(this))TribalDungeon.begin(this);else if(kind==3)Dungeon780.begin(this);
+            hf38SnapshotTurn=-1;battle.sulanExternalClock=true;if(TribalDungeon.is(this))TribalDungeon.begin(this);else if(kind==3)Dungeon780.begin(this);
             Set<String> ids=new HashSet<>();for(int i=0;i<count;i++){Session s=avatars[i].owner;if(s!=null&&ids.add(s.id)){s.ready=false;s.checkpointRoom=s.checkpointTurn=-1;s.hf37BudgetRoom=s.hf37ProgressRoom=s.hf37ForceTurn=-1;s.loadingPercent=0;s.resultAck=-1;s.cardsReady=false;s.resolution=-1;participants.add(Map.of("id",s.id,"team",i%2));}}
             battle.hotseat=count==2&&avatars[1].owner!=null;battle.deferBotPow=true;loadingReadyAt=0;phase=3;lastActive=System.currentTimeMillis();
         }
@@ -163,25 +163,40 @@ final BattleLobbyCache lobbyCache=new BattleLobbyCache();boolean emptyKit;boolea
         // Type 4 means complete flight, type 3 remains the bounded streaming fallback.
         static final int SHOT_BATCH_BYTES=48*1024, SHOT_BATCH_FRAMES=1200;
         boolean canBatchShot(){
+            // HF38: Sulan has overlapping salvos and cinematics; stream at the normal clock.
+            if(battle!=null&&SulanRules.active(battle))return false;
             if(host.live||!host.async||!host.prefetch||!host.delta)return false;
             for(Session member:members)if(member!=null&&(!member.async||!member.prefetch||!member.delta||member.live))return false;
             return true;
         }
         static final int SULAN_SCENE_CHUNK=5;
-        boolean sulanScene(){return SulanRules.cinematic(battle)&&(battle.tribalState==TribalRules.TRANSFORM||battle.tribalState==TribalRules.DEAD);}
+        boolean sulanScene(){return SulanRules.cinematic(battle);}
+        // HF38: bounded retained history; on overflow use the existing checkpoint protocol.
+        static final int HF38_MAX_CHUNKS=384;
+        int hf38SnapshotTurn=-1;
+        long hf38RoomErrorAt;
+        boolean hf38SnapshotOnly(){return battle!=null&&SulanRules.active(battle)&&hf38SnapshotTurn==battle.turn;}
+        void hf38Fallback(){
+            hf38SnapshotTurn=battle.turn;
+            chunks.clear();chunkFrames=null;deltaFrame=null;replayStart=null;replayTurn=-1;
+            chunkCount=0;batchShot=shotStreaming=chunkTerminal=false;
+            for(Session member:members)if(member!=null)member.resolution=-1;
+            System.err.println("[HF38] chunk cap; snapshot recovery room="+id+" turn="+battle.turn);
+        }
         void chunkBegin(int kind){
             if(sulanScene())kind=SULAN_SCENE_CHUNK;
-            if(host.live)return;
+            if(host.live||hf38SnapshotOnly())return;
             if(chunkTurn!=battle.turn){chunks.clear();chunkTurn=battle.turn;chunkTerminal=false;chunkFrames=null;batchShot=shotStreaming=false;for(Session member:members)if(member!=null)member.chunkDelivered=-1;}
             // A boss can emit several projectiles during the same flight.
             if(kind==3&&batchShot&&chunkFrames!=null)return;
             if(chunkFrames!=null)chunkFlush(false);
+            if(hf38SnapshotOnly())return;
             deltaFrame=null;chunkKind=kind;chunkShotFirst=kind==3;
             batchShot=kind==3&&!shotStreaming&&canBatchShot();
             chunkFrames=new ByteArrayOutputStream();chunkCount=0;chunkRevision=0;chunkFrame();
         }
         void chunkFrame(){
-            if(host.live||chunkFrames==null)return;
+            if(host.live||chunkFrames==null||hf38SnapshotOnly())return;
             // HF28: authoritative Sulan scene
             if(sulanScene()&&chunkKind!=SULAN_SCENE_CHUNK){chunkBegin(SULAN_SCENE_CHUNK);return;}
             // Protect attacks that create projectiles directly without beforeShot().
@@ -196,20 +211,22 @@ final BattleLobbyCache lobbyCache=new BattleLobbyCache();boolean emptyKit;boolea
                 if(chunkCount>0&&(chunkFrames.size()+(batchShot?wire.length:frame.length)+6>limit||batchShot&&chunkCount>=SHOT_BATCH_FRAMES)){
                     // A pathological long flight falls back to the existing streaming path.
                     if(batchShot){batchShot=false;shotStreaming=true;}
-                    chunkFlush(false);chunkFrames=new ByteArrayOutputStream();chunkCount=0;chunkRevision=0;
+                    chunkFlush(false);if(hf38SnapshotOnly())return;chunkFrames=new ByteArrayOutputStream();chunkCount=0;chunkRevision=0;
                     chunkFrame();return;
                 }
                 DataOutputStream out=new DataOutputStream(chunkFrames);
                 out.writeShort(wire.length|(delta==null?0:32768));out.write(wire);
                 deltaFrame=frame;chunkRevision=ground.craters.size();chunkCount++;
                 if(!batchShot&&host.prefetch&&chunkCount>=(chunkKind==SULAN_SCENE_CHUNK?12:kind!=3&&chunkKind==3&&!chunkShotFirst?12:6)&&!battle.pendingNext&&!battle.over){
-                    chunkFlush(false);chunkShotFirst=false;chunkFrames=new ByteArrayOutputStream();chunkCount=chunkRevision=0;
+                    chunkFlush(false);if(hf38SnapshotOnly())return;chunkShotFirst=false;chunkFrames=new ByteArrayOutputStream();chunkCount=chunkRevision=0;
                 }
             }catch(IOException e){throw new IllegalStateException(e);}
         }
         void chunkFlush(boolean terminal){
-            if(host.live||chunkFrames==null)return;
+            if(host.live||chunkFrames==null||hf38SnapshotOnly())return;
+            if(SulanRules.active(battle)&&chunks.size()>=HF38_MAX_CHUNKS){hf38Fallback();return;}
             if(chunkCount==0){if(terminal)chunkFrame();else{chunkFrames=null;batchShot=false;return;}}
+            if(chunkFrames==null||hf38SnapshotOnly())return;
             try{
                 ByteArrayOutputStream bytes=new ByteArrayOutputStream();DataOutputStream out=new DataOutputStream(bytes);
                 out.writeByte(batchShot?4:chunkKind);out.writeBoolean(terminal);out.writeShort(chunkCount);chunkFrames.writeTo(out);
@@ -227,6 +244,7 @@ final BattleLobbyCache lobbyCache=new BattleLobbyCache();boolean emptyKit;boolea
         void checkpoint(Session s){s.checkpointRoom=id;s.checkpointTurn=battle.turn;}
         void chunkPacket(DataOutputStream out,Session viewer,int revision,int clientTurn,int completed,int cached)throws IOException{
             if(cached==Integer.MIN_VALUE+1)checkpoint(viewer);
+            if(hf38SnapshotOnly()&&!checkpointActive(viewer))throw new SequenceGap(viewer.sequence);
             if(checkpointActive(viewer)){diagPacket(viewer,0);out.writeByte(0);snapshot(out,this,revision,viewer);return;}
             if(cached==Integer.MIN_VALUE){diagPacket(viewer,0);out.writeByte(0);snapshot(out,this,0,viewer);return;}
             if(viewer.live){diagPacket(viewer,5);out.writeByte(5);snapshot(out,this,revision,viewer);return;}
@@ -242,7 +260,7 @@ final BattleLobbyCache lobbyCache=new BattleLobbyCache();boolean emptyKit;boolea
             if(chunkTurn==battle.turn){diagPacket(viewer,3);out.writeByte(3);return;}
             diagPacket(viewer,0);out.writeByte(0);snapshot(out,this,revision,viewer);
         }
-        void captureShot(){if(host.live)return;chunkBegin(3);try{ByteArrayOutputStream bytes=new ByteArrayOutputStream();snapshot(new DataOutputStream(bytes),this,0,host,true);replayStart=bytes.toByteArray();replayTurn=battle.turn;}catch(IOException e){throw new IllegalStateException(e);}}
+        void captureShot(){if(host.live||hf38SnapshotOnly())return;chunkBegin(3);try{ByteArrayOutputStream bytes=new ByteArrayOutputStream();snapshot(new DataOutputStream(bytes),this,0,host,true);replayStart=bytes.toByteArray();replayTurn=battle.turn;}catch(IOException e){throw new IllegalStateException(e);}}
         void shotPacket(DataOutputStream out,Session viewer,int revision,int buffered)throws IOException {
             boolean shot=replayStart!=null&&replayTurn==battle.turn;
             if(!shot){out.writeByte(0);snapshot(out,this,revision,viewer);return;}
@@ -277,10 +295,10 @@ final BattleLobbyCache lobbyCache=new BattleLobbyCache();boolean emptyKit;boolea
             Session owner=battle.active<count?avatars[battle.active].owner:null;if(owner!=null&&!owner.async&&now-owner.lastSeen<45000&&battle.input()){
                 int held=owner.held;if((held&1)!=0)battle.move(-1);if((held&2)!=0)battle.move(1);if((held&4)!=0)battle.adjustAngle(1);if((held&8)!=0)battle.adjustAngle(-1);
             }
-            if(battle.pendingNext){battle.tickVisuals();if(waitingSince==0)waitingSince=now;boolean received=true;for(Session member:members)if(member!=null&&member.async&&now-member.lastSeen<45000&&member.resolution!=battle.turn)received=false;if(!received&&SulanRules.active(battle)&&now-waitingSince>=12000){
+            if(battle.pendingNext){battle.tickVisuals();if(waitingSince==0)waitingSince=now;boolean received=true;for(Session member:members)if(member!=null&&member.async&&now-member.lastSeen<45000&&member.resolution!=battle.turn)received=false;if(!received&&SulanRules.active(battle)&&now-waitingSince>=6000){
                 for(Session member:members)if(member!=null&&member.async&&member.chunks&&member.resolution!=battle.turn){
                     member.hf37Progress(id,battle.turn,-1,waitingSince);
-                    if(!checkpointActive(member)&&now-Math.max(waitingSince,member.hf37ProgressAt)>=12000&&member.hf37ForceTurn!=battle.turn){member.hf37ForceTurn=battle.turn;System.err.println("[HF37] stalled peer checkpoint room="+id+" turn="+battle.turn+" seat="+slot(member));}
+                    if(!checkpointActive(member)&&now-Math.max(waitingSince,member.hf37ProgressAt)>=6000&&member.hf37ForceTurn!=battle.turn){member.hf37ForceTurn=battle.turn;System.err.println("[HF37] stalled peer checkpoint room="+id+" turn="+battle.turn+" seat="+slot(member));}
                 }
             }
             if(!received&&SulanRules.active(battle)&&now-waitingSince>=60000){
@@ -379,7 +397,7 @@ final BattleLobbyCache lobbyCache=new BattleLobbyCache();boolean emptyKit;boolea
                 else if(action.equals("ready")){Room room=requireRoom(s);boolean ready=in.readBoolean();synchronized(room){if(room.phase!=0)throw new IllegalArgumentException("Trận đã bắt đầu.");if(ready&&((s.profile.wornMask&1)==0||(s.profile.owned&(1<<s.profile.equipped))==0))throw new IllegalArgumentException("Không có trang bị vũ khí không thể bắt đầu");s.armed=ready;if(!ready){room.queued=false;room.queueSince=0;room.botVotes=0;}lobby(out,room,s);}}
                 else if(action.equals("switchteam")){Room room=requireRoom(s);int team=in.readUnsignedByte();synchronized(room){room.switchTeam(s,team);lobby(out,room,s);}}
                 else if(action.equals("botvote")){matchmaker.voteBot(s);Room room=requireRoom(s);synchronized(room){lobby(out,room,s);}}else if(action.equals("challenge")){throw new IllegalArgumentException("Đã bỏ đấu phòng theo mã.");}else if(action.equals("start")){Room room=requireRoom(s);if(s.matchmaking&&(room.customAllies||room.kind==0&&!room.opponents())){matchmaker.start(s,0,"");room=requireRoom(s);synchronized(room){lobby(out,room,s);}}else synchronized(room){if(room.host!=s)throw new IllegalArgumentException("Chỉ chủ phòng được bắt đầu.");room.start();lobby(out,room,s);}}
-                else if(action.equals("sync")){Room room=requireRoom(s);int revision=in.readInt(),held=in.readUnsignedByte();boolean ready=in.readBoolean();int clientTurn=s.async?in.readInt():-1;boolean received=s.async&&in.readBoolean();int clientEvent=s.events?in.readInt():room.departureVersion;int buffered=s.replay?in.readInt():-1;int completed=s.chunks?in.readInt():-1;int cached=s.chunks?in.readInt():-1;int count=in.readUnsignedByte();if(held>15||count>16||(in.available()!=count*7&&in.available()!=count*7+4))throw new IllegalArgumentException("Lệnh không hợp lệ.");synchronized(room){room.diagSync(s,clientTurn,completed,cached,received,clientEvent);if(s.chunks&&cached==Integer.MIN_VALUE+1&&room.battle!=null)room.checkpoint(s);s.held=held;s.ready=ready;if(cached==Integer.MIN_VALUE+1){received=false;revision=0;s.hf37ForceTurn=-1;}else if(s.chunks&&room.battle!=null&&s.hf37ProgressRoom==room.id&&s.hf37ForceTurn==room.battle.turn){throw new SequenceGap(s.sequence);}
+                else if(action.equals("sync")){Room room=requireRoom(s);int revision=in.readInt(),held=in.readUnsignedByte();boolean ready=in.readBoolean();int clientTurn=s.async?in.readInt():-1;boolean received=s.async&&in.readBoolean();int clientEvent=s.events?in.readInt():room.departureVersion;int buffered=s.replay?in.readInt():-1;int completed=s.chunks?in.readInt():-1;int cached=s.chunks?in.readInt():-1;int count=in.readUnsignedByte();if(held>15||count>16||(in.available()!=count*7&&in.available()!=count*7+4))throw new IllegalArgumentException("Lệnh không hợp lệ.");synchronized(room){room.diagSync(s,clientTurn,completed,cached,received,clientEvent);if(s.chunks&&cached==Integer.MIN_VALUE+1&&room.battle!=null)room.checkpoint(s);s.held=held;s.ready=ready;if(s.chunks&&room.hf38SnapshotOnly()&&!room.checkpointActive(s))throw new SequenceGap(s.sequence);if(cached==Integer.MIN_VALUE+1){received=false;revision=0;s.hf37ForceTurn=-1;}else if(s.chunks&&room.battle!=null&&s.hf37ProgressRoom==room.id&&s.hf37ForceTurn==room.battle.turn){throw new SequenceGap(s.sequence);}
                 if(s.chunks&&room.battle!=null&&clientTurn==room.battle.turn&&completed>=-1&&completed<=s.chunkDelivered&&(completed==-1||room.chunkTurn==clientTurn&&completed<room.chunks.size()))s.hf37Progress(room.id,clientTurn,completed,System.currentTimeMillis());if(received&&room.battle!=null&&room.battle.over&&clientTurn==room.battle.turn&&clientEvent==room.departureVersion&&(s.live||room.checkpointActive(s)||!s.chunks||room.chunkTurn!=clientTurn||room.chunkTerminal&&completed==room.chunks.size()-1&&s.chunkDelivered==completed)){s.resultAck=clientTurn;queueSettlement(room);}if(s.async&&received&&(s.live||room.checkpointActive(s)||!s.chunks||room.chunkTurn!=clientTurn||room.chunkTerminal&&completed==room.chunks.size()-1&&s.chunkDelivered==completed)&&(s.live||s.chunks||!s.replay||room.replayStart==null||room.replayTurn!=clientTurn||s.delivered==clientTurn)&&clientEvent==room.departureVersion&&room.battle!=null&&room.battle.pendingNext&&clientTurn==room.battle.turn)s.resolution=clientTurn;if(room.phase!=3)room.lastActive=s.lastSeen;for(int i=0;i<count;i++){int seq=in.readInt(),kind=in.readUnsignedByte(),arg=in.readShort();if(cached==Integer.MIN_VALUE+1||s.async&&room.battle!=null&&(clientTurn!=room.battle.turn||clientEvent!=room.departureVersion)){if(seq==s.sequence+1)s.sequence=seq;else if(seq>s.sequence)throw new SequenceGap(s.sequence);}else room.command(s,seq,kind,arg);}int lobbyVersion=in.available()==4?in.readInt():-1;out.writeInt(s.sequence);if(lobbyVersion>=0){ByteArrayOutputStream lobbyBytes=new ByteArrayOutputStream(256);lobby(new DataOutputStream(lobbyBytes),room,s);s.lobbyCache.write(out,lobbyBytes.toByteArray(),lobbyVersion,room.viewerPhase(s)==1);}else lobby(out,room,s);if(room.viewerPhase(s)>0){if(s.async){out.writeBoolean(room.battle.pendingNext);out.writeInt(room.battle.turn);}if(s.chunks)room.chunkPacket(out,s,revision,clientTurn,completed,cached);else if(s.replay)room.shotPacket(out,s,revision,buffered);else snapshot(out,room,revision,s);}}}
                 else throw new IllegalArgumentException("Không có thao tác này.");}
             }
@@ -433,7 +451,9 @@ final BattleLobbyCache lobbyCache=new BattleLobbyCache();boolean emptyKit;boolea
     void queueSettlement(Room r){if(r.settlementQueued)return;r.settlementQueued=true;List<Map<String,Object>> players=new ArrayList<>();for(Map<String,Object> participant:r.participants){Map<String,Object> row=new HashMap<>(participant);int damage=0;for(int i=0;i<r.count;i++)if(r.avatars[i].owner!=null&&r.avatars[i].owner.id.equals(participant.get("id")))damage+=r.battle.damage[i];row.put("damage",damage);row.put("weapon",0);for(var a:r.avatars)if(a!=null&&a.owner!=null&&a.owner.id.equals(participant.get("id"))){row.put("weapon",a.weapon);break;}players.add(row);}
         saves.submit(()->{for(int attempt=0;attempt<10&&!closed;attempt++){try{if(TribalDungeon.is(r))TribalDungeon.settle(this,r,players);else if(r.kind==3&&r.dungeonStage==1)store.finishAntStage(r.match,r.battle.winner,players,r.difficulty);else if(r.kind==3)store.finishDungeon780(r.match,r.battle.winner,players,r.difficulty);else store.settle(r.match,r.battle.winner,players,r.kind);if(r.host.clock793)store.recordStats(r.match,players);for(Session s:r.members)if(s!=null)s.profile=store.profile(s.id);r.rewardsAt=System.currentTimeMillis();r.settled=true;return;}catch(Exception ignored){try{Thread.sleep(Math.min(30000,1000L<<attempt));}catch(InterruptedException e){Thread.currentThread().interrupt();return;}}}System.err.println("Match settlement pending: "+r.match);});
     }
-    void tick(){try{long now=System.currentTimeMillis();for(Room r:rooms.values())synchronized(r){boolean present=false,online=false,retain=ResultResume.retain(r,now);for(Session s:r.members)if(s!=null){if(now-s.lastSeen<300000)present=true;if(now-s.lastSeen<45000)online=true;}for(Session member:r.members.clone())if(member!=null&&!TribalDungeon.is(r)&&(r.phase==1||r.phase==3||r.phase==2&&!retain)&&now-member.lastSeen>45000)leave(member);if(!retain&&(!present||r.phase==2&&!online&&now-r.lastActive>180000))rooms.remove(r.id);else {r.diagTick(now);r.tickAhead();}}for(Session s:sessions.values())if(s.expiry<now){if(!TribalDungeon.isRoom(this,s.room)&&(rooms.get(s.room)==null||!ResultResume.retain(rooms.get(s.room),now)))leave(s);sessions.remove(s.token);}if(limits.size()>1024)limits.entrySet().removeIf(e->now-e.getValue().start>60000);}catch(Exception e){System.err.println("Battle tick failed: "+e.getClass().getSimpleName());}finally{events.signal();}}
+    void tick(){try{long now=System.currentTimeMillis();for(Room r:rooms.values())synchronized(r){try{boolean present=false,online=false,retain=ResultResume.retain(r,now);for(Session s:r.members)if(s!=null){if(now-s.lastSeen<300000)present=true;if(now-s.lastSeen<45000)online=true;}for(Session member:r.members.clone())if(member!=null&&!TribalDungeon.is(r)&&(r.phase==1||r.phase==3||r.phase==2&&!retain)&&now-member.lastSeen>45000)leave(member);if(!retain&&(!present||r.phase==2&&!online&&now-r.lastActive>180000))rooms.remove(r.id);else {r.diagTick(now);r.tickAhead();}}catch(RuntimeException failure){
+                if(now-r.hf38RoomErrorAt>=5000){r.hf38RoomErrorAt=now;System.err.println("[HF38] room="+r.id+" tick failed");failure.printStackTrace(System.err);}
+            }}for(Session s:sessions.values())if(s.expiry<now){if(!TribalDungeon.isRoom(this,s.room)&&(rooms.get(s.room)==null||!ResultResume.retain(rooms.get(s.room),now)))leave(s);sessions.remove(s.token);}if(limits.size()>1024)limits.entrySet().removeIf(e->now-e.getValue().start>60000);}catch(Exception e){System.err.println("Battle tick failed: "+e.getClass().getSimpleName());}finally{events.signal();}}
     public void close(){closed=true;events.signal();accounts.sessions.clear();if(tcp!=null)tcp.close();admin.close();longPoll.close();http.stop(0);clock.shutdownNow();chatMaintenance.shutdownNow();workers.shutdownNow();saves.shutdownNow();}
     public static void main(String[] args)throws Exception {TribalConfig.load();boolean test=CloudStore.env("GUNNY_TEST_MODE").equals("1");if(test&&!CloudStore.env("RENDER").isEmpty())throw new IllegalStateException("Test accounts are prohibited on Render");int port=Integer.parseInt(CloudStore.env("PORT").isEmpty()?"8080":CloudStore.env("PORT"));String bind=test?"127.0.0.1":"0.0.0.0";GunnyServer server=new GunnyServer(new InetSocketAddress(bind,port),Path.of(CloudStore.env("GUNNY_ASSETS").isEmpty()?"assets1":CloudStore.env("GUNNY_ASSETS")),test?new CloudStore.Memory():new CloudStore());server.tcpOnly=true;int tcpPort=Integer.parseInt(CloudStore.env("TCP_PORT").isEmpty()?"22122":CloudStore.env("TCP_PORT"));if(tcpPort>0)server.startTcp(bind,tcpPort,Integer.parseInt(CloudStore.env("MAX_TCP_CLIENTS").isEmpty()?"128":CloudStore.env("MAX_TCP_CLIENTS")));Runtime.getRuntime().addShutdownHook(new Thread(server::close));System.out.println("Gunny 7.9.18 HF6 (tribalBotFix=2, tribalHF3=1, tribalHF4=1, tribalHF5=1, dungeonHF6=1) HTTP listening on "+bind+":"+server.port()+", TCP on "+bind+":"+server.tcpPort()+(test?" (local test accounts only)":""));}
 }

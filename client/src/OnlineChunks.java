@@ -7,7 +7,7 @@ final class OnlineChunks {
     static final int PVP_SHOT_BUFFER_FRAMES=30, PVP_SHOT_BUFFER_MS=1050;
     // HF28: authoritative Sulan scene
     static final int SULAN_SCENE_CHUNK=5;
-    boolean sceneReceived;
+    boolean sceneReceived,hf38ServerAction;
     final OnlineClient net;
     final Vector queued=new Vector();
     int turn=-1, completed=-1, received=-1, id, remaining, kind, activeBytes;
@@ -26,7 +26,7 @@ final class OnlineChunks {
     }
     OnlineChunks(OnlineClient owner) { net=owner; }
     void reset() {
-        turn=completed=received=-1;queued.removeAllElements();sceneReceived=false;
+        turn=completed=received=-1;queued.removeAllElements();sceneReceived=hf38ServerAction=false;
         frames=null;finalFrame=previousFrame=null;remaining=activeBytes=0;id=-1;kind=0;terminal=resolved=resetTerrain=false;ownPending=false;playing=false;waitingSince=ownSince=stallSince=0;waitingForNext=gapCounted=flightStarted=false;rebufferBoost=0;snapshotInput.bind(null);
     }
     int requestTurn(int displayedTurn) {
@@ -68,7 +68,10 @@ final class OnlineChunks {
         readPrepared(in,done,serverTurn,stage,stage==4?decodeSegment(in,done):null);
     }
     void readPrepared(DataInputStream in,boolean done,int serverTurn,int stage,Segment segment)throws IOException {
-        if (turn!=serverTurn) { reset();turn=serverTurn; }
+        if(turn!=serverTurn){
+            reset();turn=serverTurn;
+            if(net.c.game.turn!=serverTurn){net.predicting=false;net.resolutionSeen=false;net.hf38AckDue=false;}
+        }
         if(recovering&&stage==0){if(snapshot(in,done,serverTurn)){recovering=false;recoveryFailures=0;}return;}
         if (stage==0 || stage==5&&net.liveCap) { if(net.phase==2){reset();turn=serverTurn;} snapshot(in,done,serverTurn);return; }
         if (stage==3) return;
@@ -84,7 +87,15 @@ final class OnlineChunks {
             if(!sceneReceived){net.predicting=false;net.c.game.pendingNext=false;net.c.powShotPending=false;net.c.powCutinTicks=0;}
             sceneReceived=true;
         }
-        if(sceneReceived)own=false;
+        // HF38: do not simulate Sulan projectiles using incomplete client snapshots.
+        if(SulanRules.active(net.c.game)&&(segment.kind==2||segment.kind==3||segment.kind==4||segment.kind==SULAN_SCENE_CHUNK)){
+            if(!hf38ServerAction){
+                net.predicting=false;net.c.game.pendingNext=false;
+                net.c.powShotPending=false;net.c.powCutinTicks=0;net.c.game.trailCount=0;
+            }
+            hf38ServerAction=true;
+        }
+        if(sceneReceived||hf38ServerAction)own=false;
         if (own) {
             // Already validated all frames. Local prediction only needs the terminal state.
             if(!segment.terminal){received=completed=next;return;}
@@ -170,6 +181,7 @@ final class OnlineChunks {
         try {
             resetTerrain=false; // Remote terrain is updated incrementally, never rebuilt per segment.
             net.c.game.ageTrails();
+            if(SulanRules.active(net.c.game))net.c.game.pendingNext=false;
             readFrame(frame(frames));
             if(net.c.game.ballCount>0)flightStarted=true;
             for (int i=0;i<net.c.game.ballCount;i++) net.c.game.stampTrail(net.c.game.balls[i]);
@@ -177,7 +189,7 @@ final class OnlineChunks {
             if (--remaining==0) {
                 frames=null;previousFrame=null;activeBytes=0;completed=id;
                 net.c.game.pendingNext=terminal&&resolved;
-                net.resolutionSeen=terminal&&(resolved||net.c.game.over);if(net.resolutionSeen)net.processingSince=0;
+                net.resolutionSeen=terminal&&(resolved||net.c.game.over);if(net.resolutionSeen){net.processingSince=0;if(SulanRules.active(net.c.game))net.hf38SignalAck();}
                 if (queued.isEmpty()) { playing=!terminal&&flightStarted;waitingSince=0;waitingForNext=!terminal;gapCounted=false; }
                 else advance();
                 net.lastPoll=0;
@@ -198,7 +210,7 @@ final class OnlineChunks {
         // Never replace a predicted projectile with the terminal snapshot mid-flight.
         // A 30s failsafe retains recovery for a genuinely stuck simulation.
         // HF28: pendingNext stops physics. A resolved terminal snapshot must win over stale balls.
-        boolean authoritativeEnd=SulanRules.active(net.c.game)&&terminal&&resolved&&finalFrame!=null&&(net.c.game.pendingNext||net.c.game.over);
+        boolean authoritativeEnd=SulanRules.active(net.c.game)&&terminal&&resolved&&finalFrame!=null;
         if(!authoritativeEnd&&elapsed<30000&&(net.c.game.ballCount>0||net.c.game.bursts>0||net.c.powShotPending))return;
         boolean timedOut=authoritativeEnd||elapsed>=5000;
         if(!timedOut&&((!net.c.game.pendingNext&&!net.c.game.over&&!(SulanRules.active(net.c.game)&&resolved))||net.c.powShotPending))return;
@@ -206,7 +218,7 @@ final class OnlineChunks {
         try {
             net.c.resetOnlineTerrain();readFrame(finalFrame);
             net.c.game.pendingNext=resolved;net.predicting=false;net.resolutionSeen=resolved||net.c.game.over;
-            completed=id;ownPending=false;ownSince=0;finalFrame=previousFrame=null;if(net.resolutionSeen)net.processingSince=0;net.lastPoll=0;
+            completed=id;ownPending=false;ownSince=0;finalFrame=previousFrame=null;if(net.resolutionSeen){net.processingSince=0;if(SulanRules.active(net.c.game))net.hf38SignalAck();}net.lastPoll=0;
         } catch (IOException error) { if(++recoveryFailures<=2)net.resyncCommands();else net.disconnect("Không đọc được kết quả."); }
     }
 }

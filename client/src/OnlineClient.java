@@ -38,8 +38,13 @@ final class OnlineClient implements Runnable,CommandListener,ItemCommandListener
         cardDraft=card;rewardPick=rewardPicks;rewardOperation=op;notifyAll();
         if(worker==null||!worker.isAlive()){worker=new Thread(this);worker.start();}return true;
     }
-    synchronized void command(int kind,int arg){if(phase!=1||sequenceResync||chunks.frames!=null||chunks.ownPending||chunks.waitingForNext||repairGround||groundAwaiting||departure.paused||replay.playing&&!replay.own||!localTurn()||queueCount>=254||c.game.pendingNext)return;
-        if(asyncTurns){beginPrediction();Battle b=c.game;if(!b.input())return;if(kind==1)b.charge();else if(kind==2){Battle.Unit u=b.units[b.active];arg=-(1+u.angle*128+u.power);if(b.pow){b.charging=false;c.startPowCutin();c.powShotPending=true;lastPow=b.turn;}else b.fire();processingSince=System.currentTimeMillis();}else if(kind==8){if(!itemsCap||!b.item(arg)){c.message("Chưa dùng được: kiểm tra thể lực / lượt dùng.");return;}}else if(kind==3)b.prop(arg);else if(kind==4){b.pass();processingSince=System.currentTimeMillis();}else if(kind==5)ItemRules.weapon(b.units[b.active],arg);}
+    synchronized void command(int kind,int arg){if(phase!=1||sequenceResync||chunks.frames!=null||chunks.ownPending||chunks.waitingForNext||repairGround||groundAwaiting||departure.paused||replay.playing&&!replay.own||!localTurn()||queueCount>=254||c.game.pendingNext||SulanRules.active(c.game)&&c.powCutinTicks>0)return;
+        if(asyncTurns){beginPrediction();Battle b=c.game;if(!b.input())return;if(kind==1)b.charge();else if(kind==2){Battle.Unit u=b.units[b.active];arg=-(1+u.angle*128+u.power);if(SulanRules.active(b)&&chunksCap){
+            if(!b.charging)return;
+            // HF38: aim/charge are predicted; flight/POW/transform are server playback only.
+            b.charging=false;b.pendingNext=true;resolutionSeen=false;
+            c.powShotPending=false;c.powCutinTicks=0;
+        }else if(b.pow){b.charging=false;c.startPowCutin();c.powShotPending=true;lastPow=b.turn;}else b.fire();processingSince=System.currentTimeMillis();}else if(kind==8){if(!itemsCap||!b.item(arg)){c.message("Chưa dùng được: kiểm tra thể lực / lượt dùng.");return;}}else if(kind==3)b.prop(arg);else if(kind==4){b.pass();processingSince=System.currentTimeMillis();}else if(kind==5)ItemRules.weapon(b.units[b.active],arg);}
         else arg=motion.input(kind,arg,sequence+1);
         queueSeq[queueCount]=++sequence;queueKind[queueCount]=kind;queueArg[queueCount++]=arg;lastPoll=0;notifyAll();
     }
@@ -209,7 +214,7 @@ final class OnlineClient implements Runnable,CommandListener,ItemCommandListener
         else if(op.equals("claim"))out.writeByte(cardDraft);
         else if(op.equals("buy"))out.writeByte(buyId);
         else if(op.equals("appearance")){out.writeUTF(c.playerName);out.writeByte(c.gender);out.writeByte(c.skin);out.writeBoolean(c.customLook);for(int i=0;i<5;i++)out.writeByte(c.look[i]);if(equipmentCap)out.writeByte(c.wornMask);}
-        else if(op.equals("sync")){if(repairGround&&inBattle){synchronized(c){revision=0;predicting=false;motion.reset();repairGround=false;groundAwaiting=true;}}out.writeInt(revision);sentHeld=inBattle?c.held&15:0;out.writeByte(sentHeld);out.writeBoolean(inBattle&&c.loadTicks>=60);if(asyncTurns){int requestTurn=chunksCap?chunks.requestTurn(c.game.turn):c.game.turn;out.writeInt(requestTurn);out.writeBoolean(resolutionSeen);if(departureCap)out.writeInt(departure.version);if(replayCap)out.writeInt(replay.turn);if(chunksCap){out.writeInt(chunks.completed);if(checkpointCap&&chunks.recovering)checkpointRequested=true;int requestCached=checkpointRequested?Integer.MIN_VALUE+1:chunks.cached();out.writeInt(requestCached);if(SulanRules.active(c.game))diagRequest(requestTurn,chunks.completed,requestCached,resolutionSeen);}}synchronized(this){out.writeByte(Math.min(16,queueCount));for(int i=0;i<queueCount&&i<16;i++){out.writeInt(queueSeq[i]);out.writeByte(queueKind[i]);out.writeShort(queueArg[i]);sentMax=queueSeq[i];}}if(compactLobby)out.writeInt(lobbyVersion);}
+        else if(op.equals("sync")){if(repairGround&&inBattle){synchronized(c){revision=0;predicting=false;motion.reset();repairGround=false;groundAwaiting=true;}}out.writeInt(revision);sentHeld=inBattle?c.held&15:0;out.writeByte(sentHeld);out.writeBoolean(inBattle&&c.loadTicks>=60);if(asyncTurns){int requestTurn=chunksCap?chunks.requestTurn(c.game.turn):c.game.turn;out.writeInt(requestTurn);out.writeBoolean(resolutionSeen);if(resolutionSeen)hf38AckDue=false;if(departureCap)out.writeInt(departure.version);if(replayCap)out.writeInt(replay.turn);if(chunksCap){out.writeInt(chunks.completed);if(checkpointCap&&chunks.recovering)checkpointRequested=true;int requestCached=checkpointRequested?Integer.MIN_VALUE+1:chunks.cached();out.writeInt(requestCached);if(SulanRules.active(c.game))diagRequest(requestTurn,chunks.completed,requestCached,resolutionSeen);}}synchronized(this){out.writeByte(Math.min(16,queueCount));for(int i=0;i<queueCount&&i<16;i++){out.writeInt(queueSeq[i]);out.writeByte(queueKind[i]);out.writeShort(queueArg[i]);sentMax=queueSeq[i];}}if(compactLobby)out.writeInt(lobbyVersion);}
         out.close();return bytes.toByteArray();}
     static final class SequenceRecovery extends ServerReply {SequenceRecovery(){super("Đồng bộ lại thứ tự lệnh.");}}
     static class ServerReply extends IOException {ServerReply(String message){super(message);}}
@@ -279,9 +284,9 @@ final class OnlineClient implements Runnable,CommandListener,ItemCommandListener
     // ACK belongs to the login session, not the room or encounter. Never leave a hole after discarding queued input.
     synchronized void resetCommandQueue(int serverAck){queueCount=0;sequence=ack=sentMax=serverAck;}
     synchronized void acknowledgeCommands(int serverAck){ack=serverAck;int left=0;for(int i=0;i<queueCount;i++)if(queueSeq[i]>ack){queueSeq[left]=queueSeq[i];queueKind[left]=queueKind[i];queueArg[left++]=queueArg[i];}queueCount=left;if(sequence<ack)sequence=ack;if(sentMax<ack)sentMax=ack;}
-    void resyncCommands(){lobbyVersion=0;sequenceResync=true;synchronized(this){queueCount=0;}predicting=resolutionSeen=false;predictedTurn=-1;repairGround=false;groundAwaiting=true;chunks.reset();chunks.recovering=chunksCap;checkpointRequested=checkpointCap&&chunksCap;replay.reset();motion.reset();revision=0;c.held=c.fireKey=0;c.powShotPending=false;c.powCutinTicks=0;processingSince=System.currentTimeMillis();lastPoll=0;}
+    void resyncCommands(){hf38AckDue=false;lobbyVersion=0;sequenceResync=true;synchronized(this){queueCount=0;}predicting=resolutionSeen=false;predictedTurn=-1;repairGround=false;groundAwaiting=true;chunks.reset();chunks.recovering=chunksCap;checkpointRequested=checkpointCap&&chunksCap;replay.reset();motion.reset();revision=0;c.held=c.fireKey=0;c.powShotPending=false;c.powCutinTicks=0;if(SulanRules.active(c.game))c.game.trailCount=0;processingSince=System.currentTimeMillis();lastPoll=0;}
     void returnToWaitingRoom(){
-        c.dungeon.closeRewards();
+        hf38AckDue=false;c.dungeon.closeRewards();
         resetCommandQueue(ack);sequenceResync=checkpointRequested=false;snapshotRecoveryTurn=-1;chunks.recovering=false;
         inBattle=predicting=resolutionSeen=repairGround=groundAwaiting=false;queueCount=revision=0;predictedTurn=-1;processingSince=0;departure.paused=false;c.resetPending=c.loadingRequested=false;
         chunks.reset();replay.reset();motion.reset();results.reset();
@@ -289,7 +294,7 @@ final class OnlineClient implements Runnable,CommandListener,ItemCommandListener
         c.releaseBattleArt();c.held=c.fireKey=0;c.roomSelection=5;c.mode=16;
     }
     void prepareBattle()throws IOException {
-        checkpointRequested=false;snapshotRecoveryTurn=-1;chunks.recovering=false;chunks.recoveryFailures=0;recoveryAttempts=0;
+        hf38AckDue=false;checkpointRequested=false;snapshotRecoveryTurn=-1;chunks.recovering=false;chunks.recoveryFailures=0;recoveryAttempts=0;
         c.loadout.resetFocus();
         for(int i=0;i<layers.length;i++)for(int k=0;k<5;k++)layers[i][k]=null;
         c.conditions.reset();for(int slot=6;slot<c.game.units.length;slot++){c.game.units[slot].npc=0;c.game.units[slot].hp=c.game.units[slot].maxHp=0;}
@@ -329,11 +334,13 @@ final class OnlineClient implements Runnable,CommandListener,ItemCommandListener
         if(powTicks>0){if(lastPow!=b.turn){lastPow=b.turn;b.active=powActor;c.startPowCutin();}c.powCutinTicks=powTicks;c.powShotPending=false;}
         if(asyncTurns){if(predictedTurn!=b.turn){processingSince=0;resolutionSeen=false;}predictedTurn=b.turn;}groundAwaiting=false;if(asyncTurns){if(liveCap)motion.receiveLive(System.currentTimeMillis());else if(motion.liveReady)motion.reset();if(oldTurn!=b.turn)c.held=c.fireKey=0;}else motion.after();if(b.over&&(!socialCap||settled&&cardsOpen)){c.mode=5;c.held=c.fireKey=0;}results.syncStage();c.syncTurnNotice();
     }
-    void animate(){if(snapshotRecoveryTurn==c.game.turn&&!predicting&&(c.game.busy()||c.game.pendingNext||c.game.over))return;if(sequenceResync||repairGround||departure.paused||groundAwaiting&&chunks.frames==null)return;Battle b=c.game;if(socialCap&&b.over&&!settled)c.message("Đang lưu kết quả...");if(chunksCap&&chunks.animate())return;if(!chunksCap&&replayCap&&replay.animate())return;
+    void animate(){
+        if(SulanRules.active(c.game)&&chunksCap&&chunks.ownPending&&chunks.terminal&&chunks.resolved){chunks.finish();return;}
+        if(snapshotRecoveryTurn==c.game.turn&&!predicting&&(c.game.busy()||c.game.pendingNext||c.game.over||SulanRules.cinematic(c.game)||SulanRules.active(c.game)&&c.powCutinTicks>0))return;if(sequenceResync||repairGround||departure.paused||groundAwaiting&&chunks.frames==null)return;Battle b=c.game;if(socialCap&&b.over&&!settled)c.message("Đang lưu kết quả...");if(chunksCap&&chunks.animate())return;if(!chunksCap&&replayCap&&replay.animate())return;
         // HF28: complete a terminal snapshot before any frozen local physics or POW cut-in.
         if(chunksCap&&chunks.ownPending&&SulanRules.active(b)&&b.pendingNext){chunks.finish();return;}
         // Hold the start of a predicted cinematic until its authoritative frames arrive.
-        if(chunksCap&&predicting&&SulanRules.cinematic(b)&&(b.tribalState==TribalRules.TRANSFORM||b.tribalState==TribalRules.DEAD)&&!chunks.ownPending){b.tickVisuals();return;}if(phase==1&&processingSince>0&&System.currentTimeMillis()-processingSince>30000&&queueCount==0&&!chunks.ownPending&&!replay.playing){resyncCommands();c.message("Đang đồng bộ lại dữ liệu...");return;}if(asyncTurns&&(phase==1||replay.playing&&replay.own||chunks.ownPending||phase==2&&predicting&&(b.busy()||c.powShotPending))&&(localTurn()||predicting)){
+        if(chunksCap&&predicting&&SulanRules.cinematic(b)&&(b.tribalState==TribalRules.TRANSFORM||b.tribalState==TribalRules.DEAD)&&!chunks.ownPending){b.tickVisuals();return;}if(phase==1&&processingSince>0&&System.currentTimeMillis()-processingSince>(SulanRules.active(b)&&predicting&&b.pendingNext?6000:30000)&&queueCount==0&&!chunks.ownPending&&!replay.playing){resyncCommands();c.message("Đang đồng bộ lại dữ liệu...");return;}if(asyncTurns&&(phase==1||replay.playing&&replay.own||chunks.ownPending||phase==2&&predicting&&(b.busy()||c.powShotPending))&&(localTurn()||predicting)){
         if(c.powShotPending){if(--c.powCutinTicks<=0){c.powShotPending=false;b.fire();}return;}if(!b.pendingNext&&!b.over){beginPrediction();if(b.input()){if(!frame(c.held&15)){b.tickVisuals();if(processingSince==0)processingSince=System.currentTimeMillis();return;}if((c.held&1)!=0)b.move(-1);if((c.held&2)!=0)b.move(1);if((c.held&4)!=0)b.adjustAngle(1);if((c.held&8)!=0)b.adjustAngle(-1);}b.tick();}
         if(chunksCap)chunks.finish();else if(replayCap)replay.finish();if((b.busy()||b.pendingNext||b.over)&&processingSince==0)processingSince=System.currentTimeMillis();
         return;
@@ -343,7 +350,8 @@ final class OnlineClient implements Runnable,CommandListener,ItemCommandListener
 
     }
     void acceptSnapshot(DataInputStream in,boolean done,int serverTurn)throws IOException {
-        if(!inBattle||!asyncTurns||!predicting||serverTurn!=predictedTurn||(done&&(c.game.pendingNext||c.game.over||snapshotRecoveryTurn==serverTurn))||phase==2){readSnapshot(in);if(asyncTurns){c.game.deferNext=true;c.game.pendingNext=done;if(done&&processingSince==0)processingSince=System.currentTimeMillis();resolutionSeen=done||c.game.over;predicting=false;}}
+        boolean wasResolved=resolutionSeen;int priorTurn=c.game.turn;
+        if(!inBattle||!asyncTurns||!predicting||serverTurn!=predictedTurn||checkpointRequested||chunks.recovering||snapshotRecoveryTurn==serverTurn||(done&&(c.game.pendingNext||c.game.over))||phase==2){readSnapshot(in);if(asyncTurns){c.game.deferNext=true;c.game.pendingNext=done;if(done&&processingSince==0)processingSince=System.currentTimeMillis();resolutionSeen=done||c.game.over;predicting=false;if(SulanRules.active(c.game)&&resolutionSeen&&(!wasResolved||priorTurn!=serverTurn))hf38SignalAck();}}
     }
     void actor(int index,int anim,int x,int y,boolean flip){if(custom[index]){int[] order=PhoneCanvas.LOOK_ORDER;int cell=c.s==1?(anim>=16?8+anim-16:anim==0?0:anim<10?1+(anim-1)%5:6+anim%2):anim;for(int k=0;k<5;k++)c.part(layers[index][order[k]],cell*32,0,32,40,x,y,flip);}else c.part(c.actors[index],anim*32,0,32,40,x,y,flip);}
     void draw(){c.all();if(soloSearching()){waiting.drawSoloSearch();return;}c.img(c.lobbyBackground,0,0);if(social.opened){c.all();if(roomId>0){if(roomKind==3)c.dungeon.drawWaiting();else waiting.draw();}else if(dungeonBrowser)c.dungeon.drawList();else rooms.draw();social.draw();return;}if(!logged){auth.draw();return;}if(wake.waiting){drawWake();return;}if(roomId==0){if(dungeonBrowser)c.dungeon.drawList();else rooms.draw();if(create.opened)create.draw();return;}if(roomKind==3)c.dungeon.drawWaiting();else waiting.draw();}
@@ -351,11 +359,15 @@ final class OnlineClient implements Runnable,CommandListener,ItemCommandListener
     void key(int key,int dir,boolean ok){if(social.opened){social.key(key,dir,ok);return;}if(create.opened){create.key(key,dir,ok);return;}if(wake.waiting){if(ok||key==-7||key==-6||key=='0')cancelWake();return;}if(!logged){auth.key(key,dir,ok);return;}if(logged&&roomId==0){if(key=='i'||key=='I'){c.openBag();return;}if(key=='s'||key=='S'){c.openShop();return;}if(key=='n'||key=='N'){c.editName();return;}}if(logged&&(roomId>0&&roomKind==3||roomId==0&&dungeonBrowser)){if(roomId>0)c.dungeon.keyWaiting(key,dir,ok);else c.dungeon.keyList(key,dir,ok);return;}if(key==-7){if(roomId>0)request("leave");else returnHome();return;}if(roomId==0){if(dungeonBrowser)c.dungeon.keyList(key,dir,ok);else rooms.key(key,dir,ok);return;}if(roomKind==3)c.dungeon.keyWaiting(key,dir,ok);else waiting.key(key,dir,ok);}
     void pointer(int x,int y){if(create.opened){create.pointer(x,y);return;}if(logged&&!social.opened&&!create.opened&&(dungeonBrowser||roomKind==3&&roomId>0)){if(roomId>0)c.dungeon.pointerWaiting(x,y);else c.dungeon.pointerList(x,y);return;}if(social.opened){social.pointer(x,y);return;}if(create.opened){create.pointer(x,y);return;}if(wake.waiting){if(y>=169&&y<200)cancelWake();return;}if(!logged){auth.pointer(x,y);return;}if(roomId==0){rooms.pointer(x,y);return;}waiting.pointer(x,y);}
     void stop(){rewardOperation="";events.cancel();tcp.close();alive=false;password="";wake.cancel();Connection active=connection;if(active!=null)try{active.close();}catch(Exception ignored){}}
+    // A newly completed turn must wake the worker even if an older sync is in flight.
+    volatile boolean hf38AckDue;
+    void hf38SignalAck(){hf38AckDue=true;synchronized(this){notifyAll();}}
     boolean battleSyncDue(long now){
         if(!logged||!inBattle||phase!=1||roomId<=0)return false;
         synchronized(c){synchronized(this){
             boolean urgent=sequenceResync||repairGround||BattleNetworkPolicy.urgent(queueKind,queueCount)||(c.held&15)!=sentHeld;
             boolean prefetch=chunks.wantsMore();long elapsed=now-lastBattleSync;
+            if(hf38AckDue&&resolutionSeen&&SulanRules.active(c.game))return true;
             // A missed event must never leave an encounter on a frozen frame.
             if(chunksCap&&snapshotRecoveryTurn==c.game.turn&&elapsed>=100)return true;
             if(chunksCap&&elapsed>=500)return true;

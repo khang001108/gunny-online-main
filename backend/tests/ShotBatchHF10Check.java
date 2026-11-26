@@ -34,10 +34,17 @@ public final class ShotBatchHF10Check {
   // Skip the opening sequence only in the test fixture, not in production.
   r.battle.tribalFx=0;r.battle.botPhase=0;r.battle.active=0;r.battle.units[0].human=true;r.battle.pendingNext=false;r.battle.over=false;
   r.battle.units[0].angle=45;r.battle.units[0].power=50;r.battle.wind=0;r.battle.fire();
-  ok(r.batchShot&&r.chunks.isEmpty(),"Dungeon stage "+stage+" starts an unpublished complete shot");
-  for(int i=0;i<3000&&r.batchShot;i++)r.tickAhead();
-  ok(!r.batchShot&&!r.chunks.isEmpty(),"Dungeon stage "+stage+" publishes after flight or bounded fallback");
-  ok(r.chunks.get(0)[0]==4,"Dungeon stage "+stage+" uses complete flight block");
+  if(stage==6){
+   ok(!r.batchShot,"HF38 Sulan streams instead of batch catch-up");
+   for(int i=0;i<3000&&!r.battle.pendingNext&&!r.battle.over;i++)r.tickAhead();
+   ok(!r.chunks.isEmpty()&&r.chunkTerminal,"HF38 Sulan streams a terminal segment");
+   for(byte[] packet:r.chunks)ok(packet[0]!=4,"Sulan has no batch-flight segment");
+  }else{
+   ok(r.batchShot&&r.chunks.isEmpty(),"Dungeon stage "+stage+" starts an unpublished complete shot");
+   for(int i=0;i<3000&&r.batchShot;i++)r.tickAhead();
+   ok(!r.batchShot&&!r.chunks.isEmpty(),"Dungeon stage "+stage+" publishes after flight or bounded fallback");
+   ok(r.chunks.get(0)[0]==4,"Dungeon stage "+stage+" uses complete flight block");
+  }
  }
  public static void main(String[] args)throws Exception{try(var s=new GunnyServer(new InetSocketAddress("127.0.0.1",0),Path.of("backend/assets"),new CloudStore.Memory())){s.clock.shutdownNow();checkFlight(s,0,0);checkFlight(s,0,2);dungeon(s,1);dungeon(s,2);dungeon(s,3);dungeon(s,6);
   var r=room(s,true,0,0);r.members[1].delta=false;r.chunkFrames=null;r.chunkBegin(3);ok(!r.batchShot,"Legacy/mixed room keeps streaming");
