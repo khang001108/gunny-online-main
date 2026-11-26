@@ -46,7 +46,7 @@ final class OnlineChunks {
         DataInputStream block=new DataInputStream(new ByteArrayInputStream(data));
         Segment segment=new Segment();segment.id=next;segment.kind=block.readUnsignedByte();
         segment.terminal=block.readBoolean();segment.count=block.readUnsignedShort();segment.resolved=done;segment.data=data;
-        if(segment.count<1||segment.count>2000)throw new IOException("Sai số khung hình.");
+        if(next<0||segment.kind<1||segment.kind>5||segment.count<1||segment.count>2000)throw new IOException("Sai đoạn khung hình.");
         int decodedSize=0,lastKey=4;
         for(int i=0;i<segment.count;i++){
             int offset=data.length-block.available();
@@ -76,7 +76,7 @@ final class OnlineChunks {
         int next=segment.id;
         if (!net.inBattle) { net.prepareBattle();turn=serverTurn; }
         if (next<=received) return;
-        if (next!=received+1) { reset();turn=serverTurn;recovering=true;net.predicting=net.resolutionSeen=false;net.c.held=net.c.fireKey=0;net.revision=0;net.lastPoll=0;return; }
+        if (next!=received+1) { net.resyncCommands();turn=serverTurn;return; }
         if (queued.size()+(frames!=null||ownPending?1:0)>=MAX_SEGMENTS) return;
         boolean own=net.predicting&&net.predictedTurn==serverTurn&&net.localTurn();
         // Do not discard server cinematic frames on the firing client.
@@ -105,8 +105,7 @@ final class OnlineChunks {
         try {net.acceptSnapshot(in,done,serverTurn);recoveryFailures=0;return true;}
         catch(IOException invalid){
             if(++recoveryFailures>2)throw invalid;
-            reset();turn=serverTurn;recovering=true;net.predicting=net.resolutionSeen=false;
-            net.c.held=net.c.fireKey=0;net.revision=0;net.lastPoll=0;return false;
+            net.resyncCommands();turn=serverTurn;return false;
         }
     }
     byte[] frame(DataInputStream in)throws IOException {previousFrame=SnapshotDelta.readReusable(in,previousFrame);return previousFrame;}
@@ -154,7 +153,7 @@ final class OnlineChunks {
         if (frames==null) {
             if(waitingForNext&&!terminal){
                 if(stallSince==0)stallSince=System.currentTimeMillis();
-                if(SulanRules.active(net.c.game)&&net.checkpointCap&&net.phase==1&&System.currentTimeMillis()-stallSince>=(sceneReceived?20000:8000)){
+                if(net.checkpointCap&&net.phase==1&&System.currentTimeMillis()-stallSince>=(sceneReceived?20000:8000)){
                     net.resyncCommands();net.c.message("Đang đồng bộ lại trận Sulan...");return true;
                 }
                 if(!gapCounted){underruns++;gapCounted=true;rebufferBoost=Math.min(12,rebufferBoost+6);}
@@ -185,7 +184,7 @@ final class OnlineChunks {
             }
             return true;
         } catch (IOException error) {
-            if(++recoveryFailures<=2){reset();recovering=true;net.predicting=net.resolutionSeen=false;net.c.held=net.c.fireKey=0;net.revision=0;net.lastPoll=0;return true;}
+            if(++recoveryFailures<=2){net.resyncCommands();return true;}
             net.disconnect("Không đọc được đoạn hành động: "+error.toString());return true;
         }
     }
@@ -208,7 +207,7 @@ final class OnlineChunks {
             net.c.resetOnlineTerrain();readFrame(finalFrame);
             net.c.game.pendingNext=resolved;net.predicting=false;net.resolutionSeen=resolved||net.c.game.over;
             completed=id;ownPending=false;ownSince=0;finalFrame=previousFrame=null;if(net.resolutionSeen)net.processingSince=0;net.lastPoll=0;
-        } catch (IOException error) { net.disconnect("Không đọc được kết quả."); }
+        } catch (IOException error) { if(++recoveryFailures<=2)net.resyncCommands();else net.disconnect("Không đọc được kết quả."); }
     }
 }
 
