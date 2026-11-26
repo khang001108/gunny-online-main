@@ -3670,6 +3670,12 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     String noticeText;
 
     void drawBattleNotice() {
+        // HF35: restore the original sliding turn banner.
+        if (mode == 1 && "Đến lượt bạn!".equals(toast) && hudYourTurn != null) {
+            all();
+            img(hudYourTurn, turnNoticeX(), 88);
+            return;
+        }
         if (noticeSource == null) {
             noticeSource = combatRoomArt("notice754-bg");
             noticeFont = combatRoomArt("font-pc-yellow");
