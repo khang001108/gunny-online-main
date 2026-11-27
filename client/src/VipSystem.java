@@ -319,22 +319,24 @@ final class VipSystem {
         if (wing < 0 || wing > 5)
             return;
         Battle.Unit u = c.game.units[actor];
-        int tilt = c.attackPose(actor) || c.freezeHolding(actor) ? 0 : u.slope;
+        boolean shooting = c.attackPose(actor) || c.freezeHolding(actor);
+        int tilt = shooting ? 0 : u.slope;
         if (u.face > 0)
             tilt = -tilt;
         int angle = Battle.clamp((tilt + 30 + 7) / 15, 0, 4), layer = outer ? 1 : 0;
-        // The paint path is cache-only. Under pressure use the closest preloaded angle.
-        angle=WingBattleArt.nearest(battleAngles[wing],angle);
-        if(angle<0)return;
-        int[] bounds=WingBattleArt.bounds(c.s);int p=WingBattleArt.index(wing,angle,layer);
-        int width=bounds[p+2],height=bounds[p+3];
-        int offsetX=u.face<0?96-bounds[p]-width:bounds[p];
-        boolean shooting = c.attackPose(actor) || c.freezeHolding(actor);
-        int bodySlope = shooting ? 0 : u.slope;
-        int spineY = -20, cs = Battle.cos(bodySlope), sn = -Battle.sin(bodySlope), spineX = -3*u.face;
-        int anchorX = (spineX * cs - spineY * sn) / 1024, anchorY = (spineX * sn + spineY * cs) / 1024;
-        c.part(sideWings[wing][angle][layer], c.frame / 2 % 19 * width, 0, width, height, u.x - c.cameraX + anchorX - 48+offsetX,
-                u.y - c.cameraY + anchorY - 48+bounds[p+1], u.face < 0);
+        // Keep the old, stable wing position close to the back and only tilt the wing art.
+        angle = WingBattleArt.nearest(battleAngles[wing], angle);
+        if (angle < 0)
+            return;
+        int[] bounds = WingBattleArt.bounds(c.s);
+        int p = WingBattleArt.index(wing, angle, layer);
+        int width = bounds[p + 2], height = bounds[p + 3];
+        int offsetX = u.face < 0 ? 96 - bounds[p] - width : bounds[p];
+        int anchorX = u.face < 0 ? -1 : 1;
+        int anchorY = shooting ? -10 : -12;
+        c.part(sideWings[wing][angle][layer], c.frame / 2 % 19 * width, 0, width, height,
+                u.x - c.cameraX + anchorX - 48 + offsetX,
+                u.y - c.cameraY + anchorY - 48 + 10 + bounds[p + 1], u.face < 0);
     }
 
     int trialWing = -2;

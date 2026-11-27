@@ -1365,15 +1365,16 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     else frameGap.idle();
                     if(mode!=1||!onlineBattle())pacer.reset();
                     if (mode == 1 && onlineBattle()) {
-                        boolean scene=SulanRules.cinematic(game)||net.chunks.scenePlayback();
+                        boolean scene=SulanRules.cinematic(game)||net.chunks.scenePlayback()||AntCaveRules.dying(game)||queenDeathPending();
                         int steps=scene?1:pacer.steps(System.currentTimeMillis(),projectilePacing());
                         if(scene)pacer.reset();
                         for(int step=0;step<steps&&mode==1&&onlineBattle();step++){
                             net.animate();
                             // A catch-up tick may launch or reveal a projectile. Never
                             // consume another frame in the same render after that.
-                            if(projectilePacing()||SulanRules.cinematic(game)||net.chunks.scenePlayback()){pacer.reset();break;}
+                            if(projectilePacing()||SulanRules.cinematic(game)||net.chunks.scenePlayback()||AntCaveRules.dying(game)||queenDeathPending()){pacer.reset();break;}
                         }
+                        if(game.over&&(!net.socialCap||net.settled&&net.cardsOpen)&&!queenDeathPending()){mode=5;held=fireKey=0;}
                         followCamera();
                         if (game.shotSerial != shootSound) {
                             shootSound = game.shotSerial;
@@ -1465,7 +1466,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void releaseNpcArt(){
-        queenCall=queenBow=queenDeath=queenArrow=queenIdle=queenShade=queenHit=queenTitle=speechFont=null;
+        queenCall=queenBow=queenDeath=queenArrow=queenIdle=queenShade=queenHit=queenTitle=speechFont=null;queenDeathStarted=0;
         for(int i=0;i<2;i++){antIdle[i]=antWalk[i]=antBeat[i]=null;for(int j=0;j<antPoses[i].length;j++)antPoses[i][j]=null;}
         for(int i=0;i<queenArrowRotations.length;i++)queenArrowRotations[i]=null;
         for(int i=0;i<npc780.length;i++)npc780[i]=npcHud780[i]=npcHeader780[i]=null;
@@ -1515,7 +1516,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 if(game.dungeonStage==2){
                     npc780[3]=combatRoomArt("npc780-3");queenArrow=combatRoomArt("npc780-queen-arrow");
                     queenIdle=combatRoomArt("npc780-queen-idle");queenBow=combatRoomArt("npc780-queen-bow");
-                    queenCall=combatRoomArt("npc780-queen-call");queenHit=combatRoomArt("npc780-queen-hit");
+                    queenCall=combatRoomArt("npc780-queen-call");queenHit=combatRoomArt("npc780-queen-hit");queenDeath=combatRoomArt("npc780-queen-death");
                 }
             }
             if(game.dungeonStage>=3)tribalArt.preloadBattle();
@@ -2985,6 +2986,13 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         rect(x-12,y+3,Math.max(1,unit.hp*24/unit.maxHp),1,0xff7954);
         pcCenter(actorName(index),Battle.clamp(x,36,284),y+6);
     }
+    long queenDeathStarted;
+    int queenDeathPose(){
+        if(queenDeathStarted==0&&(AntCaveRules.dying(game)||game.ending()||game.over))queenDeathStarted=System.currentTimeMillis();
+        if(queenDeathStarted==0)return 0;
+        return Battle.clamp((int)((System.currentTimeMillis()-queenDeathStarted)/133L),0,12);
+    }
+    boolean queenDeathPending(){return mode==1&&game.dungeonStage==2&&game.units[1].npc==3&&game.units[1].hp<=0&&(queenDeathPose()<12||System.currentTimeMillis()-queenDeathStarted<2100L);}
     void drawQueenPose(Image art,int pose,int x,int y,boolean flip) {
         part(art,pose%5*100,pose/5*102,100,102,x-50,y-98,flip);
     }
@@ -3013,7 +3021,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 if (u.npc==3) {
                     // Keep the native broken-bow pose through the result delay; never rotate the queen sprite.
                     if (queenDeath==null)queenDeath=combatRoomArt("npc780-queen-death");
-                    int pose=game.ending()||game.over?12:Battle.clamp((game.botPhase-AntCaveRules.QUEEN_DEATH)/4,0,12);
+                    int pose=queenDeathPose();
                     drawQueenPose(queenDeath,pose,u.x-cameraX,u.y-cameraY+7,u.face>0);
                     return;
                 }

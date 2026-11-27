@@ -115,7 +115,7 @@ final class Battle {
     static final int RESULT_DELAY_TICKS=61;
     boolean ending(){return !over&&winner>=0;}
     void finishMatch(int side){if(over||ending())return;finishPower();winner=side;charging=pendingNext=false;settle=RESULT_DELAY_TICKS;}
-    boolean busy(){return ballCount>0||bursts>0||settle>0||ending();}
+    boolean busy(){return ballCount>0||bursts>0||settle>0||ending()||dungeonStage==2&&AntCaveRules.dying(this);}
     boolean input(){return !(TribalRules.active(this)&&tribalFx>0)&&units[active].frozen!=2&&!over&&!pendingNext&&!busy()
             &&!AntCaveRules.dying(this)&&!AntCaveRules.introducing(this)&&!AntCaveRules.summoning(this)
             &&(humanTurn()||botActing);}

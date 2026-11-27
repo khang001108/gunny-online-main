@@ -46,6 +46,7 @@ final class AdminServer implements AutoCloseable {
   if(!enabled){json(x,503,Map.of("error","Trang quản trị chưa được bật. Cấu hình GUNNY_ADMIN_PASSWORD trên máy chủ."));return;}
   String path=x.getRequestURI().getPath(),method=x.getRequestMethod();
   if(!path.startsWith("/admin/api/")){
+   if(method.equals("GET")&&path.matches("/admin/art/(weapon|armor|hat|glasses|hero|enemy|stone|charm|wing)\\.png")){byte[] b=Files.readAllBytes(Path.of("public/admin/art",path.substring(11)));h.set("Content-Type","image/png");x.sendResponseHeaders(200,b.length);x.getResponseBody().write(b);return;}
    String file=path.equals("/admin")||path.equals("/admin/")?"index.html":path.equals("/admin/app.js")?"app.js":path.equals("/admin/support.js")?"support.js":path.equals("/admin/style.css")?"style.css":"";
    if(file.isEmpty()||!method.equals("GET")){json(x,404,Map.of("error","Không tìm thấy"));return;}
    byte[] b=Files.readAllBytes(Path.of("public/admin",file));h.set("Content-Type",file.endsWith("js")?"text/javascript; charset=utf-8":file.endsWith("css")?"text/css; charset=utf-8":"text/html; charset=utf-8");x.sendResponseHeaders(200,b.length);x.getResponseBody().write(b);return;
@@ -61,9 +62,11 @@ final class AdminServer implements AutoCloseable {
   if(path.equals("/admin/api/session")&&method.equals("GET")){json(x,200,Map.of("ok",true));return;}
   if(path.equals("/admin/api/logout")&&method.equals("POST")){tokens.remove(token);h.add("Set-Cookie","gunny_admin=; HttpOnly; SameSite=Strict; Path=/admin; Max-Age=0"+secureCookie(x));json(x,200,Map.of("ok",true));return;}
   String op=path.substring("/admin/api/".length());Map<String,Object> input;
-  if(method.equals("GET")&&(op.equals("accounts")||op.equals("announcements")||op.equals("retention-policy")||op.equals("support-list")||op.equals("balance"))){input=new HashMap<>();String query=x.getRequestURI().getRawQuery();if(query!=null)for(String p:query.split("&")){String[] parts=p.split("=",2);if(parts.length==2)input.put(URLDecoder.decode(parts[0],StandardCharsets.UTF_8),URLDecoder.decode(parts[1],StandardCharsets.UTF_8));}}
-  else if(method.equals("POST")&&Set.of("balance-preview","balance-save","vip-grant","test-cheats","test-cheats-status","schedule","cancel-delete","delete-now","announcement-save","announcement-delete","wallet-add","retention-save","offline-days","extend-offline","support-qr","support-add","support-comment").contains(op))input=body(x);
+  if(method.equals("GET")&&(op.equals("accounts")||op.equals("announcements")||op.equals("retention-policy")||op.equals("support-list")||op.equals("balance")||op.equals("rewards"))){input=new HashMap<>();String query=x.getRequestURI().getRawQuery();if(query!=null)for(String p:query.split("&")){String[] parts=p.split("=",2);if(parts.length==2)input.put(URLDecoder.decode(parts[0],StandardCharsets.UTF_8),URLDecoder.decode(parts[1],StandardCharsets.UTF_8));}}
+  else if(method.equals("POST")&&Set.of("rewards-save","balance-preview","balance-save","vip-grant","test-cheats","test-cheats-status","schedule","cancel-delete","delete-now","announcement-save","announcement-delete","wallet-add","retention-save","offline-days","extend-offline","support-qr","support-add","support-comment").contains(op))input=body(x);
   else{json(x,404,Map.of("error","Không tìm thấy"));return;}
+  if(op.equals("rewards")){json(x,200,Map.of("active",RewardSettings.active,"defaults",RewardSettings.defaults()));return;}
+  if(op.equals("rewards-save")){json(x,200,Map.of("active",RewardSettings.save(Json.obj(input.get("settings")))));return;}
   if(op.equals("balance")||op.equals("balance-preview")||op.equals("balance-save")){json(x,200,BalanceAdmin.operation(op,input));return;}
   if(op.equals("delete-now")&&!Json.str(input,"confirm").equals("XOA"))throw new IllegalArgumentException("Nhập XOA để xác nhận xoá vĩnh viễn");
   if(op.equals("announcement-save")){String title=Json.str(input,"title").trim(),message=Json.str(input,"body").trim();if(title.isEmpty()||title.length()>80||message.isEmpty()||message.length()>1000)throw new IllegalArgumentException("Tiêu đề tối đa 80, nội dung tối đa 1.000 ký tự");Instant start=Instant.parse(Json.str(input,"starts_at")),end=Instant.parse(Json.str(input,"ends_at"));if(!end.isAfter(start))throw new IllegalArgumentException("Ngày kết thúc phải sau ngày bắt đầu");}
