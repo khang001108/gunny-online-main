@@ -3010,9 +3010,10 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         if(u.npc>=4){tribalArt.draw(index);return;}
         if (u.npc > 0) {
             if (u.hp <= 0) {
-                if (u.npc==3&&AntCaveRules.dying(game)) {
+                if (u.npc==3) {
+                    // Keep the native broken-bow pose through the result delay; never rotate the queen sprite.
                     if (queenDeath==null)queenDeath=combatRoomArt("npc780-queen-death");
-                    int pose=Math.min(12,(game.botPhase-AntCaveRules.QUEEN_DEATH)/4);
+                    int pose=game.ending()||game.over?12:Battle.clamp((game.botPhase-AntCaveRules.QUEEN_DEATH)/4,0,12);
                     drawQueenPose(queenDeath,pose,u.x-cameraX,u.y-cameraY+7,u.face>0);
                     return;
                 }
@@ -3034,15 +3035,6 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                         }
                     }
                     return;
-                }
-                Image sprite = npc780[u.npc];
-                if (sprite != null && u.dead) {
-                    int x = u.deathX - cameraX;
-                    int y = u.deathY - cameraY;
-                    g.drawRegion(sprite, 0, 0, sprite.getWidth(), sprite.getHeight(),
-                            javax.microedition.lcdui.game.Sprite.TRANS_ROT90,
-                            ox + (x - sprite.getHeight() / s / 2) * s,
-                            oy + (y - sprite.getWidth() / s) * s, Graphics.TOP | Graphics.LEFT);
                 }
                 return;
             }
@@ -3308,9 +3300,14 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         pcCenter(percent+"%",x+50,14);
     }
 
+    int battleTimerX() { return TribalRules.twins(game)?150:160; }
+    boolean passHit(int x,int y) { int left=battleTimerX()-16;return x>=left&&x<left+32&&y>=62&&y<76; }
+
     void drawTop() {
+        boolean twinBossHud=TribalRules.twins(game);
+        boolean bossHud=game.dungeonStage==2||twinBossHud||game.dungeonStage==6;
         if(game.dungeonStage!=2||game.active!=1)drawTeamName();
-        if(offlineDungeon.active||onlineBattle()&&net.roomKind==3){int stage=offlineDungeon.active?offlineDungeon.stage:net.dungeonStage,kills=offlineDungeon.active?offlineDungeon.kills:net.dungeonKills,diff=offlineDungeon.active?offlineDungeon.difficulty:net.dungeonDifficulty;if(stage<3)pcText(stage==1?"Ải 1: "+kills+"/20":"Ải 2: Nữ Vương",72,32);pcText(dungeon.difficultyName(diff),193,32);}
+        if(offlineDungeon.active||onlineBattle()&&net.roomKind==3){int stage=offlineDungeon.active?offlineDungeon.stage:net.dungeonStage,kills=offlineDungeon.active?offlineDungeon.kills:net.dungeonKills,diff=offlineDungeon.active?offlineDungeon.difficulty:net.dungeonDifficulty;if(stage<3)pcText(stage==1?"Ải 1: "+kills+"/20":"Ải 2: Nữ Vương",72,32);pcText(dungeon.difficultyName(diff),193,twinBossHud?61:32);}
         tribalArt.hud();
         int activeNpc = game.units[game.active].npc;
         if(activeNpc==0)vip.back(vip.actorExp(game.active),vip.actorWing(game.active),14,58,1,false);
@@ -3351,7 +3348,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             drawTurnPortrait(1, 184, 1);
         }
         drawMiniMap();
-        int windX=game.dungeonStage==2?152:160;
+        int windX=bossHud?152:160;
         img(hudWindTitle,windX-12,0);
         part(hudWindArrow,0,0,36,12,windX-18,10,game.wind>=0);
         center(""+Math.abs(game.wind)/10+"."+Math.abs(game.wind)%10,windX,10);
@@ -3362,10 +3359,11 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         if (game.units[game.active].frozen != 2 && !game.over && !game.busy() && !game.pendingNext && isLocalTurn()) {
             int seconds = (game.countdown + 29) / 30;
             String digits = "" + seconds;
-            int x = 160 - digits.length() * 10;
+            int timerX = battleTimerX();
+            int x = timerX - digits.length() * 10;
             for (int i = 0; i < digits.length(); i++)
                 part(hudCountDown, (digits.charAt(i) - '0') * 20, 0, 20, 28, x + i * 20, 32, false);
-            img(hudPass, 144, 62);
+            img(hudPass, timerX-16, 62);
         }
     }
 
@@ -4351,7 +4349,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 message("Đến lượt bạn mới sử dụng được");
                 return;
             }
-            if (x >= 144 && x < 176 && y >= 62 && y < 76) {
+            if (passHit(x,y)) {
                 net.command(4, 0);
                 return;
             }
@@ -4488,7 +4486,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                 exitBuffs();
             return;
         }
-        if (x >= 144 && x < 176 && y >= 62 && y < 76) {
+        if (passHit(x,y)) {
             game.pass();
             return;
         }

@@ -132,7 +132,7 @@ final class TribalArt {
  void hud(){
   Battle b=c.game;if(!TribalRules.active(b))return;
   c.pcText("Tà Thần "+DungeonRewards.tribalNumber(b.dungeonStage)+(b.dungeonStage==3?" • "+(20-b.tribalGoal)+"/20":""),69,33);
-  if(TribalRules.twins(b)){boss(1,0);boss(3,25);}else if(b.dungeonStage==6)boss(1,0);
+  if(TribalRules.twins(b)){boss(1,0);boss(3,30);}else if(b.dungeonStage==6)boss(1,0);
   if(TribalRules.alive(b,TribalRules.CHAIN))c.pcText("Xiềng Xích: khóa góc",5,72);
   if(TribalRules.alive(b,TribalRules.FATIGUE))c.pcText("Mệt Mỏi: -"+TribalRules.fatigue(b)+" TL",5,84);
   if(b.tribalBeanSaved&&TribalRules.alive(b,TribalRules.BEAN))c.pcText("Đậu thần: đã dập lửa",67,62);
