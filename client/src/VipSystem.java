@@ -139,13 +139,14 @@ final class VipSystem {
         }
         preparePowRings(ringMask);
         for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,2,true);
+        // Allocate battle tilt art before optional animated portrait art.
+        int[] angles={1,3,0,4};
+        for(int i=0;i<angles.length;i++)for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,angles[i],false);
         for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)for(int context=1;context<=2;context++){
             int size=WING_SIZE[context];
             wings[w][context]=preloadSmall("wing796-show-"+w+"-"+size,20*size*WING_HEIGHT[context]*4*c.s*c.s,false);
         }
         // HF34: no animated HUD ring atlases in battle.
-        int[] angles={1,3,0,4};
-        for(int i=0;i<angles.length;i++)for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,angles[i],false);
         battleReady=true;
     }
 
@@ -320,11 +321,11 @@ final class VipSystem {
             return;
         Battle.Unit u = c.game.units[actor];
         boolean shooting = c.attackPose(actor) || c.freezeHolding(actor);
-        int tilt = shooting ? 0 : u.slope;
+        int tilt = u.slope; // Keep terrain tilt even during charge / aim.
         if (u.face > 0)
             tilt = -tilt;
         int angle = Battle.clamp((tilt + 30 + 7) / 15, 0, 4), layer = outer ? 1 : 0;
-        // Keep the old, stable wing position close to the back and only tilt the wing art.
+        // Use cached art only, with its baked attachment pivot at (48,48).
         angle = WingBattleArt.nearest(battleAngles[wing], angle);
         if (angle < 0)
             return;
@@ -332,11 +333,16 @@ final class VipSystem {
         int p = WingBattleArt.index(wing, angle, layer);
         int width = bounds[p + 2], height = bounds[p + 3];
         int offsetX = u.face < 0 ? 96 - bounds[p] - width : bounds[p];
-        int anchorX = u.face < 0 ? -1 : 1;
-        int anchorY = shooting ? -10 : -12;
+        // Body pivots around the feet in drawSlopedBody. Shooting body art is upright.
+        // Root is at the lower back, not the feet (old +10 offset) or high above it.
+        int spineX = -2 * u.face, spineY = shooting ? -10 : -12;
+        int bodySlope = shooting ? 0 : u.slope;
+        int cs = Battle.cos(bodySlope), sn = Battle.sin(bodySlope);
+        int anchorX = (spineX * cs + spineY * sn) / 1024;
+        int anchorY = (-spineX * sn + spineY * cs) / 1024;
         c.part(sideWings[wing][angle][layer], c.frame / 2 % 19 * width, 0, width, height,
                 u.x - c.cameraX + anchorX - 48 + offsetX,
-                u.y - c.cameraY + anchorY - 48 + 10 + bounds[p + 1], u.face < 0);
+                u.y - c.cameraY + anchorY - 48 + bounds[p + 1], u.face < 0);
     }
 
     int trialWing = -2;
