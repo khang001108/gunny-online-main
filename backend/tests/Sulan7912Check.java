@@ -23,7 +23,7 @@ public final class Sulan7912Check {
   b.units[0].x=b.units[6].x;int guarded=SulanRules.damage(b,flame(),0,400);b.units[0].x=20;ok(guarded==200&&SulanRules.damage(b,flame(),0,400)==400,"Standing near living pea halves red fire damage");
   b.units[6].hp=0;ok(SulanRules.damage(b,flame(),0,400)==400,"Dead pea cannot protect");
   b.units[1].power=1;turn(b,1);ok(!b.over,"Party survives on all difficulties");
-  b.units[1].hp=0;b.check();ok(b.sulanLine==SulanRules.FAREWELL&&b.tribalState==TribalRules.DEAD&&!b.over,"Farewell precedes burned corpse and reward");for(int t=0;t<SulanRules.DEATH;t++)b.tick();ok(b.over&&b.winner==0,"Final death animation ends in victory");
+  b.units[1].hp=0;b.check();ok(b.sulanLine==SulanRules.FAREWELL&&b.tribalState==TribalRules.DEAD&&!b.over,"Farewell precedes burned corpse and reward");for(int t=0;t<SulanRules.DEATH;t++)b.tick();ok(b.ending()&&!b.over,"Death scene completes before result delay");for(int t=0;t<Battle.RESULT_DELAY_TICKS;t++)b.tick();ok(b.over&&b.winner==0,"Final death animation ends in victory");
  }
  Battle b=raid(1,0);red(b);b.beginTurn(0);for(int n=0;n<700;n++)SulanRules.ambient(b);ok(b.sulanStory==3&&b.input(),"Three story lines never interrupt player's controls");
  b=raid(1,0);red(b);b.beginTurn(0);b.sulanExternalClock=true;b.units[0].x=20;b.sulanBurn[0]=180;int hp=b.units[0].hp;for(int n=0;n<90;n++)b.tick();ok(b.units[0].hp==hp,"Batched input cannot accelerate the external burn clock");for(int n=0;n<30;n++)SulanRules.ambient(b);ok(b.units[0].hp==hp,"Wall clock no longer damages burn");b.beginTurn(0);ok(b.units[0].hp==hp-180,"Burn applies on actor turn only");

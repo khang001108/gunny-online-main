@@ -445,7 +445,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     final Image[] lobbyMenu = new Image[10];
     static final int[] LOBBY_X = { 64, 22, 163, 108, 300 };
     static final String[] LOBBY_LABELS = { "Túi", "Shop", "Sảnh", "Thiết lập", "Thoát" };
-    Image fxBuff, fxLanding, fxPowRing, fxRadial, fxDamage, fxDamageBackground;
+    Image fxBuff, fxLanding, fxPowRing, fxRadial, fxDamage, fxDamageBackground, fxDamageSpecial;
 
     Image combatEffect(String name) {
         try {
@@ -711,6 +711,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         hudPowerTicks = load("hud-power-ticks");
         fxDamage = load("fx-damage-digits");
         fxDamageBackground = load("fx-damage-background");
+        try { fxDamageSpecial=load("hf42-damage-red"); } catch(IOException missing) { fxDamageSpecial=fxDamage; }
         lobbyHallLabel = load("lobby-hall-label");
         lobbyBag = load("lobby-bag");
         lobbyShop = load("lobby-shop");
@@ -3128,7 +3129,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             if (popup.powered)
                 img(fxDamageBackground, popup.x - cameraX - 29, y - 5);
             for (int i = 0; i < digits.length(); i++)
-                part(fxDamage, (digits.charAt(i) - '0') * 12, 0, 12, 18, x + i * 10, y, false);
+                part(popup.powered&&fxDamageSpecial!=null?fxDamageSpecial:fxDamage, (digits.charAt(i) - '0') * 12, 0, 12, 18, x + i * 10, y, false);
         }
     }
 

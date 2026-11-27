@@ -51,6 +51,7 @@ public final class Expansion780Check {
    check(r.battle.units[0].forgeAttack==100,"Server applies the account's equipped weapon forge rank");
    int waves=0;while(r.antKills<20&&waves++<12){Battle current=r.battle;for(int i:AntCaveRules.ANTS)current.units[i].hp=0;current.check();Dungeon780.progress(r);}
    check(r.antKills==20&&r.antSpawned==20,"Exactly twenty ant kills are required across respawns");
+   for(int t=0;t<Battle.RESULT_DELAY_TICKS;t++)r.battle.tick();
    check(r.dungeonStage==1&&r.battle.over&&r.battle.winner==0,"Twentieth kill finishes the first stage");
    var players=List.copyOf(r.participants);int coins=host.profile.coins;
    store.finishAntStage(r.match,0,players,1);
@@ -69,7 +70,7 @@ public final class Expansion780Check {
    check(health-boss.units[0].hp>0&&health-boss.units[0].hp<=60,"A cooperative bot blast does light friendly damage");
    boss.active=1;check(boss.make(45,60).weapon==AntCaveRules.QUEEN_ARROW,"The Queen fires her own arrow projectile");
    boss.units[1].hp=0;boss.check();check(!boss.over&&AntCaveRules.dying(boss),"The Queen has a defeat sequence");
-   for(int i=0;i<80;i++)boss.tick();
+   for(int i=0;i<80+Battle.RESULT_DELAY_TICKS;i++)boss.tick();
    check(boss.over&&boss.winner==0,"Defeating the Queen completes the dungeon");
    String match=UUID.randomUUID().toString();store.finishDungeon780(match,0,players,1);
    check(host.profile.dungeonClear&&host.profile.coins==coins,"Normal boss win unlocks Hard without a currency reward");

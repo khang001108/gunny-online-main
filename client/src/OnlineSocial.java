@@ -162,9 +162,9 @@ final class OnlineSocial implements CommandListener {
         c.vip.badge(infoVip,172,54);c.pcCenter(VipRules.need(infoVip)==0?"MAX":VipRules.within(infoVip)+"/"+VipRules.need(infoVip),182,69);
         c.drawLevel(infoExp,128,130);c.pcText(Progression.level(infoExp)==70?"EXP MAX":"EXP "+Progression.within(infoExp)+"/"+Progression.limit(infoExp),156,140);
         if(infoStats==null)infoStats=NativeUi.fit(c.combatRoomArt("item752-tooltip"),99*c.s,42*c.s,4*c.s);
-        c.img(infoStats,125,152);String[] labels={"Công","Thủ","May"};for(int i=0;i<3;i++)c.pcText(labels[i]+" "+Progression.bonus(infoExp)+" (+"+infoForge[i]+")",132,156+i*11);
+        c.img(infoStats,125,152);int[] gear=ForgeRules.gear(infoMask,infoWeapon,infoForge);String[] labels={"Công","Thủ","May"};for(int i=0;i<3;i++)c.pcText(labels[i]+" "+Progression.growth(infoExp,i)+" (+"+gear[i]+")",132,156+i*11);
         c.img(c.bag.female,101,203);c.img(c.bag.male,127,203);
-        int hp=Progression.baseHp(infoExp)+infoForge[1]+VipRules.hp(infoWing),energy=240+Progression.bonus(infoExp)+infoForge[2];
+        int hp=Progression.baseHp(infoExp)+gear[1]+VipRules.hp(infoWing),energy=240+Progression.growth(infoExp,2)+gear[2];
         for(int i=0;i<2;i++){int y=203+i*8;c.rect(154,y,65,7,0x35271d);c.rect(155,y+1,63,5,i==0?0xd63832:0x3bba53);c.pcText((i==0?"HP "+hp:"TL "+energy),156,y);}
         int[] b = infoBox(infoFocus);
         if (infoHas(infoFocus))

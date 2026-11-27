@@ -102,15 +102,13 @@ final class Dungeon780 {
   if(r.dungeonStage==1){
    int remaining=AntCaveRules.survivingAnts(b,r.antAlive);
    r.antKills+=AntCaveRules.count(r.antAlive^remaining);r.antAlive=remaining;
-   if(b.over&&b.winner==0){b.ballCount=b.bursts=b.settle=0;}
-   if((b.pendingNext||b.over)&&!b.busy()&&(!b.over||b.winner==0)){
-    if(r.antKills>=AntCaveRules.ANT_GOAL){b.over=true;b.winner=0;b.pendingNext=false;return;}
+   if(!b.over&&!b.ending()&&b.pendingNext&&!b.busy()){
+    if(r.antKills>=AntCaveRules.ANT_GOAL){b.finishMatch(0);return;}
     int next=AntCaveRules.spawnAntWave(b,r.antSpawned,r.antAlive);
     r.antSpawned+=AntCaveRules.count(next^r.antAlive);r.antAlive=next;
-    if(b.over&&b.winner==0){b.over=false;b.winner=-1;b.pendingNext=true;}
    }
   }
   if(r.dungeonStage==2&&b.units[1].hp<=0&&!b.over)b.check();
-  if(!b.over&&!AntCaveRules.dying(b)&&b.turn>300){b.over=true;b.winner=1;b.pendingNext=false;}
+  if(!b.over&&!b.ending()&&!b.busy()&&!AntCaveRules.dying(b)&&b.turn>300)b.finishMatch(1);
  }
 }

@@ -198,14 +198,14 @@ final class BagScreen {
         int[] gear = ForgeRules.gear(c.wornMask, c.equipped, c.economy.bonuses());
         String[] labels = { "Công", "Thủ", "May" };
         for (int i = 0; i < 3; i++)
-            c.pcText(labels[i] + " " + base + " (+" + gear[i] + ")", 48, 156 + i * 11); // cao thấp thanh công thủ may
+            c.pcText(labels[i] + " " + Progression.growth(c.experience,i) + " (+" + gear[i] + ")", 48, 156 + i * 11); // cao thấp thanh công thủ may
         drawBars();
     }
 
     void drawBars() {
         int base = Progression.bonus(c.experience);
         int[] gear = ForgeRules.gear(c.wornMask, c.equipped, c.economy.bonuses());
-        int hp = Progression.baseHp(c.experience) + gear[1]+c.vip.hp(), energy = 240 + base + gear[2];
+        int hp = Progression.baseHp(c.experience) + gear[1]+c.vip.hp(), energy = 240 + Progression.growth(c.experience,2) + gear[2];
         int[] colors = { 0xd63832, 0x3bba53 };
         String[] labels = { "HP " + hp, "TL " + energy };
         for (int i = 0; i < 2; i++) {

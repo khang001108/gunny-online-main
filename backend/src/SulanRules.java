@@ -45,6 +45,8 @@ final class SulanRules {
  static int playerCount(Battle b){int n=0;for(int i=0;i<6;i+=2)if(b.units[i].hp>0)n++;return n;}
  static int target(Battle b,int index){for(int i=0;i<6;i+=2)if(b.units[i].hp>0&&index--==0)return i;return firstPlayer(b);}
  static boolean stomping(Battle b){return active(b)&&b.units[b.active].npc==TribalRules.RAGE&&b.tribalState==TribalRules.SPECIAL&&b.tribalClock>=45&&b.tribalClock<=90;}
+ // A red boss's four casts belong to one action even between airborne waves.
+ static boolean scheduledSalvo(Battle b){return active(b)&&b.active==1&&b.units[1].hp>0&&b.tribalFx==0&&b.tribalClock>0&&b.tribalClock<(b.units[1].npc==TribalRules.SULAN?115:b.units[1].npc==TribalRules.RAGE?(b.units[1].power%2==0?110:220):0);}
  static boolean cinematic(Battle b){return active(b)&&b.tribalFx>0&&(b.tribalState==TribalRules.OPENING||b.tribalState==TribalRules.TRANSFORM||b.tribalState==TribalRules.DEAD);}
  static int cameraActor(Battle b){if(stomping(b))return firstPlayer(b);if(b.tribalState==TribalRules.TRANSFORM&&TRANSFORM-b.tribalFx>=BEAN_AT)return 6;if(b.tribalState==TribalRules.OPENING){int t=INTRO-b.tribalFx;if(t<60||t>=ROAR_CAMERA)return firstPlayer(b);}return 1;}
  static int drop(Battle b){int age=INTRO-b.tribalFx;return b.tribalState==TribalRules.OPENING&&age<90?Math.max(0,140-(age-60)*(age-60)*140/900):0;}
@@ -116,7 +118,7 @@ final class SulanRules {
   b.sulanFireX[at]=Battle.clamp(x,12,468);b.sulanFireLife[at]=180;
  }
  static void ambient(Battle b){
-  if(!active(b)||b.over||b.tribalFx>0||b.pendingNext)return;
+  if(!active(b)||b.over||b.ending()||b.tribalFx>0||b.pendingNext)return;
   updateFacing(b);
   if(b.sulanTalk>0)b.sulanTalk--;
   if(b.tribalPhase==2&&b.units[6].npc==TribalRules.BEAN&&b.units[6].hp>0&&b.units[b.active].npc==0&&b.sulanStory<3&&++b.sulanStoryClock>=120&&b.sulanTalk==0){say(b,STORY1+b.sulanStory++,6,100);b.sulanStoryClock=0;}
@@ -136,10 +138,11 @@ final class SulanRules {
  }
  // HF29: every living player is included in each damaging salvo; preserve three red missiles per cast.
  static void partySalvo(Battle b,boolean golden){
-  int count=playerCount(b);if(count==0)return;
-  int start=b.rand(count),shots=golden?count:3;
+  int count=playerCount(b);
+  // Keep already scheduled red salvos visible even after the last player dies.
+  int start=count==0?0:b.rand(count),shots=golden?Math.max(1,count):3;
   for(int i=0;i<shots;i++){
-   int victim=target(b,(start+i)%count),before=b.ballCount;
+   int victim=count==0?firstPlayer(b):target(b,(start+i)%count),before=b.ballCount;
    TribalRules.projectile(b,1,victim,golden?TribalRules.CHIEF_SHOT:TribalRules.FIRE_SHOT,golden?0:(i-1)*12);
    if(b.ballCount>before){b.balls[before].sulanVictim=victim;b.shotSerial++;}
   }
@@ -173,6 +176,6 @@ final class SulanRules {
    }
    end=55+Math.max(0,launches-1)*35+60;
   }
-  if(t>=end&&!b.busy()){if(b.tribalWave<u.power/2){callAdds(b);return;}b.tribalState=TribalRules.IDLE;b.next();}
+  if(t>=end&&!b.busy()){if(playerCount(b)>0&&b.tribalWave<u.power/2){callAdds(b);return;}b.tribalState=TribalRules.IDLE;b.next();}
  }
 }

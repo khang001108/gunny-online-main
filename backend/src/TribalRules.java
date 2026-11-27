@@ -144,7 +144,8 @@ final class TribalRules {
  }
  static void win(Battle b,int side){b.finishPower();b.over=true;b.winner=side;b.charging=false;b.pendingNext=false;b.bursts=b.ballCount=b.settle=0;b.winSerial++;}
  static boolean check(Battle b){
-  if(b.tribalOutcome>=0){if(b.tribalFx<=0)win(b,b.tribalOutcome);return b.over;}
+  if(b.over||b.ending())return b.over;
+  if(b.tribalOutcome>=0){if(b.tribalFx<=0&&!b.busy())b.finishMatch(b.tribalOutcome);return b.over;}
   boolean player=false,enemy=false;
   for(int i=0;i<b.unitCount;i++){
    Battle.Unit u=b.units[i];if(u.hp<=0&&!u.dead){u.dead=true;u.deathX=u.x;u.deathY=u.y;u.flashTicks=30;
@@ -153,14 +154,15 @@ final class TribalRules {
    }
    if(u.hp>0){if(u.npc==0&&u.team==0)player=true;if(u.team==1&&fighter(u))enemy=true;}
   }
-  if(!player){win(b,1);return true;}
+  if(b.busy()||SulanRules.scheduledSalvo(b))return false;
+  if(!player){if(b.tribalFx==0)b.finishMatch(1);return b.over;}
   if(SulanRules.active(b)&&b.tribalState==TRANSFORM&&b.tribalFx>0)return false;
   if(stage(b)==4&&b.units[1].hp<=0&&b.tribalPhase==1){
    SulanRules.transform(b);return false;
   }
-  if(stage(b)==1&&b.tribalGoal>0&&!enemy){if(b.turn>200){win(b,1);return true;}return false;}
+  if(stage(b)==1&&b.tribalGoal>0&&!enemy){if(b.turn>200){b.finishMatch(1);return b.over;}return false;}
   if(stage(b)==1&&b.tribalGoal==0||stage(b)==4&&b.units[1].hp<=0||twins(b)&&b.units[1].hp<=0&&b.units[3].hp<=0||!enemy&&stage(b)!=1){b.tribalOutcome=0;b.tribalState=DEAD;b.tribalFx=stage(b)==4?SulanRules.DEATH:35;if(stage(b)==4){b.sulanFireCount=0;SulanRules.say(b,SulanRules.FAREWELL,1,85);}b.ballCount=b.bursts=b.settle=0;b.charging=b.pendingNext=false;return false;}
-  if(b.turn>200){win(b,1);return true;}return false;
+  if(b.turn>200){b.finishMatch(1);return b.over;}return false;
  }
  static int flightSteps(int distance){return Math.max(85,Math.min(150,(distance+90)*3/5));}
  static void projectile(Battle b,int actor,int victim,int weapon,int offset){
