@@ -1325,13 +1325,18 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             &&(onlineBattle()||!popup.pausedOffline);
     }
 
+    final BattlePlaybackPacer pacer=new BattlePlaybackPacer();
+    // Called under the canvas lock: no asset reload, HP/terrain/physics mutation or ACK.
+    void hf39ResetPlayback(){pacer.reset();tribalArt.resetVisualClock();}
     public void run() {
-        BattlePlaybackPacer pacer=new BattlePlaybackPacer();
+        long previousLoop=0;boolean loopClockReady=false;
         while (alive) {
             long began = System.currentTimeMillis();
             int tickPeriod=BattlePlaybackPacer.NORMAL_MS;
             if (running) {
                 synchronized (this) {
+                    if(loopClockReady&&BattlePlaybackPacer.discontinuity(began,previousLoop))hf39ResetPlayback();
+                    previousLoop=began;loopClockReady=true;
                     frame++;
                     presentation.tick();
                     forge.tick();
@@ -1428,14 +1433,15 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                         buffFlash--;
                     tickPeriod=BattlePlaybackPacer.period(projectilePacing());
                 }
-                if(presentation.showFps)updateMs=(updateMs*3+(int)Math.min(1000L,System.currentTimeMillis()-began)+2)/4;
+                if(presentation.showFps)updateMs=(updateMs*3+(int)Math.min(1000L,BattlePlaybackPacer.elapsed(System.currentTimeMillis(),began))+2)/4;
                 repaint();
                 serviceRepaints();
             }
-            if(!running)pacer.reset();
-            long wait = tickPeriod - (System.currentTimeMillis() - began);
+            // Clamp sleep even if a speed tool moved currentTimeMillis backwards.
+            if(!running){synchronized(this){pacer.reset();}loopClockReady=false;}
+            long wait=BattlePlaybackPacer.sleepDelay(tickPeriod,System.currentTimeMillis(),began);
             try {
-                Thread.sleep(wait > 2 ? wait : 2);
+                Thread.sleep(wait);
             } catch (InterruptedException ignored) {
             }
         }
@@ -1479,8 +1485,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             if(i<6&&u.npc==0)try{levelIcon(actorExp(i));}catch(OutOfMemoryError low){}
         }
         if((mask&(1<<8))!=0)try{tribalArt.preloadPlayerSpear();}catch(OutOfMemoryError low){ /* keep original projectile fallback */ }
-        // Reserve Sulan NPC artwork before optional wing angles consume the heap.
-        if(game.dungeonStage==6)tribalArt.preloadSulan();
+        // Prepare present NPCs through the shared Tribal cache before optional wings.
+        if(game.dungeonStage==6)tribalArt.preloadBattle();
         vip.prepareBattle();
         if(game.dungeonStage>=3)mask|=(1<<0)|(1<<5);
         for(int w=0;w<10;w++)if((mask&(1<<w))!=0){
@@ -1935,7 +1941,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             graphics.setClip(0,0,getWidth(),getHeight());graphics.setColor(0x10182a);graphics.fillRect(0,0,getWidth(),getHeight());
             graphics.drawRegion(portraitSurface,0,0,320*s,240*s,Sprite.TRANS_ROT90,(getWidth()-240*s)/2,(getHeight()-320*s)/2,Graphics.TOP|Graphics.LEFT);
         }else{portraitSurface=null;paintGame(graphics);}
-        if(paintStart!=0)paintMs=(paintMs*3+(int)Math.min(1000L,System.currentTimeMillis()-paintStart)+2)/4;
+        if(paintStart!=0)paintMs=(paintMs*3+(int)Math.min(1000L,BattlePlaybackPacer.elapsed(System.currentTimeMillis(),paintStart))+2)/4;
     }
     void paintGame(Graphics graphics) {
         g = graphics;

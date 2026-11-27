@@ -139,6 +139,7 @@ final class OnlineChunks {
     }
     int bufferedFrames(){int n=remaining;for(int i=0;i<queued.size();i++)n+=((Segment)queued.elementAt(i)).count;return n;}
     boolean ready(long now) {
+        if(waitingSince>now)waitingSince=now; // clock rollback cannot hold the prebuffer indefinitely
         int buffered=bufferedFrames();boolean hasTerminal=terminal;
         for (int i=0;i<queued.size();i++) {
             Segment segment=(Segment)queued.elementAt(i);hasTerminal|=segment.terminal;
@@ -163,7 +164,7 @@ final class OnlineChunks {
     boolean animate() {
         if (frames==null) {
             if(waitingForNext&&!terminal){
-                if(stallSince==0)stallSince=System.currentTimeMillis();
+                if(stallSince==0||stallSince>System.currentTimeMillis())stallSince=System.currentTimeMillis();
                 if(net.checkpointCap&&net.phase==1&&System.currentTimeMillis()-stallSince>=(sceneReceived?20000:8000)){
                     net.resyncCommands();net.c.message("Đang đồng bộ lại trận Sulan...");return true;
                 }
@@ -206,7 +207,8 @@ final class OnlineChunks {
     }
     void finish() {
         if (!ownPending) return;
-        long elapsed=ownSince>0?System.currentTimeMillis()-ownSince:0;
+        long now=System.currentTimeMillis();if(ownSince>now)ownSince=now;
+        long elapsed=ownSince>0?now-ownSince:0;
         // Never replace a predicted projectile with the terminal snapshot mid-flight.
         // A 30s failsafe retains recovery for a genuinely stuck simulation.
         // HF28: pendingNext stops physics. A resolved terminal snapshot must win over stale balls.
