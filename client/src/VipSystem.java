@@ -1,5 +1,7 @@
 import java.io.*;
 import javax.microedition.lcdui.Image;
+import javax.microedition.lcdui.Graphics;
+import javax.microedition.lcdui.game.Sprite;
 
 /**
  * Server-owned inventory and source-derived graphics. All image caches are
@@ -140,7 +142,7 @@ final class VipSystem {
         preparePowRings(ringMask);
         for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,2,true);
         // Allocate battle tilt art before optional animated portrait art.
-        int[] angles={1,3,0,4};
+        int[] angles={4,3,1,0};
         for(int i=0;i<angles.length;i++)for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,angles[i],false);
         for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)for(int context=1;context<=2;context++){
             int size=WING_SIZE[context];
@@ -317,32 +319,34 @@ final class VipSystem {
 
     void battleWing(int actor, boolean outer) {
         int wing = actorWing(actor);
-        if (wing < 0 || wing > 5)
-            return;
+        if (wing < 0 || wing > 5) return;
         Battle.Unit u = c.game.units[actor];
+        // Match the exact body draw branch in PhoneCanvas: shooting frames are
+        // drawn upright, other frames share the terrain rotation about the feet.
         boolean shooting = c.attackPose(actor) || c.freezeHolding(actor);
-        int tilt = u.slope; // Keep terrain tilt even during charge / aim.
-        if (u.face > 0)
-            tilt = -tilt;
-        int angle = Battle.clamp((tilt + 30 + 7) / 15, 0, 4), layer = outer ? 1 : 0;
-        // Use cached art only, with its baked attachment pivot at (48,48).
-        angle = WingBattleArt.nearest(battleAngles[wing], angle);
-        if (angle < 0)
-            return;
+        int slope = shooting ? 0 : u.slope;
+        boolean compact = c.s == 1 && (c.onlineBattle() ? c.net.custom[actor] : actor == 0 && c.customLook);
+        int pose = WingAttachment.pose(c.unitAnimation(actor), compact);
+        int selected = WingAttachment.select(battleAngles[wing], WingAttachment.tilt(pose, u.face, slope));
+        if (selected < 0) return;
+        int angle = selected % 5, q = selected / 5, layer = outer ? 1 : 0;
+        Image art = sideWings[wing][angle][layer];
+        if (art == null) return;
         int[] bounds = WingBattleArt.bounds(c.s);
         int p = WingBattleArt.index(wing, angle, layer);
-        int width = bounds[p + 2], height = bounds[p + 3];
-        int offsetX = u.face < 0 ? 96 - bounds[p] - width : bounds[p];
-        // Body pivots around the feet in drawSlopedBody. Shooting body art is upright.
-        // Root is at the lower back, not the feet (old +10 offset) or high above it.
-        int spineX = -2 * u.face, spineY = shooting ? -10 : -12;
-        int bodySlope = shooting ? 0 : u.slope;
-        int cs = Battle.cos(bodySlope), sn = Battle.sin(bodySlope);
-        int anchorX = (spineX * cs + spineY * sn) / 1024;
-        int anchorY = (-spineX * sn + spineY * cs) / 1024;
-        c.part(sideWings[wing][angle][layer], c.frame / 2 % 19 * width, 0, width, height,
-                u.x - c.cameraX + anchorX - 48 + offsetX,
-                u.y - c.cameraY + anchorY - 48 + bounds[p + 1], u.face < 0);
+        int w = bounds[p+2], h = bounds[p+3];
+        boolean flip = u.face < 0;
+        int ax = WingAttachment.jointX(pose, u.face, slope);
+        int ay = WingAttachment.jointY(pose, u.face, slope);
+        int x = u.x - c.cameraX + ax - 48 + WingAttachment.left(bounds[p], bounds[p+1], w, h, q, flip);
+        int y = u.y - c.cameraY + ay - 48 + WingAttachment.top(bounds[p], bounds[p+1], w, h, q);
+        // Rotate first in local coordinates, then mirror for a left-facing actor.
+        int transform;
+        if (flip) transform = q==0?Sprite.TRANS_MIRROR:q==1?Sprite.TRANS_MIRROR_ROT270:q==2?Sprite.TRANS_MIRROR_ROT180:Sprite.TRANS_MIRROR_ROT90;
+        else transform = q==0?Sprite.TRANS_NONE:q==1?Sprite.TRANS_ROT90:q==2?Sprite.TRANS_ROT180:Sprite.TRANS_ROT270;
+        int scale = c.s;
+        c.g.drawRegion(art, c.frame / 2 % 19 * w * scale, 0, w * scale, h * scale,
+                transform, c.ox + x * scale, c.oy + y * scale, Graphics.TOP | Graphics.LEFT);
     }
 
     int trialWing = -2;
