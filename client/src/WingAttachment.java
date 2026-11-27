@@ -5,10 +5,10 @@
  */
 final class WingAttachment {
     // Facing right, offsets from the foot pivot. Frames 1..9 are crouch/walk;
-    // 10..15 shoot upright; 16..21 throw/recover. Preserve the old flat crouch root.
-    private static final int[] X={-3,-1,-2,-1,0,-1,-1,-2,-1,-1,-3,-3,-3,-3,-3,-3,-2,-2,-2,-3,-3,-3};
-    private static final int[] Y={-8,-3,-3,-3,-3,-3,-3,-3,-3,-3,-8,-8,-8,-8,-8,-8,-8,-9,-9,-8,-8,-8};
-    private static final int[] LEAN={0,60,60,60,60,60,60,60,60,60,0,0,0,0,0,0,-15,-15,-15,0,0,0};
+    // 10..15 shoot upright; 16..21 throw/recover. Crouch roots are shifted rearward.
+    private static final int[] X={-3,-4,-5,-4,-4,-4,-4,-5,-4,-4,-3,-3,-3,-3,-3,-3,-2,-2,-2,-3,-3,-3};
+    private static final int[] Y={-8,-5,-5,-5,-5,-5,-5,-5,-5,-5,-8,-8,-8,-8,-8,-8,-8,-9,-9,-8,-8,-8};
+    private static final int[] LEAN={0,15,15,15,15,15,15,15,15,15,0,0,0,0,0,0,-15,-15,-15,0,0,0};
     static int pose(int anim,boolean compact){
         if(anim<0||anim>=X.length)return 0;
         // E72 layered costume sheets repeat the five walking cells, unlike the full hero sheet.
@@ -20,21 +20,10 @@ final class WingAttachment {
     static int jointX(int pose,int face,int slope){return round(X[pose]*face*Battle.cos(slope)+Y[pose]*Battle.sin(slope));}
     static int jointY(int pose,int face,int slope){return round(-X[pose]*face*Battle.sin(slope)+Y[pose]*Battle.cos(slope));}
     static int tilt(int pose,int face,int slope){return LEAN[pose]-face*slope;}
-    // Use only already-loaded five-angle atlases. MIDP can quarter-turn a region
-    // without decoding, allocating, or resampling another image. Rotation is
-    // around the wing joint, not the cropped image's top-left.
+    // Do not quarter-turn the atlas: a 60/90 degree turn swings the feather
+    // tips over the face. Keep the original rear-facing five angles in RAM.
     static int select(int mask,int target){
-        int best=-1,error=361;
-        for(int q=0;q<4;q++)for(int a=0;a<5;a++)if((mask&(1<<a))!=0){
-            int d=(target-(a*15-30+q*90))%360;if(d>180)d-=360;if(d< -180)d+=360;
-            d=Math.abs(d);if(d<error){error=d;best=q*5+a;}
-        }
-        return best;
+        int a=Battle.clamp((Battle.clamp(target,-30,30)+30+7)/15,0,4);
+        return WingBattleArt.nearest(mask,a);
     }
-    static int left(int x,int y,int w,int h,int q,boolean flip){
-        int l=q==0?x:q==1?96-y-h:q==2?96-x-w:y;
-        int rw=(q&1)==0?w:h;
-        return flip?96-l-rw:l;
-    }
-    static int top(int x,int y,int w,int h,int q){return q==0?y:q==1?x:q==2?96-y-h:96-x-w;}
 }

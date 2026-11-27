@@ -48,10 +48,10 @@ public class WingCacheCheck{
    int ax=WingAttachment.jointX(pose,face,t),ay=WingAttachment.jointY(pose,face,t);
    ok(c.g.x==3+(100-7+ax+(int)Math.round(minX))*scale&&c.g.y==4+(120-9+ay+(int)Math.round(minY))*scale,"joint/crop transform");
    int[] right={0,5,3,6},left={2,4,1,7};ok(c.g.transform==(face<0?left[q]:right[q]),"mirror order");
-   int delta=Math.abs((desired-(angle*15-30+q*90)+720)%360);delta=Math.min(delta,360-delta);ok(delta<=15,"angle tolerance");checks++;
+   ok(q==0,"no quarter turn");int delta=Math.abs((Battle.clamp(desired,-30,30)-(angle*15-30)+720)%360);delta=Math.min(delta,360-delta);ok(delta<=15,"angle tolerance");checks++;
  }
- ok(WingAttachment.jointX(1,1,0)==-1&&WingAttachment.jointY(1,1,0)==-3,"flat crouch original root");
- ok(WingAttachment.tilt(1,1,0)==60&&WingAttachment.tilt(10,1,0)==0,"pose change");
+ ok(WingAttachment.jointX(1,1,0)==-4&&WingAttachment.jointY(1,1,0)==-5,"flat crouch rear joint");
+ ok(WingAttachment.tilt(1,1,0)==15&&WingAttachment.tilt(10,1,0)==0,"pose change");
  System.out.println("PASS: "+checks+" attachment draws on both scales");
  c.s=1;
  c.anim=1;

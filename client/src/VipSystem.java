@@ -329,7 +329,7 @@ final class VipSystem {
         int pose = WingAttachment.pose(c.unitAnimation(actor), compact);
         int selected = WingAttachment.select(battleAngles[wing], WingAttachment.tilt(pose, u.face, slope));
         if (selected < 0) return;
-        int angle = selected % 5, q = selected / 5, layer = outer ? 1 : 0;
+        int angle = selected, layer = outer ? 1 : 0;
         Image art = sideWings[wing][angle][layer];
         if (art == null) return;
         int[] bounds = WingBattleArt.bounds(c.s);
@@ -338,15 +338,11 @@ final class VipSystem {
         boolean flip = u.face < 0;
         int ax = WingAttachment.jointX(pose, u.face, slope);
         int ay = WingAttachment.jointY(pose, u.face, slope);
-        int x = u.x - c.cameraX + ax - 48 + WingAttachment.left(bounds[p], bounds[p+1], w, h, q, flip);
-        int y = u.y - c.cameraY + ay - 48 + WingAttachment.top(bounds[p], bounds[p+1], w, h, q);
-        // Rotate first in local coordinates, then mirror for a left-facing actor.
-        int transform;
-        if (flip) transform = q==0?Sprite.TRANS_MIRROR:q==1?Sprite.TRANS_MIRROR_ROT270:q==2?Sprite.TRANS_MIRROR_ROT180:Sprite.TRANS_MIRROR_ROT90;
-        else transform = q==0?Sprite.TRANS_NONE:q==1?Sprite.TRANS_ROT90:q==2?Sprite.TRANS_ROT180:Sprite.TRANS_ROT270;
-        int scale = c.s;
+        int x = u.x - c.cameraX + ax - 48 + (flip ? 96 - bounds[p] - w : bounds[p]);
+        int y = u.y - c.cameraY + ay - 48 + bounds[p+1];
+        int scale=c.s;
         c.g.drawRegion(art, c.frame / 2 % 19 * w * scale, 0, w * scale, h * scale,
-                transform, c.ox + x * scale, c.oy + y * scale, Graphics.TOP | Graphics.LEFT);
+                flip ? Sprite.TRANS_MIRROR : Sprite.TRANS_NONE, c.ox + x * scale, c.oy + y * scale, Graphics.TOP | Graphics.LEFT);
     }
 
     int trialWing = -2;
