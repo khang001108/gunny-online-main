@@ -33,9 +33,13 @@ final class Battle {
     void completeTurn(){pendingNext=false;boolean deferred=deferNext;deferNext=false;next();deferNext=deferred;}
     final Ball[] balls=new Ball[20];
     final Blast[] blasts=new Blast[16];
-    static final class DamagePopup {int x,y,value,age;boolean powered;}
+    static final class DamagePopup {
+        static final byte STYLE_NORMAL=0,STYLE_SPECIAL=1,STYLE_BPOW=2;
+        int x,y,value,age;byte style;
+    }
     final DamagePopup[] damagePopups=new DamagePopup[20];int damagePopupCount;
-    void showDamage(Unit u,int value,boolean powered){if(value<=0)return;DamagePopup popup=new DamagePopup();popup.x=u.x;popup.y=u.y-34;popup.value=value;popup.powered=powered;if(damagePopupCount==damagePopups.length){for(int i=1;i<damagePopupCount;i++)damagePopups[i-1]=damagePopups[i];damagePopupCount--;}damagePopups[damagePopupCount++]=popup;}
+    void showDamage(Unit u,int value,boolean special){showDamage(u,value,special,false);}
+    void showDamage(Unit u,int value,boolean special,boolean bpow){if(value<=0)return;DamagePopup popup=new DamagePopup();popup.x=u.x;popup.y=u.y-34;popup.value=value;popup.style=(byte)(bpow?DamagePopup.STYLE_BPOW:(special?DamagePopup.STYLE_SPECIAL:DamagePopup.STYLE_NORMAL));if(damagePopupCount==damagePopups.length){for(int i=1;i<damagePopupCount;i++)damagePopups[i-1]=damagePopups[i];damagePopupCount--;}damagePopups[damagePopupCount++]=popup;}
     // Bounded visual-only history; no per-frame particle allocation on CLDC.
     static final int TRAIL_CAPACITY=192;
     final int[] trailX=new int[TRAIL_CAPACITY],trailY=new int[TRAIL_CAPACITY],trailWeapon=new int[TRAIL_CAPACITY],trailFrame=new int[TRAIL_CAPACITY],trailAge=new int[TRAIL_CAPACITY],trailLife=new int[TRAIL_CAPACITY];
@@ -47,7 +51,8 @@ final class Battle {
     final int[] sulanFireX=new int[9],sulanFireLife=new int[9],sulanBurn=new int[7];
     int tribalOutcome=-1,tribalGoal;int tribalRound,tribalPhase,tribalWave,tribalState,tribalClock,tribalFx,tribalDead1,tribalDead3;boolean tribalBeanSaved;
     int turnLimit=600,dungeonDifficulty,dungeonStage,queenShots,lastDungeonAlly;boolean deferNext,pendingNext;
-    final int[] damage=new int[MAX_UNITS],kills=new int[MAX_UNITS];int extra,boost,weapon,shotSerial,hitSerial,winSerial;
+    final int[] damage=new int[MAX_UNITS],kills=new int[MAX_UNITS];
+    final int[] pvpTurnDamage=new int[MAX_UNITS];int extra,boost,weapon,shotSerial,hitSerial,winSerial;
     int selectedWeapon,usedProps,usedPropCount;
     final int[] usedPropHistory=new int[16];
     int viewX=-25,viewY=-10000,viewWidth=W+50,viewHeight=H+10035;
@@ -87,7 +92,7 @@ final class Battle {
         for(int i=0;i<raidTargetTurn.length;i++){raidTargetTurn[i]=-1;raidTargets[i]=-1;}
         explicitHumans=false;deferNext=pendingNext=false;teams=false;unitCount=2;active=0;turn=1;over=false;hotseat=two;winner=-1;ballCount=blastCount=bursts=settle=trailCount=0;
         dungeonStage=queenShots=0;dungeonParty=1;lastDungeonAlly=4;
-        for(int i=0;i<units.length;i++){damage[i]=kills[i]=0;Unit u=units[i];u.itemUsed=u.frozen=u.freezeTurns=u.invisible=u.flyCooldown=u.hp=u.npc=0;u.dead=false;u.god=false;u.assist=false;u.kit[0]=0;u.kit[1]=1;u.kit[2]=2;}damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rollWind();lastWind=0;countdown=turnLimit;botWait=0;selectedWeapon=0;
+        for(int i=0;i<units.length;i++){damage[i]=kills[i]=pvpTurnDamage[i]=0;Unit u=units[i];u.itemUsed=u.frozen=u.freezeTurns=u.invisible=u.flyCooldown=u.hp=u.npc=0;u.dead=false;u.god=false;u.assist=false;u.kit[0]=0;u.kit[1]=1;u.kit[2]=2;}damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rollWind();lastWind=0;countdown=turnLimit;botWait=0;selectedWeapon=0;
         for(int i=0;i<unitCount;i++){Unit u=units[i];for(int k=0;k<10;k++)u.weaponForge[k]=0;u.forgeWeaponBonus=0;u.wingHp=0;u.npc=0;u.botStyle=-1;u.x=spawnX(i,2);u.y=ground.surface(u.x,35);u.vy=0;u.maxHp=MAXHP;u.maxEnergy=240;u.attackBonus=u.defense=u.luck=u.experience=u.forgeAttack=u.forgeDefense=u.forgeLuck=0;u.statsEnabled=false;u.hp=MAXHP;u.energy=240;u.rage=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.face=i==0?1:-1;u.walk=0;u.attackTicks=0;u.slope=0;u.heals=5;u.flashTicks=u.landingTicks=0;u.dead=false;u.deathX=u.deathY=0;refreshAim(u);}
         clear();
     }
@@ -282,7 +287,7 @@ final class Battle {
             b.vy=(targetY(target)*256-b.y)*4/steps-gravity(b)*(steps+1)/2;
         }
         int base=baseDamage(u.weapon)+u.attackBonus;
-        b.damage=base*(100+boost)/100;if(triple)b.damage=b.damage*60/100;if(extra>0)b.damage=b.damage*82/100;if(pow)b.damage=b.damage*170/100;
+        b.damage=CombatBalance.projectileDamage(base,boost,triple,extra,pow,dungeonStage==0&&u.statsEnabled);
         if(b.guided)b.damage=b.damage/2;
         return b;
     }
@@ -310,12 +315,13 @@ final class Battle {
                 if(u.god)damage=0;
                 if(lightBotDamage(b.owner,i))damage=Math.min(60,Math.max(1,damage/10));
                 if(u.freezeTurns>0){u.freezeTurns=u.frozen=0;damage=damage/2;}
+                damage=CombatBalance.limitTurnDamage(this,b.owner,i,damage);
                 int received=Math.min(u.hp,damage);u.hp=Math.max(0,u.hp-damage);
                 if(SulanRules.active(this))SulanRules.hit(this,i,received);
                 if(u.hp>0&&u.npc>=4){u.flashTicks=24;u.lastBuff=0;}
                 if(u.hp>0&&u.npc==3){botPhase=AntCaveRules.QUEEN_HIT;u.flashTicks=24;}
                 if(!ally(b.owner,i)){this.damage[b.owner]+=received;if(u.hp==0)kills[b.owner]++;}
-                u.rage=Math.min(100,u.rage+(received*100+u.maxHp-1)/u.maxHp);fx.damage=damage;showDamage(u,damage,b.powered||special);
+                u.rage=Math.min(100,u.rage+(received*100+u.maxHp-1)/u.maxHp);fx.damage=damage;showDamage(u,damage,special,b.powered);
             }
 
         }
@@ -352,7 +358,7 @@ final class Battle {
     void finishPower(){Unit u=units[active];if(u.pendingPower>=0){u.lastPower=u.pendingPower;u.pendingPower=-1;}}
     void next(){check();if(over||ending()||busy()||pendingNext||TribalRules.active(this)&&tribalFx>0||AntCaveRules.dying(this))return;finishPower();if(deferNext){pendingNext=true;charging=false;return;}Unit previous=units[active];if(previous.invisible>0)previous.invisible--;if(previous.frozen==2){previous.freezeTurns=Math.max(0,previous.freezeTurns-1);previous.frozen=previous.freezeTurns>0?1:0;}int next=active;if(TribalRules.active(this))next=TribalRules.nextActor(this,active);else if(dungeonStage>0)next=AntCaveRules.nextActor(this,active);else do{next=(next+1)%unitCount;}while(units[next].hp<=0);beginTurn(next);}
     void beginTurn(int actor){
-        active=actor;turn++;
+        active=actor;turn++;for(int i=0;i<pvpTurnDamage.length;i++)pvpTurnDamage[i]=0;
         Unit u=units[active];
         u.energy=u.maxEnergy;
         if(u.flyCooldown>0)u.flyCooldown--;
