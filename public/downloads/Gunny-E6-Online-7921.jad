@@ -1,5 +1,5 @@
 MIDlet-Name: Gunny Java
-MIDlet-Version: 7.9.20
+MIDlet-Version: 7.9.21
 MIDlet-Vendor: Ronin-Lap
 MIDlet-1: Gunny Java, /icon.png, GunnyMIDlet
 MIDlet-Icon: /icon.png
@@ -14,6 +14,6 @@ MIDlet-Touch-Support: true
 MIDlet-Permissions-Opt: javax.microedition.io.Connector.socket
 Gunny-Server-URL: socket://gunnyjava.xubi.org:22123
 Gunny-Web-URL: https://gunnyjava.xubi.org
-MIDlet-Jar-URL: Gunny-E6-Online-7920.jar
-MIDlet-Jar-Size: 69207579
+MIDlet-Jar-URL: Gunny-E6-Online-7921.jar
+MIDlet-Jar-Size: 69209420
 MIDlet-Description: Gunny Java Online - Tac gia: Ronin-Lap

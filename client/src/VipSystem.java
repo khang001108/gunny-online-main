@@ -331,10 +331,10 @@ final class VipSystem {
         int offsetX=u.face<0?96-bounds[p]-width:bounds[p];
         boolean shooting = c.attackPose(actor) || c.freezeHolding(actor);
         int bodySlope = shooting ? 0 : u.slope;
-        int spineY = shooting ? -10 : -13, cs = Battle.cos(bodySlope), sn = -Battle.sin(bodySlope), spineX = -u.face;
+        int spineY = -20, cs = Battle.cos(bodySlope), sn = -Battle.sin(bodySlope), spineX = -3*u.face;
         int anchorX = (spineX * cs - spineY * sn) / 1024, anchorY = (spineX * sn + spineY * cs) / 1024;
         c.part(sideWings[wing][angle][layer], c.frame / 2 % 19 * width, 0, width, height, u.x - c.cameraX + anchorX - 48+offsetX,
-                u.y - c.cameraY + anchorY - 48+10+bounds[p+1], u.face < 0);
+                u.y - c.cameraY + anchorY - 48+bounds[p+1], u.face < 0);
     }
 
     int trialWing = -2;

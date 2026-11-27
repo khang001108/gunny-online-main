@@ -15,16 +15,8 @@ final class ForgeRules {
   return success?Math.min(MAX_RANK,rank+1):rank>=5&&!protection?rank-1:rank;
  }
  // The old base damage is the reference at +1; unenhanced is half of that.
- static int weaponBonus(int item,int rank){int base=Battle.baseDamage(item);return base*(Math.max(0,Math.min(15,rank))+1)/2-base/2;}
- static int statBonus(int kind,int item,int rank,int stat){
-  rank=Math.max(0,Math.min(15,rank));
-  if(kind==0)return stat==0?weaponBonus(item,rank):0;
-  if(kind!=2&&kind!=3&&kind!=6)return 0;
-  // Total at +15 includes the base 20 points. Allocate rounding remainders deterministically.
-  int total=20+((kind==6?1250:1175)-20)*rank/15;
-  int attack=total/4,defense=kind==6?total/4:total/2,luck=total-attack-defense;
-  return stat==0?attack-5:stat==1?defense-ItemRules.defense(kind,item):luck-ItemRules.luck(kind,item);
- }
+ static int weaponBonus(int item,int rank){return BalanceSettings.weaponAttack(item,rank,BalanceSettings.values)-ItemRules.attack(0,item);}
+ static int statBonus(int kind,int item,int rank,int stat){int base=stat==0?ItemRules.attack(kind,item):stat==1?ItemRules.defense(kind,item):ItemRules.luck(kind,item);return BalanceSettings.equipmentStat(kind,item,rank,stat,BalanceSettings.values)-base;}
  static int rankBonus(int kind,int rank){return statBonus(kind,3,rank,0)+statBonus(kind,3,rank,1)+statBonus(kind,3,rank,2);}
  static int bonus(int[] ranks,int sex,int kind,int item){int r=ranks[index(sex,kind,item)];return statBonus(kind,item,r,0)+statBonus(kind,item,r,1)+statBonus(kind,item,r,2);}
  static int[] equipped(int[] ranks,int sex,int mask,int weapon,int skin,int[] look){int[] b=new int[3];for(int k=0;k<7;k++)if((mask&(1<<k))!=0){int item=k==0?weapon:k==1?skin:look[k-2];int rank=ranks[index(sex,k,item)];for(int stat=0;stat<3;stat++)b[stat]+=statBonus(k,item,rank,stat);}return b;}

@@ -4,9 +4,11 @@ COPY backend/src src
 RUN mkdir classes && javac --release 17 -encoding UTF-8 -d classes src/*.java
 
 FROM eclipse-temurin:21-jre
-LABEL org.opencontainers.image.version="7.9.20"
+LABEL org.opencontainers.image.version="7.9.21"
 WORKDIR /app
-RUN useradd --system --uid 10001 gunny
+RUN useradd --system --uid 10001 gunny && mkdir -p /app/data && chown gunny /app/data
+VOLUME ["/app/data"]
+ENV GUNNY_BALANCE_FILE=/app/data/balance.properties
 COPY --from=build /app/classes /app/classes
 COPY backend/assets/ /app/assets1/
 COPY backend/tribal.properties /app/tribal.properties

@@ -19,7 +19,7 @@ import urllib.request
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "7.9.2"
+VERSION = "7.9.21"
 PROJECT = "mnquwasxacifkktmckdv"
 MIGRATION = ROOT / "supabase/migrations/202611120001_virtual_accounts_retention.sql"
 EXPANSION = ROOT / "supabase/migrations/202611130001_forge_dungeon.sql"
