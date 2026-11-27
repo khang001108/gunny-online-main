@@ -19,8 +19,8 @@ __pycache__/
 # Keep only the current release in Git.
 /public/downloads/*-Online-*.jar
 /public/downloads/*-Online-*.jad
-!/public/downloads/*-Online-7918.jar
-!/public/downloads/*-Online-7918.jad
+!/public/downloads/*-Online-7920.jar
+!/public/downloads/*-Online-7920.jad
 /public/downloads/*-CaiDat-*.zip
 /deploy/backups/
 

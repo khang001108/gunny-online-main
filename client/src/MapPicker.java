@@ -4,6 +4,13 @@ import javax.microedition.lcdui.*;
 final class MapPicker {
     final PhoneCanvas c;boolean online;int choice,seconds=12,focus,stage;
     static final int CONFIRM_X=231,CONFIRM_Y=208,CONFIRM_W=58,CONFIRM_H=24;
+    private static final int DIFFICULTY_X=213,DIFFICULTY_Y=47,DIFFICULTY_W=46,DIFFICULTY_H=17;
+    private static int difficultyX(int i){return DIFFICULTY_X+(i%2)*50;}
+    private static int difficultyY(int i){return DIFFICULTY_Y+(i/2)*18;}
+    int hitDifficulty(int x,int y){
+        for(int i=0;i<4;i++)if(x>=difficultyX(i)&&x<difficultyX(i)+DIFFICULTY_W&&y>=difficultyY(i)&&y<difficultyY(i)+DIFFICULTY_H)return i;
+        return -1;
+    }
     Image frame,blueButton;final Image[] banners=new Image[7];
     Image dungeonCover, tribalCover, compactFont;
     private static final String DUNGEON_DESCRIPTION =
@@ -27,11 +34,15 @@ final class MapPicker {
         boolean tribal=c.onlineAccount()&&c.dungeon.draftDungeon==1;
         c.part(frame, 223, 17, 78, 14, 223, 31, false);
         c.pcCenter("Mức độ", 262, 34);
+        // Remove the PvP frame's baked-in 8/12/15-second buttons.
+        c.part(frame, 210, 146, 103, 36, 210, 46, false);
+        // Original gold-framed button, cached at the current screen scale.
+        Image button=c.ui.button(DIFFICULTY_W,DIFFICULTY_H);
         for (int i = 0; i < 4; i++) {
-            int x=211+(i%2)*50,y=46+(i/2)*20;
-            c.rect(x+2,y+2,45,15,0x294d72);
-            if(difficulty==i)c.drawSelectionGlow(x,y,49,19);
-            c.pcCenter(c.dungeon.difficultyName(i),x+24,y+6);
+            int x=difficultyX(i),y=difficultyY(i);
+            c.img(button,x,y);
+            c.pcCenter(c.dungeon.difficultyName(i),x+DIFFICULTY_W/2,y+(DIFFICULTY_H-10)/2);
+            if(difficulty==i)c.drawSelectionGlowPhase(x,y,DIFFICULTY_W,DIFFICULTY_H,0);
         }
         c.img(tribal?c.tribalArt.smallCover():c.dungeon.smallCover(),216,89);
         c.pcText(tribal?"Bộ Lạc Tà Thần":"Huyệt Ma Kiến",211,130);

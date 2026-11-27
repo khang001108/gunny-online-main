@@ -110,11 +110,13 @@ def retired_asset(name):
     return name.startswith('hf39-npc-') or name == 'fx-pow-ring.png' or name.startswith('wing795-game-') or bool(re.fullmatch(r'vip-ring-[0-2]-(144|216)\.png', name)) or bool(re.fullmatch(r'vip-ring-hf18-[0-2]-8\.png', name))
 
 with zipfile.ZipFile(build/'preverified.jar') as code:
-    for name in ('Gunny-E6-Online-7918', 'Gunny-E72-2009-Online-7918'):
+    for name in ('Gunny-E6-Online-7920', 'Gunny-E72-2009-Online-7920'):
         jar = downloads/(name+'.jar')
         temp = build/(name+'.jar')
         overlays = {p.name:p.read_bytes() for p in (root/('assets2' if 'E6' in name else 'assets1')).iterdir() if p.is_file() and p.suffix in ('.png','.dat') and p.name!='tribal797-loading-bg.png' and not retired_asset(p.name)}
-        seed = jar if jar.exists() else downloads/(name.replace('7918','7917')+'.jar')
+        seed = next((p for p in (jar, downloads/(name.replace('7920','7918')+'.jar'), downloads/(name.replace('7920','7917')+'.jar')) if p.is_file()), None)
+        if seed is None:
+            raise SystemExit('Missing handset asset seed: '+name)
         with zipfile.ZipFile(seed) as original, zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED) as output:
             for info in original.infolist():
                 if retired_asset(info.filename) or (info.filename=='tribal797-loading-bg.png' or info.filename.startswith(('tribal-npc-', 'tribal-cover-')) or info.filename.startswith(('wing792-','wing793-','wing795-show-')) or re.match(r'vip-wing-[0-5]-(24|44|72)\.png$', info.filename)) or info.filename.startswith('vip-progress') or 'vip-ring-' in info.filename and '-216.png' in info.filename or info.filename.endswith('.class') or info.filename in overlays or info.filename in ('stone780.png','forge780-success.png','forge780-success-slot.png'):
@@ -165,7 +167,9 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
                 if entry.filename.endswith('.class') and installed.read(entry.filename)!=code.read(entry.filename):
                     raise SystemExit('Sai ma nguon trong JAR: '+str(jar))
         jad = downloads/(name+'.jad')
-        jad_seed = jad if jad.exists() else downloads/(name.replace('7918','7917')+'.jad')
+        jad_seed = next((p for p in (jad, downloads/(name.replace('7920','7918')+'.jad'), downloads/(name.replace('7920','7917')+'.jad')) if p.is_file()), None)
+        if jad_seed is None:
+            raise SystemExit('Missing handset JAD seed: '+name)
         text = jad_seed.read_text(encoding="utf-8").replace(":22122", ":22123")
         text = upsert_prop_text(text, "MIDlet-Version", APP_VERSION)
         text = upsert_prop_text(text, "MIDlet-Vendor", APP_VENDOR)
@@ -175,4 +179,4 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
         jad.write_text(text, encoding='utf-8')
 if release_errors:
     raise SystemExit('CHUA cap nhat cac ban cai dang bi khoa: '+', '.join(release_errors))
-print('Rebuilt and verified current E72/E6 JAR and JAD.')
+print('Rebuilt and verified current E72/E6 7.9.20 JAR and JAD. Old 7918 files are retained as asset seeds.')

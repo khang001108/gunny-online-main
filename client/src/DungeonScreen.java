@@ -613,7 +613,7 @@ final class DungeonScreen {
  void pointerRoom(boolean online, int x, int y) {
   if(rewardsOpen){pointerRewards(x,y);return;}
   if (online ? picker : c.offlineDungeon.picker) {
-   if(x>=14&&x<194&&y>=29&&y<205){draftDungeon=x<106?0:1;if(levelAllowed(draftDungeon))pickerStep=1;}else if(x>=211&&x<311&&y>=46&&y<86){draftDifficulty=Battle.clamp((y-46)/20,0,1)*2+Battle.clamp((x-211)/50,0,1);pickerStep=2;}else if(c.maps.hitConfirm(x,y)){if(pickerStep==0&&!levelAllowed(draftDungeon))return;if(pickerStep<2)pickerStep++;else confirmPicker(online);}else if(x>=295&&y<30)setPicker(online,false);
+   if(x>=14&&x<194&&y>=29&&y<205){draftDungeon=x<106?0:1;if(levelAllowed(draftDungeon))pickerStep=1;}else if(c.maps.hitDifficulty(x,y)>=0){draftDifficulty=c.maps.hitDifficulty(x,y);pickerStep=2;}else if(c.maps.hitConfirm(x,y)){if(pickerStep==0&&!levelAllowed(draftDungeon))return;if(pickerStep<2)pickerStep++;else confirmPicker(online);}else if(x>=295&&y<30)setPicker(online,false);
 
    return;
   }
