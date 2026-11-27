@@ -5,7 +5,7 @@ import javax.microedition.lcdui.AlertType;
 
 /** Installable MIDP 2.0 entry point for Nokia S40 and Symbian Java. */
 public final class GunnyMIDlet extends MIDlet {
-    static final String FALLBACK_VERSION = "7.9.18";
+    static final String FALLBACK_VERSION = GameRelease.VERSION;
     static final String FALLBACK_VENDOR = "Ronin-Lap";
     static final String FALLBACK_DESCRIPTION = "Gunny Java Online - Tac gia: Ronin-Lap";
     PhoneCanvas game;

@@ -3,7 +3,7 @@ import javax.microedition.io.*;
 
 /** Persistent framed TCP transport for Raspberry Pi deployments. */
 final class TcpTransport {
- static final int MAGIC=0x474e5954,MAX_REPLY=131072;
+ static final int MAGIC=GameRelease.WIRE_MAGIC,MAX_REPLY=131072;
  StreamConnection connection;DataInputStream in;DataOutputStream out;String address="";
  volatile long txBytes,rxBytes;volatile int rtt=-1,jitter;private byte[] eventReply;
  final ByteArrayOutputStream requestBytes=new ByteArrayOutputStream(256);
@@ -16,7 +16,7 @@ final class TcpTransport {
    ByteArrayOutputStream bytes=large?new ByteArrayOutputStream(64+body.length):requestBytes;
    bytes.reset();
    DataOutputStream packet=large?new DataOutputStream(bytes):requestPacket;
-   packet.writeInt(MAGIC);packet.writeByte(kind);packet.writeInt(flags);packet.writeUTF(token==null?"":token);
+   packet.writeInt(GameRelease.magic(kind));packet.writeByte(kind);packet.writeInt(flags);packet.writeUTF(token==null?"":token);
    for(int i=0;i<3;i++)packet.writeByte(kit==null?0:kit[i]);packet.writeInt(body==null?0:body.length);if(body!=null)packet.write(body);
    byte[] wire=bytes.toByteArray();long started=System.currentTimeMillis();out.write(wire);out.flush();txBytes+=wire.length;
    int status=in.readInt(),length=in.readInt();if(length<0||length>MAX_REPLY)throw new IOException("Phản hồi TCP quá lớn.");byte[] reply=kind==2&&length==8?(eventReply==null?(eventReply=new byte[8]):eventReply):new byte[length];in.readFully(reply);rxBytes+=8+length;int sample=(int)Math.min(60000,Math.max(0,System.currentTimeMillis()-started));if(rtt>=0)jitter=(jitter*3+Math.abs(sample-rtt))/4;rtt=sample;if(status!=200)throw new IOException("Máy chủ TCP chưa sẵn sàng ("+status+").");return reply;

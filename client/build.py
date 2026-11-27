@@ -37,7 +37,7 @@ if args.code_only:
     raise SystemExit(0)
 downloads = root.parent/'public/downloads'
 release_errors=[]
-APP_VERSION = "7.9.18"
+APP_VERSION = "7.9.19"
 APP_VENDOR = "Ronin-Lap"
 APP_DESCRIPTION = "Gunny Java Online - Tac gia: Ronin-Lap"
 

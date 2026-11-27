@@ -12,6 +12,7 @@ final class ServerWake {
     ServerWake(OnlineClient client){net=client;}
     static class Cancelled extends IOException {Cancelled(){super("Đã hủy kết nối.");}}
     static class Rejected extends IOException {Rejected(String message){super(message);}}
+    static final class UpdateRequired extends Rejected {UpdateRequired(String message){super(message);}}
     static class Unavailable extends IOException {Unavailable(int code){super("Máy chủ chưa sẵn sàng ("+code+").");}}
     static boolean transientCode(int code){return code==408||code==502||code==503||code==504;}
     void invalidate(){readyAt=0;}
