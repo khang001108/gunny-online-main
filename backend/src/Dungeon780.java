@@ -6,7 +6,7 @@ final class Dungeon780 {
   int level=Progression.level(s.profile.experience);
   if(level<15)throw new IllegalArgumentException("Huyệt Ma Kiến yêu cầu Lv 15. "+s.profile.name+" hiện ở Lv "+level+".");
   GunnyServer.requireWeapon(s);
-  if(difficulty<0||difficulty>2||difficulty==2&&!s.profile.dungeonClear)
+  if(difficulty<0||difficulty>DungeonBalance.MAX_DIFFICULTY||difficulty>=2&&!s.profile.dungeonClear)
    throw new IllegalArgumentException("Vượt chế độ Thường để mở Khó");
  }
  static void handle(GunnyServer server,String op,GunnyServer.Session s,DataInputStream in,DataOutputStream out)throws Exception{
@@ -38,7 +38,7 @@ final class Dungeon780 {
   }
   if(op.equals("dungeonsettings")){var r=server.requireRoom(s);int difficulty=in.readUnsignedByte();int dungeon=s.tribal?in.readUnsignedByte():0;if(dungeon>1)throw new IllegalArgumentException("Sai phó bản");synchronized(r){if(r.kind!=3||r.host!=s||r.phase!=0)throw new IllegalArgumentException("Chỉ chủ phòng chờ được chọn ải viễn chinh");for(var member:r.members)if(member!=null){if(dungeon==1)TribalDungeon.eligible(member,difficulty);else eligible(member,difficulty);}r.beanSaved=false;r.dungeonStage=dungeon==1?3:1;r.difficulty=difficulty;r.mapLimit=dungeon==1?12:8;r.clearArmed();r.refreshWaiting();server.lobby(out,r,s);}return;}
   if(op.equals("dungeoncreate")||op.equals("dungeonquick")){int difficulty=in.readUnsignedByte();String name=op.equals("dungeoncreate")?GunnyServer.validRoomName(in.readUTF()):"Phó bản vui vẻ";String secret=op.equals("dungeoncreate")?in.readUTF():"";eligible(s,difficulty);if(secret.length()>16)throw new IllegalArgumentException("Mật mã tối đa 16 ký tự");
-   synchronized(server.rooms){GunnyServer.Room room=null;if(op.equals("dungeonquick"))for(var r:server.rooms.values())synchronized(r){if(r.kind==3&&r.phase==0&&r.dungeonStage!=2&&r.difficulty==difficulty&&r.secret.isEmpty()&&r.cardPlayers()<3&&space(r)&&r.host.delta==s.delta&&r.host.actors==s.actors&&r.host.live==s.live&&r.host.equipment==s.equipment&&r.host.arsenal==s.arsenal&&r.host.items==s.items&&r.host.itemVersion==s.itemVersion&&r.host.itemFx==s.itemFx){room=r;break;}}
+   synchronized(server.rooms){GunnyServer.Room room=null;if(op.equals("dungeonquick"))for(var r:server.rooms.values())synchronized(r){if(r.kind==3&&r.phase==0&&r.dungeonStage==1&&r.difficulty==difficulty&&r.secret.isEmpty()&&r.cardPlayers()<3&&space(r)&&r.host.delta==s.delta&&r.host.actors==s.actors&&r.host.live==s.live&&r.host.equipment==s.equipment&&r.host.arsenal==s.arsenal&&r.host.items==s.items&&r.host.itemVersion==s.itemVersion&&r.host.itemFx==s.itemFx){room=r;break;}}
     if(room==null){if(server.rooms.size()>=server.maxRooms)throw new IllegalArgumentException("Hết phòng trống");server.leave(s);room=server.new Room(s,6,2,-1,true);room.kind=3;room.dungeonStage=1;room.difficulty=difficulty;room.title=name;room.secret=secret;room.strict=true;room.seconds=15;room.mapLimit=8;room.map=6;room.refreshWaiting();server.rooms.put(room.id,room);s.room=room.id;}
     else{synchronized(room){int slot=-1;for(int i=2;i<6;i+=2)if(room.members[i]==null&&room.selectedBots[i]<0&&(room.closedSlots&(1<<i))==0){slot=i;break;}if(slot<0)throw new IllegalArgumentException("Phòng đã đủ người");server.leave(s);room.members[slot]=s;s.room=room.id;room.refreshWaiting();}}
     server.lobby(out,room,s);
@@ -56,7 +56,7 @@ final class Dungeon780 {
    Collections.shuffle(candidates,server.random);
    for(var room:candidates)synchronized(room){
     if(server.rooms.get(room.id)!=room||room.kind!=3||room.phase!=0||room.dungeonStage==2
-        ||!room.secret.isEmpty()||TribalDungeon.is(room)&&(!viewer.tribal||room.dungeonStage!=3)||!TribalDungeon.is(room)&&room.difficulty==2&&!viewer.profile.dungeonClear
+        ||!room.secret.isEmpty()||TribalDungeon.is(room)&&(!viewer.tribal||room.dungeonStage!=3)||!TribalDungeon.is(room)&&room.difficulty>=2&&!viewer.profile.dungeonClear
         ||TribalDungeon.is(room)&&room.host.sulan7912!=viewer.sulan7912||!compatible(room.host,viewer))continue;
     if(TribalDungeon.is(room)&&Progression.level(viewer.profile.experience)<TribalRules.MIN_LEVEL){if(space(room))levelLocked=true;continue;}
     if(TribalDungeon.is(room))TribalDungeon.eligible(viewer,room.difficulty);else eligible(viewer,room.difficulty);
@@ -82,10 +82,11 @@ final class Dungeon780 {
       &&host.items==viewer.items&&host.itemVersion==viewer.itemVersion&&host.itemFx==viewer.itemFx;
  }
 
- static void waiting(GunnyServer.Room r){for(int i=0;i<6;i++){var a=r.avatars[i];if(i%2==1){int type=r.battle==null?0:r.battle.units[i].npc;a.name=AntCaveRules.name(type,r.dungeonStage==2);a.bot=true;a.owner=null;a.experience=r.battle!=null&&r.dungeonStage>0?r.battle.units[i].experience:Progression.experienceForLevel(r.difficulty==2?30:r.difficulty==1?20:15);}else if(r.members[i]==null&&r.selectedBots[i]<0){a.name="Đang chờ";a.bot=false;a.owner=null;a.experience=0;}}}
+ static void waiting(GunnyServer.Room r){for(int i=0;i<6;i++){var a=r.avatars[i];if(i%2==1){int type=r.battle==null?0:r.battle.units[i].npc;a.name=AntCaveRules.name(type,r.dungeonStage==2);a.bot=true;a.owner=null;a.experience=r.battle!=null&&r.dungeonStage>0?r.battle.units[i].experience:Progression.experienceForLevel(DungeonBalance.level(r.dungeonStage,r.difficulty));}else if(r.members[i]==null&&r.selectedBots[i]<0){a.name="Đang chờ";a.bot=false;a.owner=null;a.experience=0;}}}
  static void begin(GunnyServer.Room r){if(r.dungeonStage!=2)r.dungeonStage=1;r.antKills=r.antSpawned=r.antAlive=0;setup(r);}
- static void setup(GunnyServer.Room r){Battle b=r.battle;b.dungeonDifficulty=r.difficulty;b.dungeonStage=r.dungeonStage;for(int i=0;i<6;i++){Battle.Unit u=b.units[i];u.npc=0;if(i%2==0){if(r.members[i]==null&&r.selectedBots[i]<0){u.hp=0;u.dead=true;}else{if(r.members[i]==null){u.human=false;u.weapon=r.avatars[i].weapon;u.experience=r.avatars[i].experience;ItemRules.apply(u,3);}
+ static void setup(GunnyServer.Room r){Battle b=r.battle;b.dungeonDifficulty=r.difficulty;b.dungeonStage=r.dungeonStage;for(int i=0;i<6;i++){Battle.Unit u=b.units[i];u.npc=0;if(i%2==0){if(r.members[i]==null&&r.selectedBots[i]<0){u.hp=0;u.dead=true;}else{if(r.members[i]==null){u.human=false;u.weapon=r.avatars[i].weapon;u.experience=r.avatars[i].experience;ItemRules.apply(u,r.avatars[i].wornMask);}
    AntCaveRules.placeAlly(b,i);}}else{u.hp=0;u.dead=false;u.npc=r.dungeonStage==2&&i!=1?2:0;}}
+  b.dungeonParty=DungeonBalance.party(b);
   if(r.dungeonStage==1){
    r.antAlive=AntCaveRules.initialAntWave(b);
    r.antSpawned=AntCaveRules.count(r.antAlive);

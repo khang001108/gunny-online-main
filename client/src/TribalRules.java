@@ -19,7 +19,7 @@ final class TribalRules {
  // Double hostile HP/damage in the first two encounters, including the legacy Bulan alias.
  // Final Sulan encounter (and allied pea) retains its existing balance.
  static int enemyMultiplier(Battle b){return active(b)&&b.dungeonStage<6?2:1;}
- static int enemyDamage(Battle b){return DAMAGE[b.dungeonDifficulty]*enemyMultiplier(b);}
+ static int enemyDamage(Battle b){return DungeonBalance.attackOf(b,b.active);}
  static boolean active(Battle b){return b.dungeonStage>=3;}
  static int stage(Battle b){return b.dungeonStage-2;}
  static boolean twins(Battle b){return b.dungeonStage==4||b.dungeonStage==5;}
@@ -52,9 +52,8 @@ final class TribalRules {
  static int speaker(Battle b){if(twins(b)&&b.tribalState==OPENING)return introActor(b);if(b.botPhase==BEAN_LINE||b.botPhase==BEAN_POWER){for(int i=6;i<13;i++)if(b.units[i].npc==BEAN&&b.units[i].hp>0)return i;}return b.units[b.active].npc>0?b.active:1;}
  static void place(Battle b,int slot,int x){Battle.Unit u=b.units[slot];u.x=Battle.clamp(x,18,Battle.W-18);u.y=b.ground.surface(u.x,5);u.vy=0;b.refreshAim(u);}
  static void spawn(Battle b,int slot,int kind,int x){
-  Battle.Unit u=b.units[slot];u.npc=kind;u.team=kind==BEAN?0:1;u.human=false;u.dead=false;u.statsEnabled=false;
-  u.maxHp=(kind==RAGE&&b.dungeonDifficulty==0?8000:HP[kind-SPEAR])*(100+b.dungeonDifficulty*45)/100*(kind==RAGE?2:1)*(kind==BEAN?1:enemyMultiplier(b));u.hp=u.maxHp;u.maxEnergy=u.energy=240;
-  u.weapon=8;u.attackBonus=enemyDamage(b)-Battle.baseDamage(8);u.defense=0;
+  Battle.Unit u=b.units[slot];u.npc=kind;u.team=kind==BEAN?0:1;u.human=false;u.dead=false;
+  u.weapon=8;DungeonBalance.spawn(b,u);
   u.face=-1;u.angle=45;u.power=0;u.flashTicks=30;u.attackTicks=u.walk=u.frozen=u.freezeTurns=0;u.lastBuff=14;place(b,slot,x);
   if(floats(u))platform(b,u,3);
  }
@@ -71,7 +70,7 @@ final class TribalRules {
   if(placed>0)b.tribalWave++;
  }
  static void setup(Battle b,int encounter,int difficulty,boolean ignoredBeanSave){
-  b.dungeonStage=encounter+2;b.dungeonDifficulty=difficulty;b.unitCount=encounter==1?14:13;b.teams=true;b.tribalOutcome=-1;b.tribalGoal=GOAL;
+  b.dungeonStage=encounter+2;b.dungeonDifficulty=difficulty;b.dungeonParty=DungeonBalance.party(b);b.unitCount=encounter==1?14:13;b.teams=true;b.tribalOutcome=-1;b.tribalGoal=GOAL;
   b.tribalRound=1;b.tribalPhase=1;b.tribalWave=b.tribalClock=b.tribalDead1=b.tribalDead3=0;
   b.tribalFx=twins(b)?BULAN_INTRO_END:120;b.tribalState=OPENING;b.tribalBeanSaved=false;b.ballCount=b.bursts=b.settle=0;
   for(int i=0;i<b.unitCount;i++){Battle.Unit u=b.units[i];if(i<6&&i%2==0){u.npc=0;u.team=0;if(u.hp>0)place(b,i,allyX(i,twins(b)));}else{u.npc=0;u.hp=0;u.dead=true;u.maxHp=0;}}
@@ -124,7 +123,7 @@ final class TribalRules {
   for(int i=6;i<13;i++){
    Battle.Unit u=b.units[i];if(u.hp<=0)continue;
    if(u.npc==HEAL&&!SulanRules.active(b))heal(b,b.units[1],b.units[1].maxHp/12);
-   if(u.npc==BOMB&&++u.power>=2){Battle.Ball hit=new Battle.Ball();hit.owner=1;hit.x=u.x*256;hit.y=(u.y-12)*256;hit.damage=enemyDamage(b)*2;hit.radius=42;hit.weapon=FIRE_SHOT;b.impact(hit);u.hp=0;}
+   if(u.npc==BOMB&&++u.power>=2){Battle.Ball hit=new Battle.Ball();hit.owner=i;hit.x=u.x*256;hit.y=(u.y-12)*256;hit.damage=DungeonBalance.attackOf(b,i)*2;hit.radius=42;hit.weapon=FIRE_SHOT;b.impact(hit);u.hp=0;}
   }
 
  }
@@ -172,7 +171,7 @@ final class TribalRules {
   int steps=flightSteps(Math.abs(v.x-u.x));
   p.vx=(v.x*256-p.x)*4/steps;p.vy=((Battle.targetY(v)+(u.npc==ELITE?0:offset))*256-p.y)*4/steps-Battle.gravity(p)*(steps+1)/2;
   if(u.npc==ELITE){int vx=p.vx,vy=p.vy,cs=Battle.cos(offset),sn=Battle.sin(offset);p.vx=(vx*cs-vy*sn)/1024;p.vy=(vx*sn+vy*cs)/1024;}
-  p.radius=weapon==FIRE_SHOT?11:4;p.damage=enemyDamage(b)*(u.npc==RAGE?130:100)/100;
+  p.radius=weapon==FIRE_SHOT?11:4;p.damage=DungeonBalance.attackOf(b,actor)*(u.npc==RAGE?130:100)/100;
   // Each elite spear has full base damage; the three-hit volley is no longer divided.
   b.balls[b.ballCount++]=p;
  }

@@ -6,6 +6,7 @@ final class Progression {
  static int bonus(int exp){return growth(exp,0);}
  static int growth(int exp,int stat){return (level(exp)-1)*(stat==0?5:stat==1?8:3); }
  static final int[] BOT_LEVELS={1,5,10,15,20,60,65,70};
+ static int botForgeRank(int exp){return Math.min(15,level(exp)/4);}
  static int botExperience(int bot){return experienceForLevel(BOT_LEVELS[Math.max(0,Math.min(7,bot))]);}
  static int within(int exp){int lv=level(exp);return lv==70?0:(int)(Math.max(0,exp)-25L*(lv-1)*lv);}
  static int limit(int exp){int lv=level(exp);return lv==70?0:50*lv;}

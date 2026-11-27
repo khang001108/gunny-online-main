@@ -82,10 +82,11 @@ final class Battle {
     Battle(Ground ground){this.ground=ground;for(int i=0;i<units.length;i++)units[i]=new Unit();}
     int rand(int n){seed=seed*1103515245+12345;return (seed>>>1)%n;}
     int rollWind(){int cap=clamp(windLimit,0,30);return rand(cap*2+1)-cap;}
+    int dungeonParty=1;
     void start(boolean two){
         for(int i=0;i<raidTargetTurn.length;i++){raidTargetTurn[i]=-1;raidTargets[i]=-1;}
         explicitHumans=false;deferNext=pendingNext=false;teams=false;unitCount=2;active=0;turn=1;over=false;hotseat=two;winner=-1;ballCount=blastCount=bursts=settle=trailCount=0;
-        dungeonStage=queenShots=0;lastDungeonAlly=4;
+        dungeonStage=queenShots=0;dungeonParty=1;lastDungeonAlly=4;
         for(int i=0;i<units.length;i++){damage[i]=kills[i]=0;Unit u=units[i];u.itemUsed=u.frozen=u.freezeTurns=u.invisible=u.flyCooldown=u.hp=u.npc=0;u.dead=false;u.god=false;u.assist=false;u.kit[0]=0;u.kit[1]=1;u.kit[2]=2;}damagePopupCount=0;for(int i=0;i<damagePopups.length;i++)damagePopups[i]=null;shotSerial=hitSerial=winSerial=0;wind=rollWind();lastWind=0;countdown=turnLimit;botWait=0;selectedWeapon=0;
         for(int i=0;i<unitCount;i++){Unit u=units[i];for(int k=0;k<10;k++)u.weaponForge[k]=0;u.forgeWeaponBonus=0;u.wingHp=0;u.npc=0;u.botStyle=-1;u.x=spawnX(i,2);u.y=ground.surface(u.x,35);u.vy=0;u.maxHp=MAXHP;u.maxEnergy=240;u.attackBonus=u.defense=u.luck=u.experience=u.forgeAttack=u.forgeDefense=u.forgeLuck=0;u.statsEnabled=false;u.hp=MAXHP;u.energy=240;u.rage=0;u.angle=45;u.power=65;u.lastPower=u.pendingPower=-1;u.face=i==0?1:-1;u.walk=0;u.attackTicks=0;u.slope=0;u.heals=5;u.flashTicks=u.landingTicks=0;u.dead=false;u.deathX=u.deathY=0;refreshAim(u);}
         clear();
@@ -166,7 +167,7 @@ final class Battle {
         if(id==0){if(extra>2)return false;extra+=2;fly=false;}
         else if(id==1){if(triple)return false;triple=true;fly=false;}
         else if(id==2){if(boost>=100)return false;boost+=50;fly=false;}
-        else if(id==3){if(u.hp==u.maxHp||u.heals<=0)return false;u.hp=Math.min(u.maxHp,u.hp+500);u.heals--;}
+        else if(id==3){if(u.hp==u.maxHp||u.heals<=0)return false;u.hp=Math.min(u.maxHp,u.hp+DungeonBalance.heal10(u));u.heals--;}
         else if(id==4){if(u.flyCooldown>0)return false;u.flyCooldown=3;freezeShot=false;extra=boost=0;triple=pow=false;fly=true;}
         else if(id==5){if(pow||u.rage<100)return false;u.rage=0;pow=true;fly=false;}
         else if(id==6){if(extra>2)return false;extra++;fly=false;}
@@ -187,7 +188,7 @@ final class Battle {
         if(id<0||id>=6||(u.itemUsed&(1<<slot))!=0||u.energy<ITEM_COST[id])return false;
         if(id==0){if(u.invisible>0)return false;u.invisible=2;}
         else if(id==1){if(freezeShot||fly||bursts>0)return false;freezeShot=true;extra=boost=0;triple=pow=false;u.assist=false;}
-        else if(id==2){boolean hurt=false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&ally(active,i)&&units[i].hp<units[i].maxHp)hurt=true;if(!hurt)return false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&ally(active,i)){units[i].hp=Math.min(units[i].maxHp,units[i].hp+300);if(units[i].npc==TribalRules.BEAN){units[i].flashTicks=36;units[i].lastBuff=13;}}}
+        else if(id==2){boolean hurt=false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&ally(active,i)&&units[i].hp<units[i].maxHp)hurt=true;if(!hurt)return false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&ally(active,i)){units[i].hp=Math.min(units[i].maxHp,units[i].hp+DungeonBalance.heal10(units[i]));if(units[i].npc==TribalRules.BEAN){units[i].flashTicks=36;units[i].lastBuff=13;}}}
         else if(id==3){boolean visible=false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&ally(active,i)&&units[i].invisible==0)visible=true;if(!visible)return false;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&ally(active,i))units[i].invisible=Math.max(2,units[i].invisible);}
         else if(id==4){if(u.assist||fly||freezeShot)return false;u.assist=true;}
         else if(id==5){if(u.rage>=100)return false;u.rage=Math.min(100,u.rage+50);}
@@ -464,7 +465,7 @@ final class Battle {
         botActing=true;
         try{
             Unit u=units[active],enemy=units[enemyOf(active)];botWait++;
-            if(botWait==1){botBlocked=0;if(u.hp<=u.maxHp-(u.botStyle==3?350:600)&&u.heals>0)prop(3);}
+            if(botWait==1){botBlocked=0;if(u.hp<=u.maxHp-DungeonBalance.heal10(u)&&u.heals>0)prop(3);}
             if(botWait<=12&&u.energy>=92){
                 int distance=Math.abs(u.x-enemy.x),toward=enemy.x<u.x?-1:1,near=u.botStyle==1?65:u.botStyle==0?145:95,far=u.botStyle==1?160:u.botStyle==0?260:220,direction=distance<near?-toward:distance>far?toward:0;
                 if(direction==0){int left=ground.surface(u.x-10,Math.max(0,u.y-18)),right=ground.surface(u.x+10,Math.max(0,u.y-18));if(left+4<right)direction=-1;else if(right+4<left)direction=1;}

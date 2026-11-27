@@ -336,6 +336,7 @@ final class OnlineClient implements Runnable,CommandListener,ItemCommandListener
             }
         }
         if(sulan7912Cap&&tribalCap&&b.dungeonStage>=3){b.sulanLine=in.readUnsignedByte();b.sulanSpeaker=in.readUnsignedByte();b.sulanTalk=in.readUnsignedShort();b.sulanStory=in.readUnsignedByte();b.sulanStoryClock=in.readUnsignedShort();b.tribalClock=in.readUnsignedShort();b.sulanFireCount=in.readUnsignedByte();if(b.sulanSpeaker>=b.unitCount||b.sulanFireCount>9)throw new IOException("Sai trạng thái Sulan");for(int i=0;i<b.sulanFireCount;i++){b.sulanFireX[i]=in.readUnsignedShort();b.sulanFireLife[i]=in.readUnsignedShort();}for(int n=0;n<7;n++)b.sulanBurn[n]=in.readUnsignedShort();}
+        if(b.dungeonStage>0){for(int i=0;i<b.unitCount;i++){Battle.Unit u=b.units[i];if(u.npc>0)DungeonBalance.stats(b,u);}}
         if(activeActor>=b.unitCount)throw new IOException("Người đang đánh vượt số đơn vị trận");b.active=activeActor;
         if(powTicks==0&&!c.powShotPending)c.powCutinTicks=0;
         if(powTicks>0){if(lastPow!=b.turn){lastPow=b.turn;b.active=powActor;c.startPowCutin();}c.powCutinTicks=powTicks;c.powShotPending=false;}

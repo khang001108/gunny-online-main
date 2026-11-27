@@ -691,7 +691,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     static final int PVP_MAP_COUNT = 6;
     static final String[] MAPS = { "Đu Quay", "Rừng Nhiệt Đới", "Lớp Học Ma Thuật", "Phố Nấm Lùn", "Mộc Diệp Trấn",
             "Đáy Biển", "Huyệt Ma Kiến • Ải 1", "Huyệt Ma Kiến • Nữ Vương", "Tà Thần 1", "Tà Thần 2 • Bulan", "Tà Thần 2 • Bulan", "Tà Thần 3 • Sulan" };
-    static final String[] PROPS = { "+2 đợt bắn", "Đạn 3 tia", "Sát thương +50%", "Hồi 500 HP", "Bay đến điểm đáp",
+    static final String[] PROPS = { "+2 đợt bắn", "Đạn 3 tia", "Sát thương +50%", "Hồi 10% HP", "Bay đến điểm đáp",
             "POW đặc biệt" };
     static final String[] PROP_KEYS = { "Q", "W", "E", "R", "T", "B" };
     static final int[] HUD_PROPS = { 0, 1, 2, 3, 4 };
@@ -1681,6 +1681,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             for (int i = 0; i < game.unitCount; i++) {
                 game.units[i].experience = i == 0 ? experience : Progression.botExperience(i == 2 && chosenAllyBot >= 0 ? chosenAllyBot : actorSex[i] * 4 + Math.max(0, game.units[i].botStyle));
                 if(i==0)ForgeRules.apply(game.units[i],economy.bonuses(),economy.ranks());
+                else{int[] ranks=new int[ForgeRules.SLOTS];int rank=Progression.botForgeRank(game.units[i].experience);for(int k=0;k<ranks.length;k++)ranks[k]=rank;ForgeRules.apply(game.units[i],ForgeRules.equipped(ranks,actorSex[i],3,game.units[i].weapon,actorSkin[i],new int[5]),ranks);}
                 ItemRules.apply(game.units[i], i == 0 ? wornMask : 3);
                 if (training && i > 0)
                     game.units[i].hp = 650;

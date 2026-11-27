@@ -27,11 +27,11 @@ final class MapPicker {
         boolean tribal=c.onlineAccount()&&c.dungeon.draftDungeon==1;
         c.part(frame, 223, 17, 78, 14, 223, 31, false);
         c.pcCenter("Mức độ", 262, 34);
-        for (int i = 0; i < 3; i++) {
-            int x = 213 + i*33;
-            c.img(blueButton,x,54);
-            c.pcCenter(c.dungeon.difficultyName(i),x+15,60);
-            if (difficulty == i) c.drawSelectionGlow(x-1,53,33,20);
+        for (int i = 0; i < 4; i++) {
+            int x=211+(i%2)*50,y=46+(i/2)*20;
+            c.rect(x+2,y+2,45,15,0x294d72);
+            if(difficulty==i)c.drawSelectionGlow(x,y,49,19);
+            c.pcCenter(c.dungeon.difficultyName(i),x+24,y+6);
         }
         c.img(tribal?c.tribalArt.smallCover():c.dungeon.smallCover(),216,89);
         c.pcText(tribal?"Bộ Lạc Tà Thần":"Huyệt Ma Kiến",211,130);

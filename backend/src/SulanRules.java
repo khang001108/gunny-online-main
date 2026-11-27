@@ -59,7 +59,7 @@ final class SulanRules {
    if(t==90){flash(b,b.units[1].x,b.units[1].y);say(b,INTRO_LINE,1,80);}
    if(t==TITLE_AT)b.sulanTalk=0;
    if(t==ROAR_AT){b.units[1].attackTicks=36;say(b,ROAR,1,75);}
-   if(t==ROAR_HIT){for(int victim=0;victim<6;victim+=2)if(b.units[victim].hp>0){flash(b,b.units[victim].x,b.units[victim].y-15);hurt(b,victim,TribalRules.DAMAGE[b.dungeonDifficulty]);}b.check();}
+   if(t==ROAR_HIT){for(int victim=0;victim<6;victim+=2)if(b.units[victim].hp>0){flash(b,b.units[victim].x,b.units[victim].y-15);hurt(b,victim,DungeonBalance.attackOf(b,1));}b.check();}
   }else if(state==TribalRules.TRANSFORM){int t=TRANSFORM-b.tribalFx;
    if(t==GOLD_END){int x=b.units[1].x;TribalRules.spawn(b,1,TribalRules.RAGE,x);b.tribalPhase=2;b.units[1].flashTicks=0;say(b,REBIRTH,1,65);}
    if(t==BEAN_AT){int x=0;for(int i=0;i<6;i+=2)if(b.units[i].hp>0)x=Math.max(x,b.units[i].x);TribalRules.spawn(b,6,TribalRules.BEAN,Battle.clamp(x+55,28,b.units[1].x-55));b.units[6].maxHp=b.units[6].hp=beanHp(b.dungeonDifficulty);b.units[6].face=b.units[1].x<b.units[6].x?-1:1;say(b,BEAN,6,60);}
@@ -111,7 +111,8 @@ final class SulanRules {
   if(b.units[shot.owner].npc==TribalRules.RAGE&&b.units[actor].npc==0&&protectedByBean(b,actor))return amount/2;
   return amount;
  }
- static void hurt(Battle b,int actor,int amount){Battle.Unit u=b.units[actor];if(u.hp<=0||u.god)return;int received=Math.min(u.hp,amount);u.hp-=received;u.flashTicks=20;u.lastBuff=0;b.showDamage(u,received,false);b.hitSerial++;}
+ static void hurt(Battle b,int actor,int amount){hurt(b,actor,amount,false);}
+ static void hurt(Battle b,int actor,int amount,boolean shield){Battle.Unit u=b.units[actor];if(u.hp<=0||u.god)return;boolean special=CombatBalance.special(b,1,actor,amount,u.x*256,u.y*256,b.tribalClock);int actual=CombatBalance.damage(b,1,actor,amount,u.x*256,u.y*256,b.tribalClock);if(shield)actual/=2;int received=Math.min(u.hp,actual);u.hp-=received;u.flashTicks=20;u.lastBuff=0;b.showDamage(u,actual,special);b.hitSerial++;}
  static void ignite(Battle b,int x){
   int at=-1;for(int i=0;i<b.sulanFireCount;i++)if(Math.abs(b.sulanFireX[i]-x)<24){at=i;break;}
   if(at<0){if(b.sulanFireCount==b.sulanFireX.length)return;at=b.sulanFireCount++;}
@@ -130,7 +131,7 @@ final class SulanRules {
  }
  static void beginTurn(Battle b){
   Battle.Unit u=b.units[b.active];if(u.npc==TribalRules.BEAN)u.face=b.units[1].x<u.x?-1:1;
-  if(b.active<7&&b.sulanBurn[b.active]>0&&u.hp>0){int amount=6*(30+b.dungeonDifficulty*25);if(u.npc==0&&protectedByBean(b,b.active))amount/=2;hurt(b,b.active,amount);b.check();}
+  if(b.active<7&&b.sulanBurn[b.active]>0&&u.hp>0){int amount=DungeonBalance.attackOf(b,1)/4;hurt(b,b.active,amount,u.npc==0&&protectedByBean(b,b.active));b.check();}
  }
  static void extinguish(Battle b,int x,int y){
   for(int i=0;i<7;i++)if(Math.abs(b.units[i].x-x)<=35&&Math.abs(Battle.targetY(b.units[i])-y)<=40)b.sulanBurn[i]=0;
@@ -165,7 +166,7 @@ final class SulanRules {
   int count=playerCount(b),end=0;
   if(fury){
    if(t==45)u.attackTicks=36;
-   if(t==65){for(int n=0;n<7;n+=2){Battle.Unit v=b.units[n];if(v.hp<=0||n==6&&v.npc!=TribalRules.BEAN)continue;flash(b,v.x,v.y-15);int amount=n==6?6*(b.dungeonDifficulty==0?260:b.dungeonDifficulty==1?430:720):TribalRules.DAMAGE[b.dungeonDifficulty]*2;if(n<6&&protectedByBean(b,n))amount/=2;hurt(b,n,amount);}b.check();}
+   if(t==65){for(int n=0;n<7;n+=2){Battle.Unit v=b.units[n];if(v.hp<=0||n==6&&v.npc!=TribalRules.BEAN)continue;flash(b,v.x,v.y-15);int amount=n==6?6*(b.dungeonDifficulty==0?260:b.dungeonDifficulty==1?430:720):DungeonBalance.attackOf(b,1)*2;hurt(b,n,amount,n<6&&protectedByBean(b,n));}b.check();}
    end=110;
   }else{
    boolean golden=u.npc==TribalRules.SULAN;

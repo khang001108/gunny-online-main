@@ -11,16 +11,17 @@ public class TribalTcpCheck {
   public void close()throws IOException{socket.close();}
  }
  public static void main(String[] args)throws Exception {
+  final int testDifficulty=args.length==0?2:Integer.parseInt(args[0]);
   var store=new CloudStore.Memory();String[] emails={"tribal1@tcp.test","tribal2@tcp.test","tribal3@tcp.test"};for(int i=0;i<3;i++){store.register(emails[i],"test-password-123","Raid "+i);store.profile(store.login(emails[i],"test-password-123").userId).experience=Progression.experienceForLevel(30);}
   try(var server=new GunnyServer(new InetSocketAddress("127.0.0.1",0),Path.of("backend/assets"),store)){server.clock.shutdownNow();server.startTcp("127.0.0.1",0,8);Player[] p=new Player[3];try{
    for(int i=0;i<3;i++)p[i]=new Player(server.tcpPort(),emails[i]);
-   int id=p[0].call("tribalcreate",o->{o.writeByte(2);o.writeUTF("Bộ Lạc Tà Thần");o.writeUTF("");}).readInt();
+   int id=p[0].call("tribalcreate",o->{o.writeByte(testDifficulty);o.writeUTF("Bộ Lạc Tà Thần");o.writeUTF("");}).readInt();
    for(int i=1;i<3;i++)p[i].call("join",o->{o.writeInt(id);o.writeByte(0);o.writeUTF("");});var r=server.rooms.get(id);check(r.cardPlayers()==3,"Three real players share one party");
    for(int stage=1;stage<=3;stage++){
     for(int i=1;i<3;i++)p[i].call("ready",o->o.writeBoolean(true));p[0].call("start",null);check(r.map==(stage==3?11:7+stage),"Separate stage map through TCP start");for(var member:r.members)if(member!=null)member.ready=true;r.tick();r.loadingReadyAt=System.currentTimeMillis()-2001;r.tick();check(r.phase==1,"Loading finishes");
     if(stage==1){r.battle.tribalFx=0;r.battle.active=0;int turn=r.battle.turn;p[0].call("sync",o->{o.writeInt(0);o.writeByte(0);o.writeBoolean(true);o.writeInt(turn);o.writeBoolean(false);o.writeInt(0);o.writeInt(-1);o.writeInt(-1);o.writeInt(-1);o.writeByte(2);o.writeInt(1);o.writeByte(1);o.writeShort(0);o.writeInt(2);o.writeByte(2);o.writeShort(-(1+45*128+80));});for(int tick=0;tick<600&&!r.battle.pendingNext;tick++)r.tick();check(r.battle.shotSerial>0&&r.battle.pendingNext,"TCP firing uses ordinary projectiles and finishes the turn");int hp=r.battle.units[0].hp;p[0].close();p[0]=new Player(server.tcpPort(),emails[0]);check(p[0].call("tribalresume",null).readBoolean(),"Re-login resumes active campaign");check(r.battle.units[0].hp==hp&&r.host==server.sessions.get(p[0].token),"Reconnection keeps HP and authority");}
     // Controlled knockouts exercise the real transition/settlement/card routes without a long manual battle.
-    for(int guard=0;!r.battle.over&&guard<3000;guard++){if(r.battle.ending()){r.battle.tick();continue;}for(var u:r.battle.units)if(u.team==1)u.hp=0;r.battle.tribalFx=0;r.battle.check();if(r.battle.dungeonStage==3&&r.battle.tribalGoal>0)TribalRules.round(r.battle);if(r.battle.tribalState==TribalRules.TRANSFORM){while(r.battle.tribalFx>0)r.battle.tick();}}check(r.battle.over,"Controlled knockout finishes after result delay");for(var m:r.members)if(m!=null)m.resultAck=r.battle.turn;r.tick();long deadline=System.currentTimeMillis()+5000;while(!r.settled&&System.currentTimeMillis()<deadline)Thread.sleep(10);check(r.settled,"Stage persisted before cards open");for(var player:p)player.call("cardsready",null);
+    for(int guard=0;!r.battle.over&&guard<3000;guard++){if(r.battle.ending()){r.battle.tick();continue;}for(var u:r.battle.units)if(u.team==1)u.hp=0;r.battle.tribalFx=0;r.battle.check();if(r.battle.dungeonStage==3&&r.battle.tribalGoal>0)TribalRules.round(r.battle);if(r.battle.tribalState==TribalRules.TRANSFORM){while(r.battle.tribalFx>0)r.battle.tick();}}check(r.battle.over,"Controlled knockout finishes after result delay");for(var m:r.members)if(m!=null)m.resultAck=r.battle.turn;r.tick();long deadline=System.currentTimeMillis()+5000;while(!r.settled&&System.currentTimeMillis()<deadline)Thread.sleep(10);check(r.settled,"Stage persisted before cards open");check(Json.num(store.tribalStore.matches.get(r.match),"difficulty",-1)==DungeonBalance.rewardTier(testDifficulty),"Rewards retain original database tier");for(var player:p)player.call("cardsready",null);
     if(stage<3){
      try{p[0].call("claim780",o->{o.writeByte(0);o.writeByte(9);});throw new AssertionError("Tenth card accepted on nine-card crossing");}catch(AssertionError expected){check(expected.getMessage().startsWith("1:"),"Server rejects invalid crossing reward intent");}
      try{p[0].call("claim780",o->{o.writeByte(1);o.writeByte(8);});throw new AssertionError("Second pick accepted on crossing");}catch(AssertionError expected){check(expected.getMessage().startsWith("1:"),"Server rejects invalid crossing reward intent");}
@@ -35,7 +36,7 @@ public class TribalTcpCheck {
      if(i<p.length-1)check(r.phase==2&&!r.canStart(),"Cannot restart until remaining teammates return");
     }
     check(r.phase==0&&r.dungeonStage==(stage==1?4:stage==2?6:3),"Return selects next stage or resets completed campaign");
-    check(r.cardPlayers()==3&&r.host==server.sessions.get(p[0].token)&&r.difficulty==2,"Original party, host and difficulty retained");
+    check(r.cardPlayers()==3&&r.host==server.sessions.get(p[0].token)&&r.difficulty==testDifficulty,"Original party, host and difficulty retained");
    }
    check(server.rooms.get(id)==r&&r.dungeonStage==3&&r.phase==0,"Completed party remains in its own room");
   }finally{for(var player:p)if(player!=null)player.close();}}

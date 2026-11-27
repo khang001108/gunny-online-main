@@ -282,7 +282,7 @@ final class RoomLoadout {
     }
 
     static final String[] DETAILS = { "Ẩn nhân vật trong 2 lượt.", "Đạn tiếp theo đóng băng mục tiêu.",
-            "Hồi 300 HP cho các đồng minh còn sống.", "Ẩn cả đội trong 2 lượt.",
+            "Hồi 10% HP tối đa cho các đồng minh còn sống.", "Ẩn cả đội trong 2 lượt.",
             "Đạn tự điều chỉnh hướng khi gần mục tiêu.", "Tăng 50 điểm nộ." };
 
     void drawGroups(boolean online) {

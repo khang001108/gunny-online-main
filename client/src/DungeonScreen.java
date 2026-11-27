@@ -10,7 +10,7 @@ final class DungeonScreen {
  void load(){if(banner==null)banner=c.combatRoomArt("dungeon780-banner");}
  int minimumLevel(int family){return family==1?TribalRules.MIN_LEVEL:15;}
  boolean levelAllowed(int family){int level=Progression.level(c.experience),need=minimumLevel(family);if(level>=need)return true;c.popup.notice("Chưa đủ cấp",(family==1?"Bộ Lạc Tà Thần":"Huyệt Ma Kiến")+" yêu cầu Lv "+need+". Nhân vật hiện ở Lv "+level+".");return false;}
- String difficultyName(int value){return value==0?"Dễ":value==1?"Thường":"Khó";}
+ String difficultyName(int value){return value==0?"Dễ":value==1?"Thường":value==2?"Khó":"Siêu khó";}
  private final Image[] stageCovers = new Image[2];
  private Image smallCover, seatCard, emptyCard, localPortrait;
  private int allyPortraitId = -1;
@@ -460,7 +460,7 @@ final class DungeonScreen {
 
  private void confirmPicker(boolean online) {
   if(!levelAllowed(draftDungeon))return;
-  if (draftDungeon==0&&draftDifficulty == 2 && !c.economy.clear()) {
+  if (draftDungeon==0&&draftDifficulty >= 2 && !c.economy.clear()) {
    c.maps.notice("Vượt Thường để mở Khó");
    return;
   }
@@ -486,7 +486,7 @@ final class DungeonScreen {
  void keyRoom(boolean online, int key, int dir, boolean ok) {
   if(rewardsOpen){keyRewards(key,dir,ok);return;}
   if (online ? picker : c.offlineDungeon.picker) {
-   if(key==-7){if(pickerStep>0)pickerStep--;else setPicker(online,false);}else if(dir==1||dir==2){if(pickerStep==0)draftDungeon=1-draftDungeon;else if(pickerStep==1)draftDifficulty=(draftDifficulty+(dir==1?2:1))%3;}else if(dir==4&&pickerStep>0)pickerStep--;else if(ok||key==-6){if(pickerStep==0&&!levelAllowed(draftDungeon))return;if(pickerStep<2)pickerStep++;else confirmPicker(online);}
+   if(key==-7){if(pickerStep>0)pickerStep--;else setPicker(online,false);}else if(dir==1||dir==2){if(pickerStep==0)draftDungeon=1-draftDungeon;else if(pickerStep==1)draftDifficulty=(draftDifficulty+(dir==1?3:1))%4;}else if(dir==4&&pickerStep>0)pickerStep--;else if(ok||key==-6){if(pickerStep==0&&!levelAllowed(draftDungeon))return;if(pickerStep<2)pickerStep++;else confirmPicker(online);}
 
    return;
   }
@@ -553,7 +553,7 @@ final class DungeonScreen {
   if(online&&n.rewardWaitingMask!=0){c.message("Chờ đồng đội nhận thưởng và về phòng");return;}
   if(!levelAllowed(online&&n.dungeonStage>=3?1:0))return;
   int difficulty = online ? n.dungeonDifficulty : c.offlineDungeon.difficulty;
-  if ((!online||n.dungeonStage<3)&&difficulty == 2 && !c.economy.clear()) {
+  if ((!online||n.dungeonStage<3)&&difficulty >= 2 && !c.economy.clear()) {
    c.popup.notice(DungeonScreen.TITLE, "Vượt Thường để mở Khó");
    return;
   }
@@ -613,7 +613,7 @@ final class DungeonScreen {
  void pointerRoom(boolean online, int x, int y) {
   if(rewardsOpen){pointerRewards(x,y);return;}
   if (online ? picker : c.offlineDungeon.picker) {
-   if(x>=14&&x<194&&y>=29&&y<205){draftDungeon=x<106?0:1;if(levelAllowed(draftDungeon))pickerStep=1;}else if(x>=212&&x<311&&y>=53&&y<74){draftDifficulty=Battle.clamp((x-213)/33,0,2);pickerStep=2;}else if(c.maps.hitConfirm(x,y)){if(pickerStep==0&&!levelAllowed(draftDungeon))return;if(pickerStep<2)pickerStep++;else confirmPicker(online);}else if(x>=295&&y<30)setPicker(online,false);
+   if(x>=14&&x<194&&y>=29&&y<205){draftDungeon=x<106?0:1;if(levelAllowed(draftDungeon))pickerStep=1;}else if(x>=211&&x<311&&y>=46&&y<86){draftDifficulty=Battle.clamp((y-46)/20,0,1)*2+Battle.clamp((x-211)/50,0,1);pickerStep=2;}else if(c.maps.hitConfirm(x,y)){if(pickerStep==0&&!levelAllowed(draftDungeon))return;if(pickerStep<2)pickerStep++;else confirmPicker(online);}else if(x>=295&&y<30)setPicker(online,false);
 
    return;
   }
