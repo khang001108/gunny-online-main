@@ -33,9 +33,13 @@ final class Battle {
     void completeTurn(){pendingNext=false;boolean deferred=deferNext;deferNext=false;next();deferNext=deferred;}
     final Ball[] balls=new Ball[20];
     final Blast[] blasts=new Blast[16];
-    static final class DamagePopup {int x,y,value,age;boolean powered;}
+    static final class DamagePopup {
+        static final byte STYLE_NORMAL=0,STYLE_SPECIAL=1,STYLE_BPOW=2;
+        int x,y,value,age;byte style;
+    }
     final DamagePopup[] damagePopups=new DamagePopup[20];int damagePopupCount;
-    void showDamage(Unit u,int value,boolean powered){if(value<=0)return;DamagePopup popup=new DamagePopup();popup.x=u.x;popup.y=u.y-34;popup.value=value;popup.powered=powered;if(damagePopupCount==damagePopups.length){for(int i=1;i<damagePopupCount;i++)damagePopups[i-1]=damagePopups[i];damagePopupCount--;}damagePopups[damagePopupCount++]=popup;}
+    void showDamage(Unit u,int value,boolean special){showDamage(u,value,special,false);}
+    void showDamage(Unit u,int value,boolean special,boolean bpow){if(value<=0)return;DamagePopup popup=new DamagePopup();popup.x=u.x;popup.y=u.y-34;popup.value=value;popup.style=(byte)(bpow?DamagePopup.STYLE_BPOW:(special?DamagePopup.STYLE_SPECIAL:DamagePopup.STYLE_NORMAL));if(damagePopupCount==damagePopups.length){for(int i=1;i<damagePopupCount;i++)damagePopups[i-1]=damagePopups[i];damagePopupCount--;}damagePopups[damagePopupCount++]=popup;}
     // Bounded visual-only history; no per-frame particle allocation on CLDC.
     static final int TRAIL_CAPACITY=192;
     final int[] trailX=new int[TRAIL_CAPACITY],trailY=new int[TRAIL_CAPACITY],trailWeapon=new int[TRAIL_CAPACITY],trailFrame=new int[TRAIL_CAPACITY],trailAge=new int[TRAIL_CAPACITY],trailLife=new int[TRAIL_CAPACITY];
@@ -315,7 +319,7 @@ final class Battle {
                 if(u.hp>0&&u.npc>=4){u.flashTicks=24;u.lastBuff=0;}
                 if(u.hp>0&&u.npc==3){botPhase=AntCaveRules.QUEEN_HIT;u.flashTicks=24;}
                 if(!ally(b.owner,i)){this.damage[b.owner]+=received;if(u.hp==0)kills[b.owner]++;}
-                u.rage=Math.min(100,u.rage+(received*100+u.maxHp-1)/u.maxHp);fx.damage=damage;showDamage(u,damage,b.powered||special);
+                u.rage=Math.min(100,u.rage+(received*100+u.maxHp-1)/u.maxHp);fx.damage=damage;showDamage(u,damage,special,b.powered);
             }
 
         }

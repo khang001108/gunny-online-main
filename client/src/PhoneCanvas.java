@@ -3127,10 +3127,11 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             Battle.DamagePopup popup = game.damagePopups[n];
             String digits = "" + popup.value;
             int x = popup.x - cameraX - digits.length() * 5, y = popup.y - cameraY - Math.min(24, popup.age * 2 / 3);
-            if (popup.powered)
+            if (popup.style == Battle.DamagePopup.STYLE_BPOW)
                 img(fxDamageBackground, popup.x - cameraX - 29, y - 5);
+            Image digitsArt = popup.style == Battle.DamagePopup.STYLE_SPECIAL && fxDamageSpecial != null ? fxDamageSpecial : fxDamage;
             for (int i = 0; i < digits.length(); i++)
-                part(popup.powered&&fxDamageSpecial!=null?fxDamageSpecial:fxDamage, (digits.charAt(i) - '0') * 12, 0, 12, 18, x + i * 10, y, false);
+                part(digitsArt, (digits.charAt(i) - '0') * 12, 0, 12, 18, x + i * 10, y, false);
         }
     }
 

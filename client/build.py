@@ -179,4 +179,33 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
         jad.write_text(text, encoding='utf-8')
 if release_errors:
     raise SystemExit('CHUA cap nhat cac ban cai dang bi khoa: '+', '.join(release_errors))
-print('Rebuilt and verified current E72/E6 7.9.20 JAR and JAD. Old 7918 files are retained as asset seeds.')
+# Both installers have been rebuilt successfully. Check JAD/JAR pairs before
+# removing old release seeds. Never remove unrelated downloads or current files.
+release_suffix = APP_VERSION.replace('.', '')
+release_prefixes = ('Gunny-E6-Online-', 'Gunny-E72-2009-Online-')
+for prefix in release_prefixes:
+    stem = prefix + release_suffix
+    current_jar = downloads / (stem + '.jar')
+    current_jad = downloads / (stem + '.jad')
+    if not current_jar.is_file() or not current_jad.is_file():
+        raise SystemExit('Missing current release pair: ' + stem)
+    props = dict(line.split(': ', 1) for line in current_jad.read_text(encoding='utf-8').splitlines() if ': ' in line)
+    if (props.get('MIDlet-Jar-URL') != current_jar.name or
+            props.get('MIDlet-Jar-Size') != str(current_jar.stat().st_size) or
+            props.get('MIDlet-Version') != APP_VERSION):
+        raise SystemExit('Invalid current JAD: ' + str(current_jad))
+
+old_release = re.compile(r'(?:Gunny-E6-Online-|Gunny-E72-2009-Online-)([0-9]+)\.(?:jar|jad)')
+cleanup_errors = []
+for path in sorted(downloads.iterdir()):
+    match = old_release.fullmatch(path.name)
+    if not match or match.group(1) == release_suffix or not path.is_file():
+        continue
+    try:
+        path.unlink()
+        print('Removed old installer: ' + path.name)
+    except OSError:
+        cleanup_errors.append(path.name)
+if cleanup_errors:
+    raise SystemExit('Build OK, nhung chua xoa duoc file cu. Dong chuong trinh dang mo file va build lai: ' + ', '.join(cleanup_errors))
+print('Rebuilt and verified current E72/E6 ' + APP_VERSION + ' JAR and JAD. Old installers removed.')
