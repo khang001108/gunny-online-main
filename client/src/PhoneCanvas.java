@@ -675,6 +675,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     final Image[] carry = new Image[10], backCarry = new Image[10], bullets = new Image[10], trailArt = new Image[10],
             shopArt = new Image[10], propArt = new Image[6];
     final Image[] impactArt = new Image[10];
+    final WeaponCombatArt combatWeapons=new WeaponCombatArt(this);
     static final int[] ACTIVE_WEAPONS = { 0, 3, 5, 9, 2, 4, 7, 1 };
     static final String[] WEAPON_NAMES = { "Lựu đạn", "Pháo", "Tủ thuốc", "Lu gạch", "Tủ lạnh", "Phi tiêu", "Cung",
             "Giỏ đồ", "VIP Thương Cổ", "Sấm sét" };
@@ -1486,6 +1487,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             if(weapon>=0&&weapon<10)mask|=1<<weapon;
             if(i<6&&u.npc==0)try{levelIcon(actorExp(i));}catch(OutOfMemoryError low){}
         }
+        try{combatWeapons.prepare(mask);}catch(IOException e){throw new RuntimeException(e.getMessage());}
         if((mask&(1<<8))!=0)try{tribalArt.preloadPlayerSpear();}catch(OutOfMemoryError low){ /* keep original projectile fallback */ }
         // Prepare present NPCs through the shared Tribal cache before optional wings.
         if(game.dungeonStage==6)tribalArt.preloadBattle();
@@ -1493,7 +1495,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         if(game.dungeonStage>=3)mask|=(1<<0)|(1<<5);
         for(int w=0;w<10;w++)if((mask&(1<<w))!=0){
             if(Runtime.getRuntime().freeMemory()<(s==1?1024:3072)*1024)break;
-            try{heldArt(w);backArt(w);impactArt(w);}catch(OutOfMemoryError low){break;}
+            try{heldArt(w);backArt(w);if(!combatWeapons.ready(w)||game.dungeonStage>=3&&(w==0||w==5))impactArt(w);}catch(OutOfMemoryError low){break;}
         }
         try{
             if(Runtime.getRuntime().freeMemory()<(s==1?1024:3072)*1024)return;
@@ -1531,7 +1533,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     // Only call when leaving the encounter, never when opening a pause/menu overlay.
     void releaseBattleArt(){
         hudParticipantMask=0;defeatedPortraitShade=null;
-        releaseNpcArt();releaseLoadingArt();vip.release();
+        releaseNpcArt();releaseLoadingArt();vip.release();combatWeapons.release();
         background=miniTerrain=opponentStanding=powCutin=aimSector=dialFace=fadeBuffer=null;
         pixels=scratch=slopePixels=slopeRotated=slopeLayer=fadePixels=dialPixels=dialRotated=miniSample=null;
         onlineGround=hardTerrain=null;
@@ -2484,10 +2486,11 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     oval(x-radius,y-radius,radius*2,radius*2,game.trailAge[i]<5?0xffbe56:0x9b622d);
                     continue;
                 }
+                if(combatWeapons.trail(game.trailWeapon[i],game.trailPowered[i],game.trailFrame[i],game.trailAge[i],game.trailLife[i],game.trailX[i]/256-cameraX,game.trailY[i]/256-cameraY))continue;
                 int fade = game.trailAge[i] * 6 / game.trailLife[i];
                 int size = projectileArtSize(game.trailWeapon[i]);
                 if(!worldVisible(game.trailX[i]/256-cameraX-size/2,game.trailY[i]/256-cameraY-size/2,size,size))continue;
-                part(trailArt[game.trailWeapon[i]], game.trailFrame[i] * size, fade * size, size, size,
+                part(trailArt[game.trailWeapon[i]], (Battle.nativeWeapon(game.trailWeapon[i])?game.trailFrame[i]/2:game.trailFrame[i]) * size, fade * size, size, size,
                         game.trailX[i] / 256 - cameraX - size / 2, game.trailY[i] / 256 - cameraY - size / 2, false);
             }
             for (int i = 0; i < game.ballCount; i++) {
@@ -2506,6 +2509,8 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     drawFlight(b.vx, b.vy, b.age / 8 % 2, x, y);
                 } else if(b.weapon==8&&tribalArt.playerSpear(b)){
                     // Bulan spear sprite, already cached during Loading.
+                } else if(combatWeapons.ready(b.weapon)){
+                    if(worldVisible(x-24,y-24,48,48))combatWeapons.projectile(b,x,y);
                 } else if(worldVisible(x-size/2,y-size/2,size,size))
                     part(bullets[b.weapon], projectileFrame(b) * size, b.weapon == 9 ? (b.age / 4 % 5) * size : 0, size,
                             size, x - size / 2, y - size / 2, false);
@@ -2519,6 +2524,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
                     continue;
                 }
                 if(!worldVisible(x-48,y-48,96,96))continue;
+                if(combatWeapons.impact(b,x,y))continue;
                 int ef = Math.min(11, b.time * 12 / 25);
                 part(impactArt(b.weapon), ef % 4 * 96, ef / 4 * 96, 96, 96, x - 48, y - 48, false);
             }
@@ -3231,6 +3237,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
         }
         Battle.Unit u = game.units[index];
         if(u.weapon==8&&tribalArt.heldPlayerSpear(u.face,unitAnimation(index),Battle.aimAngle(u),x+u.face*handOffsetX(index),y+handOffsetY(index)))return;
+        if(Battle.isThrown(u.weapon)&&combatWeapons.draw(u.weapon,index==game.active&&game.pow,WeaponCombatArt.HELD,heldFrame(index),x+u.face*handOffsetX(index),y+handOffsetY(index),heldTransform(index)))return;
         int size = handSize(u.weapon);
         Image art = heldArt(u.weapon);
         if (art != null)
@@ -4165,6 +4172,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             do {
                 next = nextWeapon(next, 1);
             } while ((owned & (1 << next)) == 0);
+            try{combatWeapons.prepare(1<<next);}catch(IOException e){message(e.getMessage());return;}
             ItemRules.weapon(game.units[game.active], next);
             equipped = next;
             saveSettings();

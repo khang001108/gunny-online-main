@@ -11,6 +11,6 @@ final class OnlineVisuals {
   long event=mix(mix(b.turn,b.shotSerial),b.hitSerial);
   for(int i=0;i<b.unitCount;i++){Battle.Unit u=b.units[i];u.landingTicks=remainingNumber(u.landingTicks,32,mix(mix(mix(b.shotSerial,i),u.x),u.y),i,true,now);u.flashTicks=remainingNumber(u.flashTicks,36,mix(mix(mix(mix(b.turn,i),u.lastBuff),b.usedPropCount),u.npc>=3?b.hitSerial:0),i,false,now);}
   for(int i=b.damagePopupCount-1;i>=0;i--){Battle.DamagePopup p=b.damagePopups[i];int ordinal=0;for(int j=0;j<i;j++)if(b.damagePopups[j].x==p.x&&b.damagePopups[j].y==p.y&&b.damagePopups[j].value==p.value)ordinal++;p.age=elapsedNumber(mix(mix(mix(mix(mix(event,1),p.x),p.y),p.value),ordinal),p.age,now);if(p.age>=42){for(int j=i+1;j<b.damagePopupCount;j++)b.damagePopups[j-1]=b.damagePopups[j];b.damagePopups[--b.damagePopupCount]=null;}}
-  for(int i=b.blastCount-1;i>=0;i--){Battle.Blast p=b.blasts[i];p.time=elapsedNumber(mix(mix(mix(mix(event,2),p.x),p.y),p.weapon),p.time,now);if(p.time>24){b.blasts[i]=b.blasts[--b.blastCount];b.blasts[b.blastCount]=null;}}
+  for(int i=b.blastCount-1;i>=0;i--){Battle.Blast p=b.blasts[i];p.time=elapsedNumber(mix(mix(mix(mix(mix(event,2),p.x),p.y),p.weapon),p.powered?1:0),p.time,now);if(p.time>24){b.blasts[i]=b.blasts[--b.blastCount];b.blasts[b.blastCount]=null;}}
  }
 }

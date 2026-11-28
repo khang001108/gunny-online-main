@@ -160,12 +160,16 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
                 raise SystemExit('Manifest normalization failed: '+str(temp))
             if 'GunnyMIDlet.class' not in candidate.namelist():
                 raise SystemExit('Missing GunnyMIDlet.class: '+str(temp))
-            required_classes = ('GameRelease.class','VipSystem.class','WingAttachment.class','WingOneArt.class','WingGroupArt.class','WingBattleArt.class','WingBalancedArt.class','WingPackedArt.class','WingPackedArt$Work.class')
+            required_classes = ('GameRelease.class','WeaponCombatArt.class','WeaponCombatArt$Pack.class','VipSystem.class','WingAttachment.class','WingOneArt.class','WingGroupArt.class','WingBattleArt.class','WingBalancedArt.class','WingPackedArt.class','WingPackedArt$Work.class')
             for required in required_classes:
                 if required not in candidate.namelist():
                     raise SystemExit('Missing wing/release class: '+required)
             if APP_VERSION.encode('ascii') not in candidate.read('GameRelease.class'):
                 raise SystemExit('Wrong GameRelease.class version')
+            for weapon in (0,1,2,3,4,5,7,9):
+                required = 'weapon-combat-'+str(weapon)+'.dat'
+                if required not in overlays or not overlays[required].startswith(b'GWC1') or candidate.read(required) != overlays[required]:
+                    raise SystemExit('Missing or stale normal/POW weapon art: '+required)
             required_wings = [f'wingv4-{w}-{a}.dat' for w,n in enumerate((13,14,14,15,12,5)) for a in range(n)]
             for required in required_wings:
                 if required not in overlays or candidate.read(required) != overlays[required]:

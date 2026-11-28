@@ -1,5 +1,21 @@
 # Client Java ME
 
+## Đạn và hiệu ứng nổ thường / Bpow trên E72
+
+Tám vũ khí đang mở dùng đúng cặp Common/Special trong tài nguyên gốc: Lựu đạn 101/111, Pháo 161/171, Tủ thuốc 341/351, Lu gạch 381/391, Tủ lạnh 321/331, Phi tiêu 121/131, Giỏ đồ 401/411, Sấm sét 141/151. Tủ lạnh bắn thường dùng TV; khi Bpow dùng tủ lạnh. VIP Thương Cổ giữ tài nguyên riêng hiện có.
+
+`WeaponCombatArt` dùng 16 hướng đạn, giữ các frame động của điện/kéo, vệt bay theo chế độ bắn và 25 mốc hiệu ứng nổ. Ảnh được xoay, cắt và đóng gói sẵn trong `assets1/weapon-combat-*.dat` (E72) / `assets2` (E6); chỉ giải mã vũ khí có mặt lúc Loading và trước khi đổi vũ khí. Trong lúc vẽ đạn/nổ không đọc file, xoay ảnh hoặc tạo ảnh mới. Các atlas được giải phóng khi rời trận.
+
+Source `Battle.java` của client và server giữ cờ Bpow từ viên đạn sang vụ nổ. Snapshot dùng bit cao còn trống của byte bán kính hiệu ứng, giữ nguyên độ dài gói và phần bán kính thấp; client cũ không dùng bán kính hiệu ứng để tính sát thương. Cần cập nhật cả backend và JAR để người xem online nhận đúng nổ Bpow. Sát thương, đào đất, quỹ đạo và nhịp mô phỏng giữ nguyên.
+
+Nguồn và SHA256 nằm trong `source-assets/weapon-combat/manifest.json`. Sinh lại tài nguyên:
+
+```powershell
+python client/tools/weapon_combat_assets.py --resource D:/gunny/Resource --ffdec D:/gunny/GunnyNokia/tools/ffdec/ffdec.jar
+```
+
+Kiểm tra: `backend/tests/WeaponCombatCheck.java` và `client/tests/UiWeaponCombatCheck.java` (MicroEmulator 320×240 / 640×480), gồm bắn thường/Bpow, toàn bộ frame, đổi vũ khí, nhiều đạn/nổ, cache và snapshot online.
+
 Mã nguồn client được lấy từ `D:/gunny/GunnyNokia/src` để có thể sửa và build ngay trong repo này. Không đưa thư viện build hoặc tài nguyên trùng lặp vào Git; tài nguyên được giữ từ các JAR phát hành hiện có.
 
 Trong màn hình đăng nhập/đăng ký, chọn **Máy chủ**:

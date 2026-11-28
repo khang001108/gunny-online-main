@@ -14,6 +14,18 @@ final class Battle {
     static int weaponMinAngle(int weapon){return weapon==5?0:weapon==4?15:weapon==2?20:weapon==7?10:weapon==1?15:weapon==3?10:weapon==9?15:20;}
     static int weaponMaxAngle(int weapon){return weapon==5?90:weapon==4?70:weapon==2?75:weapon==7?80:weapon==1?60:weapon==3?80:65;}
     static int projectileSize(int weapon){return weapon==4||weapon==5?32:16;}
+    static boolean nativeWeapon(int weapon){return weapon>=0&&weapon<10&&weapon!=6&&weapon!=8;}
+    // Visual-only 16 directions; fixed-point flight and the original eight-frame fallback stay unchanged.
+    static int visualFrame(Ball b){
+        if(!nativeWeapon(b.weapon))return ballFrame(b);
+        if(b.weapon!=9)return b.age/2%16;
+        int best=0;long score=Long.MIN_VALUE;
+        for(int i=0;i<16;i++){int angle=i*360/16;long dot=(long)b.vx*cos(angle)-(long)b.vy*sin(angle);if(dot>score){score=dot;best=i;}}
+        return best;
+    }
+    // The radius byte has a spare high bit; older clients only use it as visual metadata.
+    static int blastWireRadius(Blast b){return b.radius|(b.powered?128:0);}
+    static void readBlastRadius(Blast b,int wire){b.radius=wire&127;b.powered=(wire&128)!=0;}
     interface Ground { boolean solid(int x,int y); int surface(int x,int from); void crater(int x,int y,int r); }
     final Ground ground;
     interface ShotObserver {void beforeShot();}
@@ -43,6 +55,7 @@ final class Battle {
     // Bounded visual-only history; no per-frame particle allocation on CLDC.
     static final int TRAIL_CAPACITY=192;
     final int[] trailX=new int[TRAIL_CAPACITY],trailY=new int[TRAIL_CAPACITY],trailWeapon=new int[TRAIL_CAPACITY],trailFrame=new int[TRAIL_CAPACITY],trailAge=new int[TRAIL_CAPACITY],trailLife=new int[TRAIL_CAPACITY];
+    final boolean[] trailPowered=new boolean[TRAIL_CAPACITY];
     int trailCount;
     int windLimit=30;
     int ballCount,blastCount,active,turn,wind,lastWind,countdown,bursts,burstDelay,settle,botWait;
@@ -83,7 +96,7 @@ final class Battle {
     static final class Unit {
         int wingHp;final int[] weaponForge=new int[10];int forgeWeaponBonus;int npc;int maxHp=MAXHP,maxEnergy=240,attackBonus,defense,luck,experience,forgeAttack,forgeDefense,forgeLuck,wornMask=3;boolean god,statsEnabled;final int[] kit={0,1,2};int itemUsed,frozen,freezeTurns,invisible,flyCooldown;boolean assist,flightAim;int team,botStyle=-1;boolean human;int x,y,vy,hp=MAXHP,energy=240,rage,angle=45,power=60,face=1,walk,weapon,attackTicks,slope,heals=5,deathX,deathY,lastPower=-1,pendingPower=-1,flashTicks,landingTicks,lastBuff;boolean dead;}
     static final class Ball {int x,y,vx,vy,owner,age,damage,radius,weapon;int sulanVictim=-1;boolean guided,freeze,fly,homing,powered;}
-    static final class Blast {boolean freeze;int x,y,radius,time,damage,owner,weapon;}
+    static final class Blast {boolean freeze,powered;int x,y,radius,time,damage,owner,weapon;}
     Battle(Ground ground){this.ground=ground;for(int i=0;i<units.length;i++)units[i]=new Unit();}
     int rand(int n){seed=seed*1103515245+12345;return (seed>>>1)%n;}
     int rollWind(){int cap=clamp(windLimit,0,30);return rand(cap*2+1)-cap;}
@@ -261,7 +274,7 @@ final class Battle {
     void stampTrail(Ball b){
         if(b.fly||b.freeze)return;
         if(trailCount==TRAIL_CAPACITY)return;
-        int i=trailCount++;trailX[i]=b.x;trailY[i]=b.y;trailWeapon[i]=b.weapon;trailFrame[i]=b.weapon==AntCaveRules.QUEEN_ARROW?0:ballFrame(b);trailAge[i]=0;
+        int i=trailCount++;trailX[i]=b.x;trailY[i]=b.y;trailWeapon[i]=b.weapon;trailFrame[i]=b.weapon==AntCaveRules.QUEEN_ARROW?0:visualFrame(b);trailPowered[i]=b.powered;trailAge[i]=0;
         // Original particle lifetimes: brick 0.2s, dart/electric/grenade 0.5s.
         // Sample once per 30Hz game tick; retained positions follow the real arc.
         trailLife[i]=b.weapon==3?6:15;
@@ -269,7 +282,7 @@ final class Battle {
     void ageTrails(){
         int count=0;
         for(int i=0;i<trailCount;i++)if(++trailAge[i]<trailLife[i]){
-            if(count!=i){trailX[count]=trailX[i];trailY[count]=trailY[i];trailWeapon[count]=trailWeapon[i];trailFrame[count]=trailFrame[i];trailAge[count]=trailAge[i];trailLife[count]=trailLife[i];}count++;
+            if(count!=i){trailX[count]=trailX[i];trailY[count]=trailY[i];trailWeapon[count]=trailWeapon[i];trailFrame[count]=trailFrame[i];trailAge[count]=trailAge[i];trailLife[count]=trailLife[i];trailPowered[count]=trailPowered[i];}count++;
         }
         trailCount=count;
     }
@@ -303,7 +316,7 @@ final class Battle {
         // Apply that missile once to its assigned victim; no collateral double-hit on nearby allies.
         int assigned=b.sulanVictim;
         if(assigned>=0){if(assigned>=unitCount)return;x=units[assigned].x;y=targetY(units[assigned]);}
-        Blast fx=new Blast();fx.x=x;fx.y=y;fx.radius=b.radius;fx.owner=b.owner;fx.weapon=b.weapon==AntCaveRules.QUEEN_ARROW?9:b.weapon;
+        Blast fx=new Blast();fx.x=x;fx.y=y;fx.radius=b.radius;fx.powered=b.powered;fx.owner=b.owner;fx.weapon=b.weapon==AntCaveRules.QUEEN_ARROW?9:b.weapon;
         if(blastCount<blasts.length)blasts[blastCount++]=fx;
         for(int i=0;i<unitCount;i++){
             Unit u=units[i];int dx=x-u.x,dy=y-targetY(u),dist=dx*dx+dy*dy,r=b.radius+(u.npc==3?45:23);
