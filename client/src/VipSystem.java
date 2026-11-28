@@ -54,20 +54,15 @@ final class VipSystem {
 
     void release() {
         battleReady=false; battleBytes=0;
-        wingOneMask=0;for(int a=0;a<wingOneAngles.length;a++)wingOneAngles[a][0]=wingOneAngles[a][1]=null;
-        clearWingGroup();
+        clearBalancedWings();
         clearBattleRings();
-        for(int i=0;i<6;i++){battleAngles[i]=0; battleWingIds[i]=-1; battleXp[i]=0;}
+        for(int i=0;i<6;i++){battleWingIds[i]=-1; battleXp[i]=0;}
         for (int i = 0; i < 3; i++)
             for (int j = 0; j < 3; j++)
                 staticRings[i][j] = null;
         for (int i = 0; i < 6; i++)
             for (int j = 0; j < 3; j++)
                 staticWings[i][j] = null;
-        for (int w = 0; w < 6; w++)
-            for (int a = 0; a < 5; a++)
-                for (int l = 0; l < 2; l++)
-                    sideWings[w][a][l] = null;
         for (int i = 0; i < 3; i++)
             for (int j = 0; j < 4; j++)
                 rings[i][j] = null;
@@ -90,44 +85,54 @@ final class VipSystem {
     // Encounter caches are immutable after loading, even as the player changes pose.
     boolean battleReady;
     int battleBytes;
-    final int[] battleAngles=new int[6],battleWingIds=new int[6],battleXp=new int[6];
+    final int[] battleWingIds=new int[6],battleXp=new int[6];
     boolean battleScreen(){return c.mode==1||c.mode==2||c.mode==14;}
     boolean roomFor(int bytes){
         return battleBytes+bytes<=(c.s==1?6:20)*1024*1024
             && Runtime.getRuntime().freeMemory()>bytes+(c.s==1?1024:3072)*1024;
     }
-    final Image[][] wingOneAngles=new Image[WingOneArt.ANGLES.length][2];
-    int wingOneMask;
-    void loadWingOne(int a){
-        int bytes=WingOneArt.bytes(c.s,a);
-        if((wingOneMask&(1<<a))!=0||!roomFor(bytes))return;
+    // Balanced: keep every configured pose available before allocating animation.
+    final Image[][][] balancedWings=new Image[6][15][2];
+    final int[][] balancedFrames=new int[6][15];
+    void clearBalancedWings(){for(int w=0;w<6;w++)for(int a=0;a<15;a++){balancedFrames[w][a]=0;balancedWings[w][a][0]=balancedWings[w][a][1]=null;}}
+    boolean roomForStill(int bytes){return battleBytes+bytes<=(c.s==1?6:20)*1024*1024
+        && Runtime.getRuntime().freeMemory()>bytes+(c.s==1?384:1024)*1024;}
+    boolean loadBalancedAngle(int w,int a,int frames){
+        int old=balancedFrames[w][a];if(old>=frames)return true;
+        int single=WingBalancedArt.bytes(c.s,w,a), bytes=single*frames;
+        if(!(frames==1?roomForStill(bytes):roomFor(bytes)))return false;
         try{
-            Image rear=c.combatRoomArt("wing1-free-"+a+"-0"),front=c.combatRoomArt("wing1-free-"+a+"-1");
-            if(rear==null||front==null)return;
-            wingOneAngles[a][0]=rear;wingOneAngles[a][1]=front;wingOneMask|=1<<a;battleBytes+=bytes;
-        }catch(OutOfMemoryError low){ }
+            String name="wingbal"+frames+"-"+w+"-"+a+"-";
+            Image rear=c.combatRoomArt(name+"0"), front=c.combatRoomArt(name+"1");
+            if(rear==null||front==null)return false;
+            balancedWings[w][a][0]=rear;balancedWings[w][a][1]=front;
+            balancedFrames[w][a]=frames;battleBytes+=single*(frames-old);return true;
+        }catch(OutOfMemoryError low){return false;}
     }
-    final Image[][][] wingGroupAngles=new Image[4][WingGroupArt.MAX_ANGLES][2];
-    final int[] wingGroupMask=new int[4];
-    void clearWingGroup(){for(int w=0;w<4;w++){wingGroupMask[w]=0;for(int a=0;a<WingGroupArt.MAX_ANGLES;a++)wingGroupAngles[w][a][0]=wingGroupAngles[w][a][1]=null;}}
-    void loadWingGroup(int w,int a){
-        int bytes=WingGroupArt.bytes(c.s,w,a), k=w-1;
-        if((wingGroupMask[k]&(1<<a))!=0||!roomFor(bytes))return;
-        try{Image rear=c.combatRoomArt("winggroup-free-"+w+"-"+a+"-0"),front=c.combatRoomArt("winggroup-free-"+w+"-"+a+"-1");if(rear==null||front==null)return;
-            wingGroupAngles[k][a][0]=rear;wingGroupAngles[k][a][1]=front;wingGroupMask[k]|=1<<a;battleBytes+=bytes;
-        }catch(OutOfMemoryError low){}
-    }
-    void loadBattleAngle(int w,int a,boolean essential){
-        if((battleAngles[w]&(1<<a))!=0)return;
-        int bytes=WingBattleArt.bytes(c.s,w,a);
-        if(!essential&&!roomFor(bytes))return;
-        try{
-            Image inner=c.combatRoomArt("wing812-packed-"+w+"-"+a+"-0");
-            Image outer=c.combatRoomArt("wing812-packed-"+w+"-"+a+"-1");
-            if(inner==null||outer==null)return;
-            sideWings[w][a][0]=inner;sideWings[w][a][1]=outer;
-            battleAngles[w]|=1<<a;battleBytes+=bytes;
-        }catch(OutOfMemoryError low){ /* leave the angle absent; never decode in paint */ }
+    void prepareBalancedWings(int wingMask){
+        // Pass 1: every unique pose angle for each equipped wing, round robin.
+        // No old/unrelated stock angles are allowed to consume this allocation.
+        int[] required=new int[6];
+        for(int pose=0;pose<22;pose++)for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0){
+            int a=WingBalancedArt.select(w,WingAttachment.tilt(w,pose,1,0));
+            if((required[w]&(1<<a))==0){required[w]|=1<<a;loadBalancedAngle(w,a,1);}
+        }
+        // Pass 2: optional terrain tilt angles (still image).
+        for(int a=0;a<15;a++)for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0&&a<WingBalancedArt.count(w))
+            if((required[w]&(1<<a))==0)loadBalancedAngle(w,a,1);
+        // Pass 3: give all equipped wings a chance at four frames, then ten.
+        // Admission is conservative: account for full replacement during decode.
+        for(int tier=0;tier<2;tier++){
+            int frames=tier==0?4:10;
+            for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0){
+                int cost=0,peak=0;
+                for(int a=0;a<WingBalancedArt.count(w);a++)if(balancedFrames[w][a]>0&&balancedFrames[w][a]<frames){
+                    int single=WingBalancedArt.bytes(c.s,w,a);cost+=single*(frames-balancedFrames[w][a]);peak=Math.max(peak,single*balancedFrames[w][a]);
+                }
+                if(cost==0||!roomFor(cost+peak))continue;
+                for(int a=0;a<WingBalancedArt.count(w);a++)if(balancedFrames[w][a]>0)loadBalancedAngle(w,a,frames);
+            }
+        }
     }
     Image preloadSmall(String name,int bytes,boolean essential){
         if(!essential&&!roomFor(bytes))return null;
@@ -163,17 +168,7 @@ final class VipSystem {
                 battleRings[k][context-1]=preloadSmall("vip796-ring-static-"+k+"-"+size,size*size*4*c.s*c.s,true);
         }
         preparePowRings(ringMask);
-        for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,2,true);
-        if((wingMask&1)!=0){
-            loadBattleAngle(0,3,false);
-            for(int a=0;a<6;a++)loadWingOne(a);
-        }
-        for(int w=1;w<=4;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,3,false);
-        for(int a=0;a<WingGroupArt.MAX_ANGLES;a++)for(int w=1;w<=4;w++)if(a<WingGroupArt.angles(w).length&&(wingMask&(1<<w))!=0)loadWingGroup(w,a);
-        // Allocate battle tilt art before optional animated portrait art.
-        int[] angles={4,3,1,0};
-        for(int i=0;i<angles.length;i++)for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,angles[i],false);
-        if((wingMask&1)!=0)for(int a=6;a<WingOneArt.ANGLES.length;a++)loadWingOne(a);
+        prepareBalancedWings(wingMask);
         for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)for(int context=1;context<=2;context++){
             int size=WING_SIZE[context];
             wings[w][context]=preloadSmall("wing796-show-"+w+"-"+size,20*size*WING_HEIGHT[context]*4*c.s*c.s,false);
@@ -338,16 +333,9 @@ final class VipSystem {
 
     void releaseBattleWings() {
         battleReady=false; battleBytes=0;
-        wingOneMask=0;for(int a=0;a<wingOneAngles.length;a++)wingOneAngles[a][0]=wingOneAngles[a][1]=null;
-        clearWingGroup();
+        clearBalancedWings();
         clearBattleRings();
-        for(int w=0;w<6;w++)battleAngles[w]=0;
-        for (int w = 0; w < 6; w++)
-            for (int a = 0; a < 5; a++)
-                sideWings[w][a][0] = sideWings[w][a][1] = null;
     }
-
-    final Image[][][] sideWings = new Image[6][5][2];
 
     void battleWing(int actor, boolean outer) {
         int wing = actorWing(actor);
@@ -360,14 +348,16 @@ final class VipSystem {
         boolean compact = c.s == 1 && (c.onlineBattle() ? c.net.custom[actor] : actor == 0 && c.customLook);
         int pose = WingAttachment.pose(c.unitAnimation(actor), compact);
         int wanted=WingAttachment.tilt(wing,pose,u.face,slope);
-        int selected = wing==0?WingOneArt.select(battleAngles[0],wingOneMask,wanted):WingAttachment.group(wing)?WingGroupArt.select(wing,battleAngles[wing],wingGroupMask[wing-1],wanted):WingAttachment.select(battleAngles[wing],wanted);
-        if (selected < 0) return;
-        int angle = selected, layer = outer ? 1 : 0;
+        int selected=WingBalancedArt.select(wing,wanted);
+        // Never substitute a stock standing pose for a calibrated pose. If a
+        // terrain angle is missing, use that pose's own flat-ground angle.
+        if(balancedFrames[wing][selected]==0)selected=WingBalancedArt.select(wing,WingAttachment.tilt(wing,pose,u.face,0));
+        int angle=selected,layer=outer?1:0,frames=balancedFrames[wing][angle];
+        if(frames==0)return;
         boolean customAngle=angle>=5;
-        Image art = customAngle?(wing==0?wingOneAngles[angle-5][layer]:wingGroupAngles[wing-1][angle-5][layer]):sideWings[wing][angle][layer];
-        if (art == null) return;
-        int[] bounds = customAngle?(wing==0?WingOneArt.bounds(c.s):WingGroupArt.bounds(c.s)):WingBattleArt.bounds(c.s);
-        int p = customAngle?(wing==0?WingOneArt.index(angle-5,layer):WingGroupArt.index(wing,angle-5,layer)):WingBattleArt.index(wing, angle, layer);
+        Image art=balancedWings[wing][angle][layer];if(art==null)return;
+        int[] bounds=WingBalancedArt.bounds(c.s,wing,angle);
+        int p=WingBalancedArt.index(wing,angle,layer);
         int w = bounds[p+2], h = bounds[p+3];
         boolean flip = u.face < 0;
         int ax = WingAttachment.jointX(wing,pose, u.face, slope);
@@ -376,7 +366,7 @@ final class VipSystem {
         int x=u.x-c.cameraX+ax+(flip?-relX-w:relX);
         int y=u.y-c.cameraY+ay+relY;
         int scale=c.s;
-        c.g.drawRegion(art, c.frame / 2 % 19 * w * scale, 0, w * scale, h * scale,
+        c.g.drawRegion(art, (c.frame / 2 % 19 * frames / 19) * w * scale, 0, w * scale, h * scale,
                 flip ? Sprite.TRANS_MIRROR : Sprite.TRANS_NONE, c.ox + x * scale, c.oy + y * scale, Graphics.TOP | Graphics.LEFT);
     }
 

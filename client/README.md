@@ -19,16 +19,16 @@ Cần Java, Python và thư mục công cụ chứa `ecj.jar`, `proguard.jar` (6
 python client/build.py --tools D:/gunny/GunnyNokia/tools
 ```
 
-Script biên dịch CLDC 1.1 / MIDP 2.0, preverify và cập nhật hai JAR/JAD 7.9.21 trong `public/downloads`. Cần giữ các bộ cài hiện tại làm nguồn tài nguyên khi build. `client/build` chỉ chứa file sinh ra.
+Script biên dịch CLDC 1.1 / MIDP 2.0, preverify và cập nhật hai JAR/JAD 7.9.22 trong `public/downloads`. Cần giữ các bộ cài hiện tại làm nguồn tài nguyên khi build. `client/build` chỉ chứa file sinh ra.
 
 ## Kiểm thử màn hình và lưu cấu hình
 
 Cần thêm `microemulator.jar`, `mmapi.jar` trong thư mục công cụ:
 
 ```powershell
-javac --release 17 -encoding UTF-8 -cp 'public/downloads/Gunny-E6-Online-7921.jar;D:/gunny/GunnyNokia/tools/microemulator.jar' -d client/build/test client/tests/ServerSettingsCheck.java
-java -Djava.awt.headless=true -cp 'client/build/test;public/downloads/Gunny-E72-2009-Online-7921.jar;D:/gunny/GunnyNokia/tools/microemulator.jar;D:/gunny/GunnyNokia/tools/mmapi.jar' ServerSettingsCheck 1
-java -Djava.awt.headless=true -cp 'client/build/test;public/downloads/Gunny-E6-Online-7921.jar;D:/gunny/GunnyNokia/tools/microemulator.jar;D:/gunny/GunnyNokia/tools/mmapi.jar' ServerSettingsCheck 2
+javac --release 17 -encoding UTF-8 -cp 'public/downloads/Gunny-E6-Online-7922.jar;D:/gunny/GunnyNokia/tools/microemulator.jar' -d client/build/test client/tests/ServerSettingsCheck.java
+java -Djava.awt.headless=true -cp 'client/build/test;public/downloads/Gunny-E72-2009-Online-7922.jar;D:/gunny/GunnyNokia/tools/microemulator.jar;D:/gunny/GunnyNokia/tools/mmapi.jar' ServerSettingsCheck 1
+java -Djava.awt.headless=true -cp 'client/build/test;public/downloads/Gunny-E6-Online-7922.jar;D:/gunny/GunnyNokia/tools/microemulator.jar;D:/gunny/GunnyNokia/tools/mmapi.jar' ServerSettingsCheck 2
 ```
 
 Cổng client 22123 là cổng bên ngoài của `gunny-xubi`. Cổng lắng nghe bên trong container có thể vẫn là 22122 nếu Docker ánh xạ `22123:22122/tcp`; thay đổi này không sửa cấu hình máy chủ đang chạy.

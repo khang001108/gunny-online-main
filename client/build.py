@@ -7,6 +7,7 @@ import zipfile
 import re
 import os
 import time
+import hashlib
 
 root = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser()
@@ -14,6 +15,21 @@ parser.add_argument('--tools', type=Path, required=True, help='Directory contain
 parser.add_argument('--code-only', action='store_true', help='Compile and preverify without replacing release installers')
 args = parser.parse_args()
 tools = args.tools.resolve()
+# Fail before compilation if the release files were not overlaid together.
+APP_VERSION = "7.9.22"
+for release_source in (root/'src/GameRelease.java', root.parent/'backend/src/GameRelease.java'):
+    if not release_source.is_file():
+        raise SystemExit('Missing release source: '+str(release_source))
+    release_text = release_source.read_text(encoding='utf-8-sig')
+    version = re.search(r'\bVERSION\s*=\s*"([^"]+)"', release_text)
+    epoch = re.search(r'\bEPOCH\s*=\s*(\d+)', release_text)
+    if not version or version.group(1) != APP_VERSION or not epoch or epoch.group(1) != '46':
+        raise SystemExit('Release mismatch: '+str(release_source)+'; expected 7.9.22 HF46. Extract the combined HF46 ZIP into the repository root.')
+downloads = root.parent/'public/downloads'
+release_hashes = downloads/'Gunny-7922-SHA256.txt'
+# Invalidate the marker before compiling, not after compilation succeeds.
+if not args.code_only:
+    release_hashes.unlink(missing_ok=True)
 build = root / 'build'
 classes = build / 'classes'
 classes.mkdir(parents=True, exist_ok=True)
@@ -35,9 +51,7 @@ subprocess.run(['java', '-jar', str(tools/'proguard.jar'), '@'+str(config)], che
 if args.code_only:
     print('Compiled and preverified client classes.')
     raise SystemExit(0)
-downloads = root.parent/'public/downloads'
 release_errors=[]
-APP_VERSION = "7.9.21"
 APP_VENDOR = "Ronin-Lap"
 APP_DESCRIPTION = "Gunny Java Online - Tac gia: Ronin-Lap"
 
@@ -107,14 +121,14 @@ def upsert_prop_text(text, key, value):
     return text + ending + line + "\n"
 # These sizes/effects have no runtime references; do not reintroduce them via overlays.
 def retired_asset(name):
-    return name.startswith('hf39-npc-') or name == 'fx-pow-ring.png' or name.startswith('wing795-game-') or bool(re.fullmatch(r'vip-ring-[0-2]-(144|216)\.png', name)) or bool(re.fullmatch(r'vip-ring-hf18-[0-2]-8\.png', name))
+    return name.startswith('hf39-npc-') or name == 'fx-pow-ring.png' or name.startswith(('wing795-game-', 'wing812-packed-', 'wing1-free-', 'winggroup-free-')) or bool(re.fullmatch(r'vip-ring-[0-2]-(144|216)\.png', name)) or bool(re.fullmatch(r'vip-ring-hf18-[0-2]-8\.png', name))
 
 with zipfile.ZipFile(build/'preverified.jar') as code:
-    for name in ('Gunny-E6-Online-7921', 'Gunny-E72-2009-Online-7921'):
+    for name in ('Gunny-E6-Online-7922', 'Gunny-E72-2009-Online-7922'):
         jar = downloads/(name+'.jar')
         temp = build/(name+'.jar')
         overlays = {p.name:p.read_bytes() for p in (root/('assets2' if 'E6' in name else 'assets1')).iterdir() if p.is_file() and p.suffix in ('.png','.dat') and p.name!='tribal797-loading-bg.png' and not retired_asset(p.name)}
-        seed = next((p for p in (jar, downloads/(name.replace('7921','7920')+'.jar'), downloads/(name.replace('7921','7918')+'.jar'), downloads/(name.replace('7921','7917')+'.jar')) if p.is_file()), None)
+        seed = next((p for p in (jar, downloads/(name.replace('7922','7921')+'.jar'), downloads/(name.replace('7922','7920')+'.jar'), downloads/(name.replace('7922','7918')+'.jar'), downloads/(name.replace('7922','7917')+'.jar')) if p.is_file()), None)
         if seed is None:
             raise SystemExit('Missing handset asset seed: '+name)
         with zipfile.ZipFile(seed) as original, zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED) as output:
@@ -146,6 +160,16 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
                 raise SystemExit('Manifest normalization failed: '+str(temp))
             if 'GunnyMIDlet.class' not in candidate.namelist():
                 raise SystemExit('Missing GunnyMIDlet.class: '+str(temp))
+            required_classes = ('GameRelease.class','VipSystem.class','WingAttachment.class','WingOneArt.class','WingGroupArt.class','WingBattleArt.class','WingBalancedArt.class')
+            for required in required_classes:
+                if required not in candidate.namelist():
+                    raise SystemExit('Missing wing/release class: '+required)
+            if APP_VERSION.encode('ascii') not in candidate.read('GameRelease.class'):
+                raise SystemExit('Wrong GameRelease.class version')
+            required_wings = [f'wingbal{frames}-{w}-{a}-{layer}.png' for frames in (1,4,10) for w,n in enumerate((13,14,14,15,12,5)) for a in range(n) for layer in range(2)]
+            for required in required_wings:
+                if required not in overlays or candidate.read(required) != overlays[required]:
+                    raise SystemExit('Missing or stale wing overlay: '+required)
             bad_entry = candidate.testzip()
             if bad_entry is not None:
                 raise SystemExit('CRC error: '+bad_entry)
@@ -167,7 +191,7 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
                 if entry.filename.endswith('.class') and installed.read(entry.filename)!=code.read(entry.filename):
                     raise SystemExit('Sai ma nguon trong JAR: '+str(jar))
         jad = downloads/(name+'.jad')
-        jad_seed = next((p for p in (jad, downloads/(name.replace('7921','7920')+'.jad'), downloads/(name.replace('7921','7918')+'.jad'), downloads/(name.replace('7921','7917')+'.jad')) if p.is_file()), None)
+        jad_seed = next((p for p in (jad, downloads/(name.replace('7922','7921')+'.jad'), downloads/(name.replace('7922','7920')+'.jad'), downloads/(name.replace('7922','7918')+'.jad'), downloads/(name.replace('7922','7917')+'.jad')) if p.is_file()), None)
         if jad_seed is None:
             raise SystemExit('Missing handset JAD seed: '+name)
         text = jad_seed.read_text(encoding="utf-8").replace(":22122", ":22123")
@@ -209,3 +233,8 @@ for path in sorted(downloads.iterdir()):
 if cleanup_errors:
     raise SystemExit('Build OK, nhung chua xoa duoc file cu. Dong chuong trinh dang mo file va build lai: ' + ', '.join(cleanup_errors))
 print('Rebuilt and verified current E72/E6 ' + APP_VERSION + ' JAR and JAD. Old installers removed.')
+
+# Release marker checked in Docker. Written only after both builds pass.
+files = [downloads / (prefix + release_suffix + ext) for prefix in release_prefixes for ext in ('.jar','.jad')]
+release_hashes.write_bytes(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in files).encode('ascii'))
+print('SHA256 release manifest: '+str(release_hashes))

@@ -1,7 +1,7 @@
 
 @echo off
 setlocal
-title Gunny Java 7.9.21 - Build Client
+title Gunny Java 7.9.22 - Build Client
 cd /d "%~dp0.."
 
 set "TOOLS=D:\gunny\GunnyNokia\tools"
@@ -11,7 +11,7 @@ if exist "client\tools\ecj.jar" (
 )
 
 echo ===============================
-echo     BUILD GUNNY JAVA 7.9.21
+echo     BUILD GUNNY JAVA 7.9.22
 echo ===============================
 echo.
 

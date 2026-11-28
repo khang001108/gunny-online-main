@@ -23,12 +23,13 @@ public class HF43GateCheck {
    server.tcpOnly=true;server.startTcp("127.0.0.1",0,16);int port=server.tcpPort();String token;
    try(var old=new Peer(port)){
     var health=old.frame(GameRelease.LEGACY_MAGIC,0,"",null);String json=new String(health.body,StandardCharsets.UTF_8);
-    check(health.status==200&&GameRelease.healthError(json)==null&&json.contains("\"minVersion\":\"7.9.21\""),"Public pre-login health identifies exact required release");
+    check(health.status==200&&GameRelease.healthError(json)==null&&json.contains("\"minVersion\":\"7.9.22\""),"Public pre-login health identifies exact required release");
     rejected(old.frame(GameRelease.LEGACY_MAGIC,1,"",login));check(old.closed(),"Legacy socket released after update message");
     check(server.sessions.isEmpty(),"Legacy login creates no session");check(!server.limits.containsKey("auth:127.0.0.1"),"Old login blocked before account authentication");
    }
    try(var prior=new Peer(port)){rejected(prior.frame(GameRelease.HF43_MAGIC,1,"",login));check(prior.closed(),"HF43 socket rejected with update notice");}
    try(var prior=new Peer(port)){rejected(prior.frame(GameRelease.HF44_MAGIC,1,"",login));check(prior.closed(),"HF44 socket rejected with update notice");}
+   try(var prior=new Peer(port)){rejected(prior.frame(GameRelease.HF45_MAGIC,1,"",login));check(prior.closed(),"HF45 socket rejected with update notice");}
    try(var old=new Peer(port)){rejected(old.frame(GameRelease.LEGACY_MAGIC,1,"",register));check(!store.accounts.containsKey("old@test.local"),"Legacy registration cannot write account data");}
    try(var current=new Peer(port)){
     var reply=current.frame(GameRelease.WIRE_MAGIC,1,"",login);var data=reply.read();check(reply.status==200&&data.readUnsignedByte()==0,"Current build can log in");token=data.readUTF();check(token.length()==43&&server.sessions.containsKey(token),"Server-generated session is valid");
