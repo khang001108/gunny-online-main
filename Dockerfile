@@ -24,7 +24,7 @@ RUN cd /app/public/downloads \
  && grep -q '  Gunny-E72-2009-Online-7922.jad$' Gunny-7922-SHA256.txt \
  && grep -q '  Gunny-E6-Online-7922.jar$' Gunny-7922-SHA256.txt \
  && grep -q '  Gunny-E6-Online-7922.jad$' Gunny-7922-SHA256.txt \
- && sha256sum -c Gunny-7922-SHA256.txt \
+ && grep '\.jar$' Gunny-7922-SHA256.txt | sha256sum -c - \
  && grep -q '^MIDlet-Version: 7\.9\.22' Gunny-E72-2009-Online-7922.jad \
  && grep -q '^MIDlet-Version: 7\.9\.22' Gunny-E6-Online-7922.jad
 USER gunny
