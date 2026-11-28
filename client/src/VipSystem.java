@@ -54,6 +54,8 @@ final class VipSystem {
 
     void release() {
         battleReady=false; battleBytes=0;
+        wingOneMask=0;for(int a=0;a<wingOneAngles.length;a++)wingOneAngles[a][0]=wingOneAngles[a][1]=null;
+        clearWingGroup();
         clearBattleRings();
         for(int i=0;i<6;i++){battleAngles[i]=0; battleWingIds[i]=-1; battleXp[i]=0;}
         for (int i = 0; i < 3; i++)
@@ -93,6 +95,27 @@ final class VipSystem {
     boolean roomFor(int bytes){
         return battleBytes+bytes<=(c.s==1?6:20)*1024*1024
             && Runtime.getRuntime().freeMemory()>bytes+(c.s==1?1024:3072)*1024;
+    }
+    final Image[][] wingOneAngles=new Image[WingOneArt.ANGLES.length][2];
+    int wingOneMask;
+    void loadWingOne(int a){
+        int bytes=WingOneArt.bytes(c.s,a);
+        if((wingOneMask&(1<<a))!=0||!roomFor(bytes))return;
+        try{
+            Image rear=c.combatRoomArt("wing1-free-"+a+"-0"),front=c.combatRoomArt("wing1-free-"+a+"-1");
+            if(rear==null||front==null)return;
+            wingOneAngles[a][0]=rear;wingOneAngles[a][1]=front;wingOneMask|=1<<a;battleBytes+=bytes;
+        }catch(OutOfMemoryError low){ }
+    }
+    final Image[][][] wingGroupAngles=new Image[4][WingGroupArt.MAX_ANGLES][2];
+    final int[] wingGroupMask=new int[4];
+    void clearWingGroup(){for(int w=0;w<4;w++){wingGroupMask[w]=0;for(int a=0;a<WingGroupArt.MAX_ANGLES;a++)wingGroupAngles[w][a][0]=wingGroupAngles[w][a][1]=null;}}
+    void loadWingGroup(int w,int a){
+        int bytes=WingGroupArt.bytes(c.s,w,a), k=w-1;
+        if((wingGroupMask[k]&(1<<a))!=0||!roomFor(bytes))return;
+        try{Image rear=c.combatRoomArt("winggroup-free-"+w+"-"+a+"-0"),front=c.combatRoomArt("winggroup-free-"+w+"-"+a+"-1");if(rear==null||front==null)return;
+            wingGroupAngles[k][a][0]=rear;wingGroupAngles[k][a][1]=front;wingGroupMask[k]|=1<<a;battleBytes+=bytes;
+        }catch(OutOfMemoryError low){}
     }
     void loadBattleAngle(int w,int a,boolean essential){
         if((battleAngles[w]&(1<<a))!=0)return;
@@ -141,9 +164,16 @@ final class VipSystem {
         }
         preparePowRings(ringMask);
         for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,2,true);
+        if((wingMask&1)!=0){
+            loadBattleAngle(0,3,false);
+            for(int a=0;a<6;a++)loadWingOne(a);
+        }
+        for(int w=1;w<=4;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,3,false);
+        for(int a=0;a<WingGroupArt.MAX_ANGLES;a++)for(int w=1;w<=4;w++)if(a<WingGroupArt.angles(w).length&&(wingMask&(1<<w))!=0)loadWingGroup(w,a);
         // Allocate battle tilt art before optional animated portrait art.
         int[] angles={4,3,1,0};
         for(int i=0;i<angles.length;i++)for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)loadBattleAngle(w,angles[i],false);
+        if((wingMask&1)!=0)for(int a=6;a<WingOneArt.ANGLES.length;a++)loadWingOne(a);
         for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)for(int context=1;context<=2;context++){
             int size=WING_SIZE[context];
             wings[w][context]=preloadSmall("wing796-show-"+w+"-"+size,20*size*WING_HEIGHT[context]*4*c.s*c.s,false);
@@ -308,6 +338,8 @@ final class VipSystem {
 
     void releaseBattleWings() {
         battleReady=false; battleBytes=0;
+        wingOneMask=0;for(int a=0;a<wingOneAngles.length;a++)wingOneAngles[a][0]=wingOneAngles[a][1]=null;
+        clearWingGroup();
         clearBattleRings();
         for(int w=0;w<6;w++)battleAngles[w]=0;
         for (int w = 0; w < 6; w++)
@@ -327,19 +359,22 @@ final class VipSystem {
         int slope = shooting ? 0 : u.slope;
         boolean compact = c.s == 1 && (c.onlineBattle() ? c.net.custom[actor] : actor == 0 && c.customLook);
         int pose = WingAttachment.pose(c.unitAnimation(actor), compact);
-        int selected = WingAttachment.select(battleAngles[wing], WingAttachment.tilt(pose, u.face, slope));
+        int wanted=WingAttachment.tilt(wing,pose,u.face,slope);
+        int selected = wing==0?WingOneArt.select(battleAngles[0],wingOneMask,wanted):WingAttachment.group(wing)?WingGroupArt.select(wing,battleAngles[wing],wingGroupMask[wing-1],wanted):WingAttachment.select(battleAngles[wing],wanted);
         if (selected < 0) return;
         int angle = selected, layer = outer ? 1 : 0;
-        Image art = sideWings[wing][angle][layer];
+        boolean customAngle=angle>=5;
+        Image art = customAngle?(wing==0?wingOneAngles[angle-5][layer]:wingGroupAngles[wing-1][angle-5][layer]):sideWings[wing][angle][layer];
         if (art == null) return;
-        int[] bounds = WingBattleArt.bounds(c.s);
-        int p = WingBattleArt.index(wing, angle, layer);
+        int[] bounds = customAngle?(wing==0?WingOneArt.bounds(c.s):WingGroupArt.bounds(c.s)):WingBattleArt.bounds(c.s);
+        int p = customAngle?(wing==0?WingOneArt.index(angle-5,layer):WingGroupArt.index(wing,angle-5,layer)):WingBattleArt.index(wing, angle, layer);
         int w = bounds[p+2], h = bounds[p+3];
         boolean flip = u.face < 0;
-        int ax = WingAttachment.jointX(pose, u.face, slope);
-        int ay = WingAttachment.jointY(pose, u.face, slope);
-        int x = u.x - c.cameraX + ax - 48 + (flip ? 96 - bounds[p] - w : bounds[p]);
-        int y = u.y - c.cameraY + ay - 48 + bounds[p+1];
+        int ax = WingAttachment.jointX(wing,pose, u.face, slope);
+        int ay = WingAttachment.jointY(wing,pose, u.face, slope);
+        int relX=customAngle?bounds[p]:bounds[p]-48,relY=customAngle?bounds[p+1]:bounds[p+1]-48;
+        int x=u.x-c.cameraX+ax+(flip?-relX-w:relX);
+        int y=u.y-c.cameraY+ay+relY;
         int scale=c.s;
         c.g.drawRegion(art, c.frame / 2 % 19 * w * scale, 0, w * scale, h * scale,
                 flip ? Sprite.TRANS_MIRROR : Sprite.TRANS_NONE, c.ox + x * scale, c.oy + y * scale, Graphics.TOP | Graphics.LEFT);
