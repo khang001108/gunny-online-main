@@ -1120,7 +1120,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     void cheat() {
-        if (onlineAccount()){net.request("testcheat");return;}
+        if (onlineAccount()){net.requestCheat(cheatSelection);return;}
         if (cheatSelection == 4) {
             if (cheatOptions() == 5) {
                 mode = returnMode;
@@ -1146,12 +1146,12 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
     }
 
     int cheatOptions() {
-        if(onlineAccount())return 7;
+        if(onlineAccount())return 5;
         return returnMode == 1 && offlineDungeon.active && !game.over ? 5 : 4;
     }
 
     void drawCheats() {
-        if(onlineAccount()){panel(30,32,260,198);center("CHEAT TÀI KHOẢN TEST",160,42);String[] names={"FULL ĐÁ LV1-5 + BÙA","FULL CƯỜNG HÓA +15","FULL CẤP NHÂN VẬT","FULL TIỀN MUA SẮM","BẤT TỬ: "+(economy.testGod?"BẬT":"TẮT"),"QUA ẢI PHÓ BẢN","+999 THẺ VIP / EXP / FULL"};for(int i=0;i<7;i++)button(names[i],40,59+i*23,240,21,cheatSelection==i);return;}
+        if(onlineAccount()){panel(30,32,260,198);center("CHEAT TÀI KHOẢN TEST",160,42);String[] names={"FULL ĐÁ + BÙA + TIỀN + VIP","FULL LV70 + CƯỜNG HÓA +15","BẤT TỬ: "+(economy.testGod?"BẬT":"TẮT"),"QUA ẢI PHÓ BẢN","FULL BPOW"};for(int i=0;i<names.length;i++)button(names[i],40,59+i*30,240,25,cheatSelection==i);return;}
         boolean canSkip = cheatOptions() == 5;
         panel(30, canSkip ? 22 : 42, 260, canSkip ? 214 : 189);
         center("CHEAT • TEST OFFLINE", 160, 50);
@@ -4391,7 +4391,7 @@ final class PhoneCanvas extends Canvas implements Runnable, Battle.Ground {
             return;
         }
         if (mode == 9) {
-            if(onlineAccount()){if(y>=59&&y<220&&x>=40&&x<280){cheatSelection=(y-59)/23;cheat();}return;}
+            if(onlineAccount()){if(y>=59&&y<209&&x>=40&&x<280&&(y-59)%30<25){cheatSelection=(y-59)/30;cheat();}return;}
             int options = cheatOptions();
             if (x >= 50 && x < 270 && y >= 78 && y < 78 + options * 30 && (y - 78) % 30 < 25) {
                 cheatSelection = (y - 78) / 30;
