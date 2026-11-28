@@ -1,9 +1,0 @@
-# Gunny 7.9.18 HF15 – Chat
-Incremental patch for repo already updated through HF14. Build JAR and rebuild backend.
-
-- Enter (raw 13/10) opens the chat field in battle, including an opponent's turn. Enter again sends; right softkey cancels. Space/OK remains the normal firing key. If currently charging a local shot, release the fire key first. Match time keeps running.
-- Chat editor has built-in Telex; default VI, press # to switch VI/EN. Applies to chat fields only, not passwords or other fields. Unicode characters passed by the device can still be inserted. Examples: `xin chaof`, `Tieengs Vieetj`, `dduowngf`. This is a compact Telex implementation, not a full operating-system IME.
-- Public/private chat uses 11x14 body glyphs rather than 8x10, two lines per bubble and three message rows per page. Other players' bubbles on the left, own messages on the right; select a message to read the whole text. Avatar uses existing cut-in layers, with an eight-entry cache. Old-server/missing portrait data shows a placeholder.
-- Optional chatpoll request suffix 15 returns cosmetic profile data in a response suffix without changing the original message layout. Portraits resolved by stored display name (old messages after a rename may show placeholder); memory store and online profiles are supported, cloud fallback uses a cached bulk profile lookup. No SQL migration. `/health` contains `chatHF15:1`.
-
-Verification: compiled backend Java 17; 12 integration assertions (HTTP binary API, memory store, Unicode chat, battle chat, optional portrait payload, legacy response compatibility); 22 Telex cases on desktop JVM; both shipped font.dat assets include all Vietnamese vowel/tone glyphs and đ/Đ. MIDP build and actual emulator/phone UI not tested in this environment; cloud lookup not live-tested.

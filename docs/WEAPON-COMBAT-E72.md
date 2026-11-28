@@ -44,4 +44,4 @@ Cần dùng cả backend đã sửa và JAR mới để nhận nổ Bpow khi xem
 
 Không sửa các lỗi ngoài phạm vi này. Kiểm tra online riêng của thay đổi dùng phiên thương lượng hiện tại và snapshot thật từ backend.
 
-Ảnh E72 sau khi áp dụng được lưu trong `client/build/weapon-combat-review/`; nguồn và SHA256 tài nguyên nằm ở `client/source-assets/weapon-combat/manifest.json`.
+Khi chạy `UiWeaponCombatCheck`, ảnh E72 được sinh trong `client/build/weapon-combat-review/`. Đây là thư mục kiểm thử tạm, có thể xóa khi dọn repo. Nguồn và SHA256 tài nguyên nằm ở `client/source-assets/weapon-combat/manifest.json`.

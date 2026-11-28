@@ -56,7 +56,7 @@ Nhận đủ lượt sẽ mở cả bộ thẻ để xem thưởng; không cộn
 Ảnh rèn gốc và ảnh thay thế nằm trong `client/assets1` / `client/assets2`; build chèn các ảnh này vào đúng bộ cài và loại hình đá cũ. Xem `client/ASSETS.json` cho nguồn tài nguyên.
 
 
-## VIP / cánh và kiểm tra 7.9.6
+## VIP / cánh
 
 Chọn thẻ VIP trong Túi → OK để dùng. Vào Thời trang chọn cánh → OK để mặc/tháo; ô Cánh ở góc dưới bên trái cũng tháo bằng OK. Shop có tab VIP ngay sau Đạo cụ. Toàn bộ thay đổi chờ server xác nhận.
 
@@ -64,6 +64,6 @@ Chọn thẻ VIP trong Túi → OK để dùng. Vào Thời trang chọn cánh �
 
 Asset còn thiếu và nguồn ảnh: `client/VIP-ASSETS.json`. Source chỉ có badge VIP1–9, dùng chữ rõ cấp cho VIP10–12. Vòng 12 mức được phối từ 3 mẫu gốc; thẻ dùng ảnh vipcard/vippack gốc kèm nhãn cấp. Chưa có đủ bộ icon/animation riêng 12 cấp để tái hiện nguyên bản hoàn toàn.
 
-## Tà Thần 7.9.18
+## Tà Thần
 
-Ba ải theo video người dùng: 20 lính bộ lạc (tối đa 6 lính cùng lúc, không bắt buộc hạ chiến sĩ), anh em Bulan, Sulan vàng → đỏ. Sau mỗi 2 lượt boss gọi bù lính vàng 3+1, đỏ 3+2 (hotfix); lính có lượt đánh, chọn cả cây đậu và nhân vật. Cần cập nhật cả server và JAR/JAD. Không có SQL mới. Xem `../docs/BAO-CAO-7.9.18.md` và `../docs/TA-THAN-VIDEO.md`.
+Ba ải theo video người dùng: 20 lính bộ lạc (tối đa 6 lính cùng lúc, không bắt buộc hạ chiến sĩ), anh em Bulan, Sulan vàng → đỏ. Sau mỗi 2 lượt boss gọi bù lính vàng 3+1, đỏ 3+2; lính có lượt đánh, chọn cả cây đậu và nhân vật. Cần cập nhật cả server và JAR/JAD. Xem `../docs/TA-THAN-VIDEO.md`.

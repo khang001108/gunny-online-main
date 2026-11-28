@@ -13,6 +13,7 @@ public final class Gameplay771Check {
  public static void main(String[] args)throws Exception {
   for(String device:new String[]{"E72-2009","E6"})for(String ext:new String[]{"jar","jad"})check(GunnyServer.downloadFile("Gunny-"+device+"-Online-7922."+ext),"Current "+device+" "+ext+" is downloadable");
   check(!GunnyServer.downloadFile("../gunny.env")&&!GunnyServer.downloadFile("Gunny-E6-Online-7922.jar/../../gunny.env"),"Installer allowlist rejects traversal and private files");
+  check(!GunnyServer.downloadFile("Gunny-E6-Online-7918.jar")&&!GunnyServer.downloadFile("Huong-dan-HTTPS-E72-E6.pdf")&&!GunnyServer.downloadFile("MBedTLS-1.4.3.sis")&&!GunnyServer.downloadFile("ssl-v21.zip"),"Old installers and retired TLS packages are not published");
   int prior=0;
   for(int level=1;level<=70;level++){
    int exp=Progression.experienceForLevel(level);check(Progression.level(exp)==level&&Progression.bonus(exp)==(level-1)*5,"Level "+level+" has exact cumulative EXP and +5 growth");

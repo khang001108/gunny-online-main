@@ -29,3 +29,16 @@ __pycache__/
 
 /balance.properties
 /backend/balance.properties
+
+# Superseded exports; current battles use wingv4 DAT and hf40 pose rows.
+/client/assets[12]/wing795-game-*.png
+/client/assets[12]/wing812-packed-*.png
+/client/assets[12]/wing1-free-*.png
+/client/assets[12]/winggroup-free-*.png
+/client/assets[12]/wingbal*.png
+/client/assets[12]/hf39-npc-*.png
+/client/assets[12]/vip-ring-[0-2]-144.png
+/client/assets[12]/vip-ring-[0-2]-216.png
+/client/assets[12]/vip-ring-hf18-[0-2]-8.png
+/client/assets[12]/tribal797-loading-bg.png
+/client/assets[12]/fx-pow-ring.png
