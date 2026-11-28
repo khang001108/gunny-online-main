@@ -121,7 +121,7 @@ def upsert_prop_text(text, key, value):
     return text + ending + line + "\n"
 # These sizes/effects have no runtime references; do not reintroduce them via overlays.
 def retired_asset(name):
-    return name.startswith('hf39-npc-') or name == 'fx-pow-ring.png' or name.startswith(('wing795-game-', 'wing812-packed-', 'wing1-free-', 'winggroup-free-')) or bool(re.fullmatch(r'vip-ring-[0-2]-(144|216)\.png', name)) or bool(re.fullmatch(r'vip-ring-hf18-[0-2]-8\.png', name))
+    return name.startswith('hf39-npc-') or name == 'fx-pow-ring.png' or name.startswith(('wing795-game-', 'wing812-packed-', 'wing1-free-', 'winggroup-free-', 'wingbal')) or bool(re.fullmatch(r'vip-ring-[0-2]-(144|216)\.png', name)) or bool(re.fullmatch(r'vip-ring-hf18-[0-2]-8\.png', name))
 
 with zipfile.ZipFile(build/'preverified.jar') as code:
     for name in ('Gunny-E6-Online-7922', 'Gunny-E72-2009-Online-7922'):
@@ -160,16 +160,19 @@ with zipfile.ZipFile(build/'preverified.jar') as code:
                 raise SystemExit('Manifest normalization failed: '+str(temp))
             if 'GunnyMIDlet.class' not in candidate.namelist():
                 raise SystemExit('Missing GunnyMIDlet.class: '+str(temp))
-            required_classes = ('GameRelease.class','VipSystem.class','WingAttachment.class','WingOneArt.class','WingGroupArt.class','WingBattleArt.class','WingBalancedArt.class')
+            required_classes = ('GameRelease.class','VipSystem.class','WingAttachment.class','WingOneArt.class','WingGroupArt.class','WingBattleArt.class','WingBalancedArt.class','WingPackedArt.class','WingPackedArt$Work.class')
             for required in required_classes:
                 if required not in candidate.namelist():
                     raise SystemExit('Missing wing/release class: '+required)
             if APP_VERSION.encode('ascii') not in candidate.read('GameRelease.class'):
                 raise SystemExit('Wrong GameRelease.class version')
-            required_wings = [f'wingbal{frames}-{w}-{a}-{layer}.png' for frames in (1,4,10) for w,n in enumerate((13,14,14,15,12,5)) for a in range(n) for layer in range(2)]
+            required_wings = [f'wingv4-{w}-{a}.dat' for w,n in enumerate((13,14,14,15,12,5)) for a in range(n)]
             for required in required_wings:
                 if required not in overlays or candidate.read(required) != overlays[required]:
                     raise SystemExit('Missing or stale wing overlay: '+required)
+            if any(name.startswith('wingbal') for name in candidate.namelist()):
+                raise SystemExit('Legacy Balanced assets unexpectedly present')
+            print('Wing V4: verified '+str(len(required_wings))+' lossless packed atlases for '+name)
             bad_entry = candidate.testzip()
             if bad_entry is not None:
                 raise SystemExit('CRC error: '+bad_entry)

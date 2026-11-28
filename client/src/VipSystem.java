@@ -54,7 +54,7 @@ final class VipSystem {
 
     void release() {
         battleReady=false; battleBytes=0;
-        clearBalancedWings();
+        clearPackedWings();
         clearBattleRings();
         for(int i=0;i<6;i++){battleWingIds[i]=-1; battleXp[i]=0;}
         for (int i = 0; i < 3; i++)
@@ -91,48 +91,57 @@ final class VipSystem {
         return battleBytes+bytes<=(c.s==1?6:20)*1024*1024
             && Runtime.getRuntime().freeMemory()>bytes+(c.s==1?1024:3072)*1024;
     }
-    // Balanced: keep every configured pose available before allocating animation.
-    final Image[][][] balancedWings=new Image[6][15][2];
-    final int[][] balancedFrames=new int[6][15];
-    void clearBalancedWings(){for(int w=0;w<6;w++)for(int a=0;a<15;a++){balancedFrames[w][a]=0;balancedWings[w][a][0]=balancedWings[w][a][1]=null;}}
-    boolean roomForStill(int bytes){return battleBytes+bytes<=(c.s==1?6:20)*1024*1024
-        && Runtime.getRuntime().freeMemory()>bytes+(c.s==1?384:1024)*1024;}
-    boolean loadBalancedAngle(int w,int a,int frames){
-        int old=balancedFrames[w][a];if(old>=frames)return true;
-        int single=WingBalancedArt.bytes(c.s,w,a), bytes=single*frames;
-        if(!(frames==1?roomForStill(bytes):roomFor(bytes)))return false;
-        try{
-            String name="wingbal"+frames+"-"+w+"-"+a+"-";
-            Image rear=c.combatRoomArt(name+"0"), front=c.combatRoomArt(name+"1");
-            if(rear==null||front==null)return false;
-            balancedWings[w][a][0]=rear;balancedWings[w][a][1]=front;
-            balancedFrames[w][a]=frames;battleBytes+=single*(frames-old);return true;
-        }catch(OutOfMemoryError low){return false;}
+    // V4: each pose retains all 19 frames. Shared per-wing/angle cache.
+    final WingPackedArt[][] packedWings=new WingPackedArt[6][15];
+    WingPackedArt.Work wingWork;
+    void clearPackedWings(){
+        for(int w=0;w<6;w++)for(int a=0;a<15;a++)packedWings[w][a]=null;
+        wingWork=null;
     }
-    void prepareBalancedWings(int wingMask){
-        // Pass 1: every unique pose angle for each equipped wing, round robin.
-        // No old/unrelated stock angles are allowed to consume this allocation.
+    int wingAvailable(boolean essential){
+        long free=Runtime.getRuntime().freeMemory()-(c.s==1?(essential?384:1024):(essential?1024:3072))*1024L;
+        return (int)Math.max(0L,Math.min(free,(c.s==1?6:20)*1024L*1024L-battleBytes));
+    }
+    boolean loadPackedAngle(int w,int a,boolean essential){
+        if(packedWings[w][a]!=null)return true;
+        try{
+            WingPackedArt art=WingPackedArt.load(w,a,wingAvailable(essential));
+            if(art==null)return false;
+            packedWings[w][a]=art;battleBytes+=art.bytes();return true;
+        }catch(IOException bad){return false;}catch(OutOfMemoryError low){return false;}
+    }
+    void promotePackedAngle(int w,int a){
+        WingPackedArt art=packedWings[w][a];
+        if(art==null||art.nativeAtlas!=null)return;
+        int old=art.bytes(),nativeBytes=art.nativeBytes();
+        // During creation both the temporary ARGB array and native image coexist.
+        if(battleBytes+nativeBytes+WingPackedArt.OVERHEAD-old>(c.s==1?6:20)*1024*1024||
+           Runtime.getRuntime().freeMemory()<=2L*nativeBytes+(c.s==1?1024:3072)*1024L)return;
+        try{art.promote(wingWork);battleBytes+=art.bytes()-old;}
+        catch(OutOfMemoryError low){wingWork.invalidate();}
+        catch(IllegalArgumentException unsupported){wingWork.invalidate();}
+    }
+    void preparePackedWings(int wingMask){
+        if(wingMask==0)return;
+        int workBytes=WingPackedArt.workBytes(c.s);
+        if(wingAvailable(true)<workBytes)return;
+        try{wingWork=new WingPackedArt.Work(c.s);battleBytes+=workBytes;}catch(OutOfMemoryError low){return;}
         int[] required=new int[6];
+        // First reserve every configured pose angle for every equipped wing.
         for(int pose=0;pose<22;pose++)for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0){
             int a=WingBalancedArt.select(w,WingAttachment.tilt(w,pose,1,0));
-            if((required[w]&(1<<a))==0){required[w]|=1<<a;loadBalancedAngle(w,a,1);}
+            if((required[w]&(1<<a))==0){required[w]|=1<<a;loadPackedAngle(w,a,true);}
         }
-        // Pass 2: optional terrain tilt angles (still image).
+        // Accelerate the configured angles before optional terrain variants.
+        for(int pose=0;pose<22;pose++)for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0){
+            int a=WingBalancedArt.select(w,WingAttachment.tilt(w,pose,1,0));
+            if((required[w]&(1<<a))!=0){required[w]&=~(1<<a);promotePackedAngle(w,a);}
+        }
         for(int a=0;a<15;a++)for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0&&a<WingBalancedArt.count(w))
-            if((required[w]&(1<<a))==0)loadBalancedAngle(w,a,1);
-        // Pass 3: give all equipped wings a chance at four frames, then ten.
-        // Admission is conservative: account for full replacement during decode.
-        for(int tier=0;tier<2;tier++){
-            int frames=tier==0?4:10;
-            for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0){
-                int cost=0,peak=0;
-                for(int a=0;a<WingBalancedArt.count(w);a++)if(balancedFrames[w][a]>0&&balancedFrames[w][a]<frames){
-                    int single=WingBalancedArt.bytes(c.s,w,a);cost+=single*(frames-balancedFrames[w][a]);peak=Math.max(peak,single*balancedFrames[w][a]);
-                }
-                if(cost==0||!roomFor(cost+peak))continue;
-                for(int a=0;a<WingBalancedArt.count(w);a++)if(balancedFrames[w][a]>0)loadBalancedAngle(w,a,frames);
-            }
-        }
+            loadPackedAngle(w,a,false);
+        for(int a=0;a<15;a++)for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0&&a<WingBalancedArt.count(w))
+            promotePackedAngle(w,a);
+        wingWork.invalidate();
     }
     Image preloadSmall(String name,int bytes,boolean essential){
         if(!essential&&!roomFor(bytes))return null;
@@ -168,7 +177,7 @@ final class VipSystem {
                 battleRings[k][context-1]=preloadSmall("vip796-ring-static-"+k+"-"+size,size*size*4*c.s*c.s,true);
         }
         preparePowRings(ringMask);
-        prepareBalancedWings(wingMask);
+        preparePackedWings(wingMask);
         for(int w=0;w<6;w++)if((wingMask&(1<<w))!=0)for(int context=1;context<=2;context++){
             int size=WING_SIZE[context];
             wings[w][context]=preloadSmall("wing796-show-"+w+"-"+size,20*size*WING_HEIGHT[context]*4*c.s*c.s,false);
@@ -333,7 +342,7 @@ final class VipSystem {
 
     void releaseBattleWings() {
         battleReady=false; battleBytes=0;
-        clearBalancedWings();
+        clearPackedWings();
         clearBattleRings();
     }
 
@@ -347,27 +356,17 @@ final class VipSystem {
         int slope = shooting ? 0 : u.slope;
         boolean compact = c.s == 1 && (c.onlineBattle() ? c.net.custom[actor] : actor == 0 && c.customLook);
         int pose = WingAttachment.pose(c.unitAnimation(actor), compact);
+        if(wingWork==null)return;
         int wanted=WingAttachment.tilt(wing,pose,u.face,slope);
         int selected=WingBalancedArt.select(wing,wanted);
-        // Never substitute a stock standing pose for a calibrated pose. If a
-        // terrain angle is missing, use that pose's own flat-ground angle.
-        if(balancedFrames[wing][selected]==0)selected=WingBalancedArt.select(wing,WingAttachment.tilt(wing,pose,u.face,0));
-        int angle=selected,layer=outer?1:0,frames=balancedFrames[wing][angle];
-        if(frames==0)return;
-        boolean customAngle=angle>=5;
-        Image art=balancedWings[wing][angle][layer];if(art==null)return;
-        int[] bounds=WingBalancedArt.bounds(c.s,wing,angle);
-        int p=WingBalancedArt.index(wing,angle,layer);
-        int w = bounds[p+2], h = bounds[p+3];
-        boolean flip = u.face < 0;
-        int ax = WingAttachment.jointX(wing,pose, u.face, slope);
-        int ay = WingAttachment.jointY(wing,pose, u.face, slope);
-        int relX=customAngle?bounds[p]:bounds[p]-48,relY=customAngle?bounds[p+1]:bounds[p+1]-48;
-        int x=u.x-c.cameraX+ax+(flip?-relX-w:relX);
-        int y=u.y-c.cameraY+ay+relY;
+        WingPackedArt art=packedWings[wing][selected];
+        // If a slope variant cannot be loaded, keep the calibrated flat pose.
+        if(art==null)art=packedWings[wing][WingBalancedArt.select(wing,WingAttachment.tilt(wing,pose,u.face,0))];
+        if(art==null)return; // only if even the compact 19-frame angle cannot fit
+        int ax=WingAttachment.jointX(wing,pose,u.face,slope),ay=WingAttachment.jointY(wing,pose,u.face,slope);
         int scale=c.s;
-        c.g.drawRegion(art, (c.frame / 2 % 19 * frames / 19) * w * scale, 0, w * scale, h * scale,
-                flip ? Sprite.TRANS_MIRROR : Sprite.TRANS_NONE, c.ox + x * scale, c.oy + y * scale, Graphics.TOP | Graphics.LEFT);
+        art.draw(c.g,c.frame/2%WingPackedArt.FRAMES,outer?1:0,u.face<0,
+                 c.ox+(u.x-c.cameraX+ax)*scale,c.oy+(u.y-c.cameraY+ay)*scale,wingWork);
     }
 
     int trialWing = -2;
