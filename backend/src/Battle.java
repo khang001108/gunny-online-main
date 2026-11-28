@@ -15,10 +15,18 @@ final class Battle {
     static int weaponMaxAngle(int weapon){return weapon==5?90:weapon==4?70:weapon==2?75:weapon==7?80:weapon==1?60:weapon==3?80:65;}
     static int projectileSize(int weapon){return weapon==4||weapon==5?32:16;}
     static boolean nativeWeapon(int weapon){return weapon>=0&&weapon<10&&weapon!=6&&weapon!=8;}
-    // Visual-only 16 directions; fixed-point flight and the original eight-frame fallback stay unchanged.
+    // Visual-only: age counts physics substeps, not rendered frames.
+    // Keep the atlas' 16 directions and the original animation rows/physics.
+    static boolean directionalProjectile(int weapon,boolean powered){
+        return weapon==9||powered&&(weapon==0||weapon==2);
+    }
+    static int projectileSpinStep(int weapon,boolean powered){
+        // Pháo and Giỏ đồ (both modes), POW Lu gạch and POW Tủ lạnh.
+        return weapon==1||weapon==7||powered&&(weapon==3||weapon==4)?25:10;
+    }
     static int visualFrame(Ball b){
         if(!nativeWeapon(b.weapon))return ballFrame(b);
-        if(b.weapon!=9)return b.age/2%16;
+        if(!directionalProjectile(b.weapon,b.powered))return b.age/projectileSpinStep(b.weapon,b.powered)%16;
         int best=0;long score=Long.MIN_VALUE;
         for(int i=0;i<16;i++){int angle=i*360/16;long dot=(long)b.vx*cos(angle)-(long)b.vy*sin(angle);if(dot>score){score=dot;best=i;}}
         return best;
@@ -267,7 +275,9 @@ final class Battle {
         if(--countdown<=0)next();
     }
     static int ballFrame(Ball b){
-        if(b.weapon!=6&&b.weapon!=9)return b.age/8%8;
+        // Match the 16-direction atlas cadence in the older eight-direction fallback.
+        if(nativeWeapon(b.weapon))return visualFrame(b)/2;
+        if(b.weapon!=6)return b.age/8%8;
         int ax=Math.abs(b.vx),ay=Math.abs(b.vy);if(ax>ay*2)return b.vx>0?0:4;if(ay>ax*2)return b.vy<0?2:6;return b.vx>0?(b.vy<0?1:7):(b.vy<0?3:5);
     }
     void guide(Ball b){int best=-1;long distance=100L*100*256*256;for(int i=0;i<unitCount;i++)if(units[i].hp>0&&!ally(b.owner,i)){long dx=units[i].x*256L-b.x,dy=targetY(units[i])*256L-b.y,d=dx*dx+dy*dy;if(d<distance){distance=d;best=i;}}if(best<0)return;Unit t=units[best];int dx=t.x*256-b.x,dy=targetY(t)*256-b.y,len=Math.max(1,(int)Math.sqrt((double)dx*dx+(double)dy*dy));int speed=Math.max(500,(int)Math.sqrt((double)b.vx*b.vx+(double)b.vy*b.vy));b.vx+=(dx*speed/len-b.vx)/12;b.vy+=(dy*speed/len-b.vy)/12;}
